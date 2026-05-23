@@ -1,0 +1,16 @@
+.main-sidebar .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: #ffc107 !important;
+    color: #1f2d3d !important;
+    box-shadow: inset 4px 0 0 #dc3545;
+}
+
+.main-sidebar .nav-sidebar > .nav-item > .nav-link.active .nav-icon,
+.main-sidebar .nav-sidebar > .nav-item > .nav-link.active p {
+    color: #1f2d3d !important;
+}
+
+.main-sidebar .nav-treeview > .nav-item > .nav-link.active {
+    background-color: #e9f5ff !important;
+    color: #0056b3 !important;
+    border-left: 4px solid #ffc107;
+}

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 
 class StoreConstanteRequest extends FormRequest
 {
@@ -24,8 +25,20 @@ class StoreConstanteRequest extends FormRequest
     public function rules()
     {
         return [
-            'constante'=>'required|max:25|unique:constantes,constante',
-            'valor'=>'required|max:20',
+            'cuenta' => 'required|string|max:100',
+            'plataforma' => 'required|string|max:100',
+            'clave' => 'required|string|max:100',
+            'descripcion' => 'nullable|string|max:1000',
+            'constante' => 'required|string|max:25',
+            'valor' => 'required|string|max:20',
         ];
+    }
+
+    protected function prepareForValidation()
+    {
+        $this->merge([
+            'constante' => Str::limit($this->input('cuenta', ''), 25, ''),
+            'valor' => Str::limit($this->input('clave', ''), 20, ''),
+        ]);
     }
 }

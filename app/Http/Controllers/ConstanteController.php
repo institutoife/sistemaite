@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Constante;
 use App\Http\Requests\StoreConstanteRequest;
 use App\Http\Requests\UpdateConstanteRequest;
+use Illuminate\Support\Facades\Schema;
 use Yajra\DataTables\Contracts\DataTable as DataTable; 
 use Yajra\DataTables\DataTables;
 
@@ -42,12 +43,7 @@ class ConstanteController extends Controller
      */
     public function store(StoreConstanteRequest $request)
     {
-        $validated = $request->validate([
-            'cuenta' => 'required|string|max:100',
-            'plataforma' => 'required|string|max:100',
-            'clave' => 'required|string|max:100',
-            'descripcion' => 'nullable|string|max:1000',
-        ]);
+        $validated = $this->datosSegunColumnas($request->validated());
         $constante = new Constante($validated);
         $constante->save();
         return redirect()->route('constante.index');
@@ -85,12 +81,7 @@ class ConstanteController extends Controller
      */
     public function update(UpdateConstanteRequest $request, Constante $constante)
     {
-        $validated = $request->validate([
-            'cuenta' => 'required|string|max:100',
-            'plataforma' => 'required|string|max:100',
-            'clave' => 'required|string|max:100',
-            'descripcion' => 'nullable|string|max:1000',
-        ]);
+        $validated = $this->datosSegunColumnas($request->validated());
         $constante->update($validated);
         return redirect()->route('constante.index');
     }
@@ -112,5 +103,18 @@ class ConstanteController extends Controller
             ->addColumn('btn', 'constante.action')
             ->rawColumns(['btn'])
             ->toJson();
+    }
+
+    private function datosSegunColumnas(array $datos): array
+    {
+        if (!Schema::hasColumn('constantes', 'constante')) {
+            unset($datos['constante']);
+        }
+
+        if (!Schema::hasColumn('constantes', 'valor')) {
+            unset($datos['valor']);
+        }
+
+        return $datos;
     }
 }

@@ -1,3 +1,6 @@
+<input type="hidden" name="constante" id="constante" value="{{ old('constante', $constante->constante ?? '') }}">
+<input type="hidden" name="valor" id="valor" value="{{ old('valor', $constante->valor ?? '') }}">
+
 <div class="row">
     <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
         <div class="form-floating mb-3 text-gray">

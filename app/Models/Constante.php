@@ -9,6 +9,6 @@ class Constante extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'cuenta', 'plataforma', 'clave', 'descripcion'
+        'constante', 'valor', 'cuenta', 'plataforma', 'clave', 'descripcion'
     ];
 }
