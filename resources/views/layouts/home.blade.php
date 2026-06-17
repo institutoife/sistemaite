@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ITE</title>
+    <title>IFE</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Carga de fuentes locales -->
     <style>
@@ -67,8 +67,7 @@
         <div class="container">
           <div class="logo">
               <a href="/">
-                  <!-- Reemplazamos el texto por una imagen con clase para animación -->
-                  <img src="{{ asset('welcome/images/logo.png') }}" alt="Logo ITE" class="logo-image pulse-animation">
+                  <span class="logo-text pulse-animation">IFE</span>
               </a>
           </div>
             
@@ -108,7 +107,7 @@
         <div class="container">
             <div class="hero-content">
                 <div class="hero-text fade-in">
-                    <h1>Educación innovadora con <span class="ite-text">ite</span></h1>
+                    <h1>Educación innovadora con <span class="ite-text">IFE</span></h1>
                     <p>Ofrecemos clases de apoyo escolar, cursos de programación, robótica, ajedrez, 
                     cubo rubik, computación, oratoria, inglés, lectura, escritura y caligrafía.</p>
                     <div class="hero-buttons">
@@ -117,7 +116,7 @@
                     </div>
                 </div>
                 <div class="hero-image fade-in delay">
-                    <img src="{{ asset('homeprincipal/imagen/portada.gif') }}" alt="Estudiantes de ITE aprendiendo">
+                    <img src="{{ asset('homeprincipal/imagen/portada.gif') }}" alt="Estudiantes de IFE aprendiendo">
                 </div>
             </div>
         </div>
@@ -282,19 +281,19 @@
                 <h2>¡Conéctate con nuestra comunidad educativa!</h2>
                 <p class="subtitle">Contenido exclusivo, tips de estudio y novedades tecnológicas</p>
                 <div class="social-links">
-                    <a href="https://www.tiktok.com/@ite_educabol" target="_blank" class="social-link tiktok">
+                    <a href="https://www.tiktok.com/@ife_educabol" target="_blank" class="social-link tiktok">
                         <div class="social-icon">
                             <i class="fab fa-tiktok"></i>
                         </div>
                         <span>TikTok</span>
                     </a>
-                    <a href="https://www.facebook.com/ite.educabol" target="_blank" class="social-link facebook">
+                    <a href="https://www.facebook.com/ife.educabol" target="_blank" class="social-link facebook">
                         <div class="social-icon">
                             <i class="fab fa-facebook-f"></i>
                         </div>
                         <span>Facebook</span>
                     </a>
-                    <a href="https://www.youtube.com/@ite_educabol" target="_blank" class="social-link youtube">
+                    <a href="https://www.youtube.com/@ife_educabol" target="_blank" class="social-link youtube">
                         <div class="social-icon">
                             <i class="fab fa-youtube"></i>
                         </div>
@@ -312,7 +311,7 @@
                         </div>
                         <span>Instagram</span>
                     </a>
-                    <a href="https://ite.com.bo" target="_blank" class="social-link website">
+                    <a href="https://ife.bo" target="_blank" class="social-link website">
                         <div class="social-icon">
                             <i class="fas fa-globe"></i>
                         </div>
@@ -385,7 +384,7 @@
             
             <div class="recursos-grid">
                 <!-- Ejemplo 1: Un archivo PDF -->
-                <a href="https://formula.ite.com.bo" target="_blank" download class="recurso-card">
+                <a href="https://formula.ife.bo" target="_blank" download class="recurso-card">
                     <div class="recurso-icon pdf">
                         <i class="fa-solid fa-superscript fa-beat"></i>
                     </div>
@@ -400,7 +399,7 @@
                 </a>
 
                 <!-- Ejemplo 2: Una Aplicación -->
-                <a href="https://itesolve2.ite.com.bo" target="_blank" class="recurso-card">
+                <a href="https://division.ife.bo" target="_blank" class="recurso-card">
                     <div class="recurso-icon app">
                         <i class="fas fa-divide fa-beat"></i>
                     </div>
@@ -430,7 +429,7 @@
                 </a>
                 
                 <!-- Ejemplo 4: Un Archivo ZIP -->
-                <a href="https://calamar.ite.com.bo" target="_blank" download class="recurso-card">
+                <a href="https://calamar.ife.bo" target="_blank" download class="recurso-card">
                     <div class="recurso-icon zip">
                         <i class="fa-solid fa-trophy fa-beat"></i>
                     </div>
@@ -444,7 +443,7 @@
                     </div>
                 </a>
                 <!-- Ejemplo 5: Un Archivo ZIP -->
-                <a href="https://propuestos.ite.com.bo" target="_blank" download class="recurso-card">
+                <a href="https://propuestos.ife.bo" target="_blank" download class="recurso-card">
                     <div class="recurso-icon zip">
                         <i class="fa-solid fa-plus-minus fa-beat"></i>
                     </div>
@@ -458,7 +457,7 @@
                     </div>
                 </a>
                 <!-- Ejemplo 6: Notas del primer trimestre -->
-                <a href="https://primert.ite.com.bo" target="_blank" download class="recurso-card">
+                <a href="https://notas.ife.bo" target="_blank" download class="recurso-card">
                     <div class="recurso-icon zip">
                         <i class="fa-solid fa-plus-minus fa-beat"></i>
                     </div>
@@ -472,7 +471,7 @@
                     </div>
                 </a>
                 <!-- Ejemplo 6: Notas del primer trimestre -->
-                <a href="https://itesolve.ite.com.bo" target="_blank" download class="recurso-card">
+                <a href="https://division.ife.bo" target="_blank" download class="recurso-card">
                     <div class="recurso-icon zip">
                         <i class="fa-solid fa-divide fa-beat"></i>
                     </div>
@@ -516,7 +515,7 @@
                     </div>
                 </a>
 
-                <a href="https://itenauta.ite.com.bo/" target="_blank" download class="recurso-card">
+                <a href="https://yachay.ife.bo/" target="_blank" download class="recurso-card">
                     <div class="recurso-icon zip">
                         <i class="fa-solid fa-brain fa-beat"></i>
                     </div>
@@ -546,7 +545,7 @@
       <div class="tiktok-grid">
           <!-- TikTok 1 -->
           <div class="tiktok-container fade-in-scroll">
-              <blockquote class="tiktok-embed" cite="https://www.tiktok.com/@ite_educabol/video/7499610012852047159" data-video-id="7499610012852047159">
+              <blockquote class="tiktok-embed" cite="https://www.tiktok.com/@ife_educabol/video/7499610012852047159" data-video-id="7499610012852047159">
                   <section></section>
               </blockquote>
           </div>
@@ -757,13 +756,13 @@
                   </div>
                   
                   <div class="social-links">
-                      <a href="https://www.facebook.com/ite.educabol" class="social-link" aria-label="Facebook">
+                      <a href="https://www.facebook.com/ife.educabol" class="social-link" aria-label="Facebook">
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                       </a>
-                      <a href="https://www.instagram.com/ite.educabol" class="social-link" aria-label="Instagram">
+                      <a href="https://www.instagram.com/ife.educabol" class="social-link" aria-label="Instagram">
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
                       </a>
-                      <a href="https://www.tiktok.com/@ite_educabol" class="social-link" aria-label="TikTok">
+                      <a href="https://www.tiktok.com/@ife_educabol" class="social-link" aria-label="TikTok">
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M15 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M15 2v20"/><path d="M9 16v6"/><path d="M9 10V4"/></svg>
                       </a>
                   </div>
@@ -797,7 +796,7 @@
                   style="border:0;" 
                   allowfullscreen="" 
                   loading="lazy"
-                  title="Ubicación de ITE">
+                  title="Ubicación de IFE">
               </iframe>
           </div>
       </div>
@@ -808,8 +807,8 @@
           <div class="footer-content">
               <div class="footer-column">
                   <div class="footer-logo">
-                      <span class="ite-text">ite</span>
-                      <p>Instituto de Tecnología Educativa</p>
+                      <span class="ite-text">IFE</span>
+                      <p>Instituto de Formación Educativa</p>
                   </div>
                   <p class="footer-description">
                       Ofrecemos clases de apoyo escolar, cursos de programación, robótica, ajedrez, 
@@ -820,9 +819,9 @@
               <div class="footer-column">
                   <h3 class="footer-title">Enlaces Rápidos</h3>
                   <ul class="footer-links">
-                      <li><a href="https://ite.com.bo/">Página web</a></li>
-                      <li><a href="https://services.ite.com.bo/">Servicios</a></li>
-                      <li><a href="https://redes.ite.com.bo">Redes</a></li>
+                      <li><a href="https://ife.bo/">Página web</a></li>
+                      <li><a href="https://ife.bo/#cursos">Servicios</a></li>
+                      <li><a href="https://ife.bo/#redes">Redes</a></li>
                       <li><a href="#cursos">Cursos</a></li>
                       <li><a href="#eventos">Eventos</a></li>
                       <li><a href="#contacto">Contacto</a></li>
@@ -833,19 +832,19 @@
                   <h3 class="footer-title">Síguenos</h3>
                   <ul class="footer-social-links">
                       <li>
-                          <a href="https://www.facebook.com/ite.educabol" target="_blank" rel="noopener noreferrer">
+                          <a href="https://www.facebook.com/ife.educabol" target="_blank" rel="noopener noreferrer">
                               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                               Facebook
                           </a>
                       </li>
                       <li>
-                          <a href="https://www.tiktok.com/@ite_educabol" target="_blank" rel="noopener noreferrer">
+                          <a href="https://www.tiktok.com/@ife_educabol" target="_blank" rel="noopener noreferrer">
                               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M15 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M15 2v20"/><path d="M9 16v6"/><path d="M9 10V4"/></svg>
                               TikTok
                           </a>
                       </li>
                       <li>
-                          <a href="https://www.instagram.com/ite.educabol/" target="_blank" rel="noopener noreferrer">
+                          <a href="https://www.instagram.com/ife.educabol/" target="_blank" rel="noopener noreferrer">
                               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
                               Instagram
                           </a>
@@ -872,7 +871,7 @@
                       </li>
                       <li>
                           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                          <span>info@ite.com.bo</span>
+                          <span>info@ife.bo</span>
                       </li>
                   </ul>
               </div>
@@ -885,7 +884,7 @@
                   <a href="#">Términos y Condiciones</a>
               </div>
               <div class="footer-copyright">
-                  <p>&copy; 2024 ITE Todos los derechos reservados.|Desarrollado David Flores </p>
+                  <p>&copy; 2024 IFE Todos los derechos reservados.|Desarrollado David Flores </p>
               </div>
           </div>
       </div>

@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const textoMensaje = encodeURIComponent(
                     `¡Hola! 👋  
                     
-                    Vengo de la página web https://ite.com.bo y me interesa reservar mi *CLASE DE CORTESÍA* para el servicio de:  
+                    Vengo de la página web https://ife.bo y me interesa reservar mi *CLASE DE CORTESÍA* para el servicio de:  
                     *${servicioElegido}*  
 
                     Por favor, necesito información sobre:  
