@@ -67,7 +67,7 @@
         <div class="container">
           <div class="logo">
               <a href="/">
-                  <span class="logo-text pulse-animation">IFE</span>
+                  <img src="{{ asset('welcome/images/logo.png') }}" alt="Logo IFE" class="logo-image pulse-animation">
               </a>
           </div>
             
