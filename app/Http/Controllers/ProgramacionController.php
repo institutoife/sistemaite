@@ -605,6 +605,10 @@ class ProgramacionController extends Controller
         $nivel=Nivel::findOrFail($estudiante->grados->last()->nivel_id);
         $grado=Grado::findOrFail($estudiante->grados->last()->pivot->grado_id);
         $pago=$inscripcion->pagos->sum('monto');
+
+        if (! is_dir(storage_path('fonts'))) {
+            @mkdir(storage_path('fonts'), 0775, true);
+        }
         
         $dompdf = PDF::loadView('programacion.reporte', compact('grado','nivel','modalidad','usuario','programacion','persona','estudiante','persona','colegio','inscripcion','pago','dias','edad'));
         /**entrae a la persona al cual corresponde esta inscripcion */
