@@ -5,12 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    @php
+        $logoPath = public_path('assetpublic/images/logo.png');
+        $fontPath = public_path('assetpublic/fonts/GlyphaLTStd-Bold.otf');
+        $fechaProximoPago = $matriculacion->fecha_proximo_pago;
+    @endphp
     
     {{-- <link rel="stylesheet" href="{{asset('custom/css/custom.css')}}">
     <link rel="stylesheet" href="{{asset('custom/css/reporte.css')}}"> --}}
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300&display=swap');
-
     body {
     
     font-family: helvetica, arial, sans-serif, Montserrat;
@@ -181,9 +184,17 @@
         font-size: 13px;
         color: rgb(38,186,165);
     }
-    @font-face {
-        font-family: 'GlyphaBold';
-        src: url('{{ public_path('assetpublic/fonts/GlyphaLTStd-Bold.otf') }}') format('opentype');
+    @if(file_exists($fontPath))
+        @font-face {
+            font-family: 'GlyphaBold';
+            src: url('{{ $fontPath }}') format('opentype');
+        }
+    @endif
+    .logo-text {
+        color: rgb(38,186,165);
+        font-weight: bold;
+        font-size: 26px;
+        font-family: 'GlyphaBold', Arial, Helvetica, sans-serif !important;
     }
     .codigo-persona {
         color: rgb(55, 95, 122);
@@ -228,18 +239,22 @@
 <table class="pdf-header">
     <tr>
         <td>
-            <img class="logo" src="{{ public_path('assetpublic/images/logo.png') }}" alt="ITE">
+            @if(file_exists($logoPath))
+                <img class="logo" src="{{ $logoPath }}" alt="IFE">
+            @else
+                <span class="logo-text">IFE</span>
+            @endif
         </td>
         <td class="contact-info">
             <div>
                 <strong>Telefonos:</strong> <span class="dato-contacto">71039910 - 75553338 - 71324941</span> |
-                <strong>Web:</strong> <span class="dato-contacto">ite.com.bo</span> |
-                <strong>Servicios:</strong> <span class="dato-contacto">servicios.ite.com.bo</span>
+                <strong>Web:</strong> <span class="dato-contacto">ife.bo</span> |
+                <strong>Servicios:</strong> <span class="dato-contacto">ife.bo</span>
             </div>
             <div>
-                <strong>TikTok:</strong> <span class="dato-contacto">@ite_educabol</span> |
-                <strong>YouTube:</strong> <span class="dato-contacto">@ite_educabol</span> |
-                <strong>Instagram:</strong> <span class="dato-contacto">ite_educabol</span>
+                <strong>TikTok:</strong> <span class="dato-contacto">@ife_educabol</span> |
+                <strong>YouTube:</strong> <span class="dato-contacto">@ife_educabol</span> |
+                <strong>Instagram:</strong> <span class="dato-contacto">ife_educabol</span>
             </div>
         </td>
     </tr>
@@ -260,9 +275,9 @@
             <td class="titulo">Estudiante</td>
             <td class="dato">{{$persona->nombre.' '.$persona->apellidop.' '.$persona->apellidom}}</td>
             <td class="titulo">FechaPago</td>
-            <td class="dato"><span class="fecha-proximo-pago" style="font-size:18px;">{{$matriculacion->fecha_proximo_pago ? $matriculacion->fecha_proximo_pago->translatedFormat('d F Y') : ''}}</span></td>
+            <td class="dato"><span class="fecha-proximo-pago" style="font-size:18px;">{{$fechaProximoPago ? $fechaProximoPago->translatedFormat('d F Y') : 'Sin fecha registrada'}}</span></td>
             <td class="titulo">Usuario</td>
-            <td class="dato">{{$usuario->name}}</td>
+            <td class="dato">{{ optional($usuario)->name ?? 'Sin usuario registrado' }}</td>
         </tr>
         <tr>
             <td class="titulo">Carrera</td>

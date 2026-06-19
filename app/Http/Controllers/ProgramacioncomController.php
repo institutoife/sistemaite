@@ -314,6 +314,11 @@ class ProgramacioncomController extends Controller
         $usuario=$matriculacion->usuarios->first();
         $asignatura=$matriculacion->asignatura;
         $carrera=$asignatura->carrera;
+
+        if (! is_dir(storage_path('fonts'))) {
+            @mkdir(storage_path('fonts'), 0775, true);
+        }
+
         $dompdf = PDF::loadView('programacioncom.reporte', compact('carrera','usuario','programacion','persona','computacion','persona','matriculacion','asignatura'));
         /**entrae a la persona al cual corresponde esta inscripcion */
         $fecha_actual = Carbon::now();

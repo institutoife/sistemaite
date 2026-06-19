@@ -60,7 +60,7 @@ class FileController extends Controller
             //$nombreArchivo=Str::random(10).$request->file('file')->getClientOriginalName();
             
             $nombreArchivo=Str::random(20).'.'.$request->file('file')->getClientOriginalExtension();
-            \Storage::disk('public')->put('files\\'.$nombreArchivo,  \File::get($fileArchivo));
+            Storage::disk('public')->put('files/'.$nombreArchivo, \File::get($fileArchivo));
             $file->file =$nombreArchivo;
             $file->tipofile =$request->file('file')->getClientOriginalExtension();
         }
@@ -73,7 +73,16 @@ class FileController extends Controller
 
     public function download($file_id){
         $file= File::where('id',$file_id)->firstOrFail();
-        $pathToFile=storage_path("app/public/files/".$file->file);
+        $pathToFile = storage_path('app/public/files/'.$file->file);
+
+        if (! file_exists($pathToFile)) {
+            $legacyPath = storage_path('app/public/files\\'.$file->file);
+            $pathToFile = file_exists($legacyPath) ? $legacyPath : null;
+        }
+
+        if ($pathToFile === null || ! file_exists($pathToFile)) {
+            abort(404, 'Archivo no encontrado.');
+        }
 
         return response()->download($pathToFile);
     }
@@ -117,14 +126,18 @@ class FileController extends Controller
     {
         $file=File::findOrFail($id);
         if ($request->hasFile('file')) {
-            $direccion=storage_path().'\app\public\files\\'.$file->file;
+            $direccion = storage_path('app/public/files/'.$file->file);
+            $direccionLegacy = storage_path('app/public/files\\'.$file->file);
             $nombreArchivo=$file->file;
             if (file_exists($direccion)) {
                 Storage::delete('public/files/'. $file->file);
             }
+            if (file_exists($direccionLegacy)) {
+                @unlink($direccionLegacy);
+            }
             $fileArchivo=$request->file('file');
             $nombreArchivo=Str::random(20).'.'.$request->file('file')->extension();
-            \Storage::disk('public')->put('files\\'.$nombreArchivo,  \File::get($fileArchivo));
+            Storage::disk('public')->put('files/'.$nombreArchivo, \File::get($fileArchivo));
             $file->file=$nombreArchivo;
             $file->tipofile =$request->file('file')->extension();
         }
@@ -141,11 +154,15 @@ class FileController extends Controller
      */
     public function destroy(File $file)
     {
-        $direccion=storage_path().'\app\public\files\\'.$file->file;
+        $direccion = storage_path('app/public/files/'.$file->file);
+        $direccionLegacy = storage_path('app/public/files\\'.$file->file);
         $nombreArchivo=$file->file;
         
         if (file_exists($direccion)) {
             Storage::delete('public/files/'. $file->file);
+        }
+        if (file_exists($direccionLegacy)) {
+            @unlink($direccionLegacy);
         }
         $file->delete();
         return response()->json(['mensaje' => 'Registro Eliminado correctamente']);
