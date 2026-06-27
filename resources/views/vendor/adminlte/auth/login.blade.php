@@ -218,5 +218,5 @@
 
 @section('auth_footer')
     {{-- Password reset link --}}
-   
+   v
 @stop
