@@ -74,7 +74,7 @@ class NivelController extends Controller
         //$user=$nivel->usuarios->first();
         $modalidades=Modalidad::where('nivel_id',$nivel->id)->get();
         // dd($modalidades);
-        return view('nivel.show', compact('nivel','modalidades'));
+        return view('home.public.level', compact('nivel', 'modalidades'));
     }
 
     /**

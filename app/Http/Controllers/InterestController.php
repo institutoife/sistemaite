@@ -67,7 +67,7 @@ class InterestController extends Controller
     public function show(Interest $interest)
     {
         $observaciones=$interest->observaciones;
-        return view("interest.show", compact('observaciones','interest'));
+        return view('home.public.interest', compact('observaciones', 'interest'));
     }
 
     

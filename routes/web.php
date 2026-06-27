@@ -90,10 +90,6 @@ use Illuminate\Support\Facades\Auth;
 use UxWeb\SweetAlert\SweetAlert;
 
 
-  Route::get('/', function () {
-    return view('welcome');
-    });
-    
 Auth::routes();  
 //Route::post('/comentario/crear', [ComentarioController::class, 'store'])->name('comentarios.store');
 Route::post('/comentario/crear', [ComentarioController::class, 'store'])
@@ -103,8 +99,8 @@ Route::post('/comentario/crear', [ComentarioController::class, 'store'])
 Route::get('/',[HomeController::class, 'index']);
 
 // Rutas agregadas para menú principal
-Route::view('/cursos', 'cursos')->name('cursos');
-Route::view('/nosotros', 'nosotros')->name('nosotros');
+Route::view('/cursos', 'home.public.catalog')->name('cursos');
+Route::view('/nosotros', 'home.public.content', ['pageKey' => 'about'])->name('nosotros');
 Route::get('interests/get', [InterestController::class,'getParaHome'])->name('interest.para.home');
 Route::get('nivel/mostrar/{nivel}',[NivelController::class,'show'])->name("nivel.mostrar");
 Route::get('interes/mostrar/{interest}',[InterestController::class,'show'])->name("interest.show");
@@ -1027,7 +1023,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     //Route Hooks - Do not delete//
     Route::view('ninacos', 'livewire.ninacos.index')->middleware('auth');
 
-    /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%  HOME ITE   %%%%%%%%%%%%%%%%%%%%%%%%%%*/
+    /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%  HOME IFE   %%%%%%%%%%%%%%%%%%%%%%%%%%*/
     
 
     Route::get('home/edit', [HomeController::class, 'edit'])->name('home.edit');
@@ -1110,7 +1106,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
 });
 
     
-    /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%  FRONTED ITE   %%%%%%%%%%%%%%%%%%%%%%%%%%*/
+    /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%  FRONTEND IFE   %%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
     Route::get('/guarderia', [HomeController::class, 'guarderia'])->name('guarderia');
 
@@ -1147,7 +1143,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
 
     Route::get('/resolucionpracticos', [HomeController::class, 'resolucionpracticos'])->name('resolucionpracticos');
 
-    Route::get('/asistenteite', [HomeController::class, 'asistenteite'])->name('asistenteite');
+    Route::get('/asistenteife', [HomeController::class, 'asistenteife'])->name('asistenteife');
 
 
     Route::get('/matematica', [HomeController::class, 'matematica'])->name('matematica');

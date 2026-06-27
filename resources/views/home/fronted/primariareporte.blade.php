@@ -343,7 +343,7 @@
 
     <div class="divtabla" styker="page-break-inside: auto;">
 		<h2>Modalidades adaptadas a ti: desde por hora hasta trimestral, tú decides</h2>
-		<p>Elige tu modalidad de estudio: por hora, semanal, quincenal, mensual, bimestral o trimestral. Adapta tu aprendizaje a tu ritmo en ITE.</p>
+		<p>Elige tu modalidad de estudio: por hora, semanal, quincenal, mensual, bimestral o trimestral. Adapta tu aprendizaje a tu ritmo en IFE.</p>
 	
         <table class="table-fill table">
 			<thead class="table-head">

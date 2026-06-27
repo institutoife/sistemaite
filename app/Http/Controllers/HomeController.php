@@ -41,9 +41,7 @@ class HomeController extends Controller
 
     public function index()
     {
-        $docentes = Docente::where('estado_id',estado('HABILITADO'))->get();
-        $feriado = Feriado::where('vigente', 1)->first();
-        return view('layouts.home', compact(['docentes','feriado']));
+        return view('home.public.index');
     }
 
     public function guarderia()
@@ -79,7 +77,7 @@ class HomeController extends Controller
         ->where("modalidads.nivel_id",1) // el 1 es un id del nivel buscado
         ->where('vigente',1)
         ->get();
-        return view('home.fronted.guarderia', compact(['modalidadesguarderia','horalibre','semana','quincena','mes','bimestre','trimestre']));
+        return view('home.public.service', ['pageKey' => 'guarderia', 'modalidades' => $modalidadesguarderia]);
 
         /* $modalidadesguarderia=Modalidad::where('vigente',1)->where('nivel_id',1)->get();
         return view('home.fronted.guarderia', compact(['modalidadesguarderia'])); */
@@ -118,7 +116,7 @@ class HomeController extends Controller
         ->where("modalidads.nivel_id",2) // el 2 es un id del nivel buscado
         ->where('vigente',1)
         ->get();
-        return view('home.fronted.inicial', compact(['modalidadesinicial','horalibre','semana','quincena','mes','bimestre','trimestre']));
+        return view('home.public.service', ['pageKey' => 'inicial', 'modalidades' => $modalidadesinicial]);
     }
 
     public function primaria()
@@ -155,7 +153,7 @@ class HomeController extends Controller
         ->where("modalidads.nivel_id",3) // el 3 es un id del nivel buscado
         ->where('vigente',1)
         ->get();
-        return view('home.fronted.primaria', compact(['modalidadesprimaria','horalibre','semana','quincena','mes','bimestre','trimestre']));
+        return view('home.public.service', ['pageKey' => 'primaria', 'modalidades' => $modalidadesprimaria]);
     }
 
     public function secundaria()
@@ -191,7 +189,7 @@ class HomeController extends Controller
         ->where("modalidads.nivel_id",4) // el 4 es un id del nivel buscado
         ->where('vigente',1)
         ->get();
-        return view('home.fronted.secundaria', compact(['modalidadessecundaria','horalibre','semana','quincena','mes','bimestre','trimestre']));
+        return view('home.public.service', ['pageKey' => 'secundaria', 'modalidades' => $modalidadessecundaria]);
     }
 
     public function preuniversitario()
@@ -227,7 +225,7 @@ class HomeController extends Controller
         ->where("modalidads.nivel_id",5) // el 5 es un id del nivel buscado
         ->where('vigente',1)
         ->get();
-        return view('home.fronted.preuniversitario', compact(['modalidadespreuniversitario','horalibre','semana','quincena','mes','bimestre','trimestre']));
+        return view('home.public.service', ['pageKey' => 'preuniversitario', 'modalidades' => $modalidadespreuniversitario]);
 
     }
 
@@ -266,28 +264,28 @@ class HomeController extends Controller
         ->where("modalidads.nivel_id",7) // el 7 es un id del nivel buscado
         ->where('vigente',1)
         ->get();
-        return view('home.fronted.universitario', compact(['modalidadesuniversitario','horalibre','semana','quincena','mes','bimestre','trimestre']));
+        return view('home.public.service', ['pageKey' => 'universitario', 'modalidades' => $modalidadesuniversitario]);
 
     }
 
     public function robotica()
     {
-        return view('home.fronted.robotica');
+        return view('home.public.service', ['pageKey' => 'robotica']);
     } 
 
     public function programacion()
     {
-        return view('home.fronted.programacion');
+        return view('home.public.service', ['pageKey' => 'programacion']);
     } 
 
     public function creacionapp()
     {
-        return view('home.fronted.creacionapp');
+        return view('home.public.service', ['pageKey' => 'creacionapp']);
     } 
 
     public function disenoweb()
     {
-        return view('home.fronted.disenoweb');
+        return view('home.public.service', ['pageKey' => 'disenoweb']);
     } 
 
     public function computacion()
@@ -295,117 +293,117 @@ class HomeController extends Controller
         $computacion = Asignatura::where('carrera_id',1)->get();
         $intereses = Ventaja::where('interest_id',10)->get();
 
-        return view('home.fronted.computacion', compact(['computacion','intereses']));
+        return view('home.public.service', ['pageKey' => 'computacion', 'catalogItems' => $computacion, 'benefits' => $intereses]);
     } 
 
     public function disenografico()
     {
         $disenografico=Asignatura::where('carrera_id',2)->get();
-        return view('home.fronted.disenografico', compact(['disenografico']));
+        return view('home.public.service', ['pageKey' => 'disenografico', 'catalogItems' => $disenografico]);
     } 
 
     public function mantenimientocomputadoras()
     {
         $mantenimientocomputadoras=Asignatura::where('carrera_id',3)->get();
-        return view('home.fronted.mantenimientocomputadoras', compact(['mantenimientocomputadoras']));
+        return view('home.public.service', ['pageKey' => 'mantenimientocomputadoras', 'catalogItems' => $mantenimientocomputadoras]);
     } 
 
     public function ajedrez()
     {
-        return view('home.fronted.ajedrez');
+        return view('home.public.service', ['pageKey' => 'ajedrez']);
     } 
 
     public function cuborubik()
     {
-        return view('home.fronted.cuborubik');
+        return view('home.public.service', ['pageKey' => 'cuborubik']);
     } 
 
     public function plan($id)
     {
         $convenio = Convenio::find($id);
-        $planes = $convenio->planes;
-        return view('home.fronted.plan', compact(['planes']));
+        $planes = $convenio ? $convenio->planes : collect();
+        return view('home.public.plans', compact(['planes']));
     }
 
     public function about()
     {
-        return view('home.fronted.about');
+        return view('home.public.content', ['pageKey' => 'about']);
     } 
     
     public function fotocopia()
     {
-        return view('home.fronted.fotocopia');
+        return view('home.public.service', ['pageKey' => 'fotocopia']);
     } 
 
     public function resolucionpracticos()
     {
-        return view('home.fronted.resolucionpracticos');
+        return view('home.public.service', ['pageKey' => 'resolucionpracticos']);
     } 
 
-    public function asistenteite()
+    public function asistenteife()
     {
-        return view('home.fronted.asistenteite');
+        return view('home.public.service', ['pageKey' => 'asistenteife']);
     }
 
     public function matematica()
     {
-        return view('home.fronted.matematica');
+        return view('home.public.service', ['pageKey' => 'matematica']);
     } 
 
     public function fisica()
     {
-        return view('home.fronted.fisica');
+        return view('home.public.service', ['pageKey' => 'fisica']);
     } 
 
     public function quimica()
     {
-        return view('home.fronted.quimica');
+        return view('home.public.service', ['pageKey' => 'quimica']);
     } 
 
     public function algebra()
     {
-        return view('home.fronted.algebra');
+        return view('home.public.service', ['pageKey' => 'algebra']);
     } 
 
     public function lenguaje()
     {
-        return view('home.fronted.lenguaje');
+        return view('home.public.service', ['pageKey' => 'lenguaje']);
     }
     
     public function estadistica()
     {
-        return view('home.fronted.estadistica');
+        return view('home.public.service', ['pageKey' => 'estadistica']);
     }
 
     public function ingles()
     {
-        return view('home.fronted.ingles');
+        return view('home.public.service', ['pageKey' => 'ingles']);
     } 
 
     public function contact()
     {
-        return view('home.fronted.contact');
+        return view('home.public.content', ['pageKey' => 'contact']);
     }
 
     public function privacy()
     {
-        return view('home.fronted.privacy');
+        return view('home.public.content', ['pageKey' => 'privacy']);
     }
 
     public function termscondition()
     {
-        return view('home.fronted.termscondition');
+        return view('home.public.content', ['pageKey' => 'termscondition']);
     }
     
     public function preguntasfrecuentes()
     {
         $preguntasfrecuentes = Homequestion::all();
-        return view('home.preguntasfrecuentes', compact('preguntasfrecuentes'));
+        return view('home.public.content', ['pageKey' => 'preguntasfrecuentes', 'preguntasfrecuentes' => $preguntasfrecuentes]);
     }
 
     public function planescorporativos()
     {
-        return view('home.fronted.planescorporativos');
+        return view('home.public.service', ['pageKey' => 'planescorporativos']);
     }
     /**
      * Show the form for editing the specified resource.
@@ -479,7 +477,7 @@ class HomeController extends Controller
     //     $fecha_actual->isoFormat('DD-MM-YYYY-HH:mm:ss');
     //     $dompdf->setPaper('letter','portrait');
     //     // $dompdf->setPaper('A4', 'portrait');
-    //     return $dompdf->download("ITE_PRIMARIA_INFO".'.pdf');
+    //     return $dompdf->download("IFE_PRIMARIA_INFO".'.pdf');
    
     // }
 
@@ -524,10 +522,10 @@ class HomeController extends Controller
     
             // Guardar el PDF generado en el servidor
             //$pdfOutput = $dompdf->output();
-            //file_put_contents(storage_path('app/public/ITE_PRIMARIA_INFO_'.$index.'.pdf'), $pdfOutput); // Guardar el PDF en almacenamiento público
+            //file_put_contents(storage_path('app/public/IFE_PRIMARIA_INFO_'.$index.'.pdf'), $pdfOutput); // Guardar el PDF en almacenamiento público
         }
     
-        $nombreArchivo = "ITE_PRIMARIA_INFO" . '_' . now()->format('Y-m-d_H-i-s') . '.pdf';
+        $nombreArchivo = "IFE_PRIMARIA_INFO" . '_' . now()->format('Y-m-d_H-i-s') . '.pdf';
         return $dompdf->stream($nombreArchivo);
     }
     public function imprimirSecundaria() {
@@ -570,10 +568,10 @@ class HomeController extends Controller
     
             // Guardar el PDF generado en el servidor
             //$pdfOutput = $dompdf->output();
-            //file_put_contents(storage_path('app/public/ITE_SECUNDARIA_INFO_'.$index.'.pdf'), $pdfOutput); // Guardar el PDF en almacenamiento público
+            //file_put_contents(storage_path('app/public/IFE_SECUNDARIA_INFO_'.$index.'.pdf'), $pdfOutput); // Guardar el PDF en almacenamiento público
         }
     
-        $nombreArchivo = "ITE_SECUNDARIA_INFO" . '_' . now()->format('Y-m-d_H-i-s') . '.pdf';
+        $nombreArchivo = "IFE_SECUNDARIA_INFO" . '_' . now()->format('Y-m-d_H-i-s') . '.pdf';
         return $dompdf->stream($nombreArchivo);
     }
 
