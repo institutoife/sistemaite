@@ -7,7 +7,18 @@
     ]);
     $modalidades = isset($modalidades) ? collect($modalidades) : collect();
     $catalogItems = isset($catalogItems) ? collect($catalogItems) : collect();
-    $whatsappText = rawurlencode('Hola IFE Educabol, quiero información sobre '.$page['title']);
+    $serviceNames = ['primaria' => 'Primaria', 'secundaria' => 'Secundaria', 'computacion' => 'Computación'];
+    $serviceName = $serviceNames[$pageKey] ?? $page['title'];
+    $whatsappMessage = 'Hola, vengo de la página '.$serviceName.' y quisiera más información.';
+    $whatsappUrl = 'https://wa.me/59171324941?text='.rawurlencode($whatsappMessage);
+    $benefitDescriptions = [
+        'Explicaciones claras y adaptadas al nivel de cada estudiante.',
+        'Práctica guiada para convertir conceptos en habilidades reales.',
+        'Seguimiento cercano para reconocer avances y reforzar dificultades.',
+        'Metodología flexible enfocada en objetivos concretos.',
+    ];
+    $benefitIcons = ['fa-lightbulb', 'fa-pen-ruler', 'fa-chart-line', 'fa-bullseye'];
+    $otherServices = collect(config('public_site.services', []))->reject(fn ($service) => $service['route'] === $pageKey);
 @endphp
 
 @extends('layouts.public')
@@ -16,33 +27,47 @@
 @section('meta_description', $page['description'])
 
 @section('content')
-<section class="ife-hero">
-    <div class="ife-shell ife-hero-inner">
-        <img class="ife-hero-logo" src="{{ asset('assetpublic/images/logo.png') }}" alt="IFE Educabol">
+<section class="ife-service-hero">
+    <div class="ife-shell ife-service-hero-inner">
+        <div class="ife-service-hero-copy">
         <span class="ife-eyebrow">{{ $page['eyebrow'] }}</span>
         <h1>{{ $page['title'] }}</h1>
         <p>{{ $page['description'] }}</p>
         <div class="ife-actions">
-            <a class="ife-button" href="https://wa.me/59171324941?text={{ $whatsappText }}" target="_blank" rel="noopener">Solicitar información</a>
-            <a class="ife-button ife-button-secondary" href="#contenido-programa">Ver el programa</a>
+            <a class="ife-button" href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> WhatsApp</a>
+            <a class="ife-button ife-button-secondary" href="#solicitar-informacion">Solicitar información</a>
+        </div>
+        <div class="ife-hero-proof" aria-label="Características del servicio">
+            <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Atención personalizada</span>
+            <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Docentes con experiencia</span>
+        </div>
+        </div>
+        <div class="ife-david-stage" aria-label="Representante de IFE Educabol">
+            @if(file_exists(public_path('images/david.png')))
+                <img src="{{ asset('images/david.png') }}" alt="David, representante de IFE Educabol">
+            @endif
         </div>
     </div>
 </section>
 
-<section class="ife-section" id="contenido-programa">
+<section class="ife-section" id="beneficios">
     <div class="ife-shell">
         <div class="ife-section-heading">
             <div>
-                <span class="ife-eyebrow">Contenido</span>
-                <h2>Aprendizaje útil y bien acompañado.</h2>
+                <span class="ife-eyebrow">Por qué elegirnos</span>
+                <h2>Aprender con apoyo cambia el resultado.</h2>
             </div>
-            <p>El programa se adapta al punto de partida del estudiante, con explicaciones claras, práctica guiada y seguimiento.</p>
+            <p>Creamos una experiencia cercana, práctica y enfocada en que cada estudiante avance con seguridad.</p>
         </div>
-        <ul class="ife-topic-list">
+        <div class="ife-benefit-grid">
             @foreach($page['topics'] as $topic)
-                <li>{{ $topic }}</li>
+                <article class="ife-benefit-card">
+                    <span class="ife-icon-box"><i class="fa-solid {{ $benefitIcons[$loop->index % count($benefitIcons)] }}" aria-hidden="true"></i></span>
+                    <h3>{{ $topic }}</h3>
+                    <p>{{ $benefitDescriptions[$loop->index % count($benefitDescriptions)] }}</p>
+                </article>
             @endforeach
-        </ul>
+        </div>
     </div>
 </section>
 
@@ -100,13 +125,65 @@
 </section>
 @endif
 
-<section class="ife-cta">
+<section class="ife-section ife-services-band">
+    <div class="ife-shell">
+        <div class="ife-section-heading">
+            <div><span class="ife-eyebrow">Más para aprender</span><h2>Otros servicios de IFE.</h2></div>
+            <p>Explora programas académicos y tecnológicos pensados para distintas etapas y objetivos.</p>
+        </div>
+        <div class="ife-service-links">
+            @foreach($otherServices->take(6) as $service)
+                <a class="ife-service-link" href="{{ route($service['route']) }}">
+                    <span class="ife-icon-box"><i class="fa-solid {{ $service['icon'] }}" aria-hidden="true"></i></span>
+                    <strong>{{ $service['label'] }}</strong>
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                </a>
+            @endforeach
+        </div>
+    </div>
+</section>
+
+<section class="ife-section ife-section-soft">
+    <div class="ife-shell">
+        <div class="ife-section-heading">
+            <div><span class="ife-eyebrow">Aprende con nosotros</span><h2>Nuestros videos</h2></div>
+            <p>Ideas breves, consejos y momentos de nuestras clases en TikTok.</p>
+        </div>
+        <div class="ife-video-grid">
+            @foreach(config('public_site.tiktok_videos', []) as $video)
+                <a class="ife-video-card" href="{{ $video['url'] }}" target="_blank" rel="noopener noreferrer">
+                    <span class="ife-video-index">{{ str_pad($loop->iteration, 2, '0', STR_PAD_LEFT) }}</span>
+                    <i class="fa-brands fa-tiktok" aria-hidden="true"></i>
+                    <h3>{{ $video['title'] }}</h3>
+                    <span>Ver en TikTok <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></span>
+                </a>
+            @endforeach
+        </div>
+    </div>
+</section>
+
+<section class="ife-social-section">
+    <div class="ife-shell">
+        <div class="ife-social-heading"><span class="ife-eyebrow">Comunidad IFE</span><h2>Síguenos y aprende cada día.</h2></div>
+        <div class="ife-social-grid">
+            @foreach(config('public_site.socials', []) as $social)
+                <a class="ife-social-link" href="{{ $social['url'] }}" target="_blank" rel="noopener noreferrer">
+                    <i class="{{ $social['icon'] }}" aria-hidden="true"></i>
+                    <span><strong>{{ $social['label'] }}</strong><small>{{ $social['handle'] }}</small></span>
+                </a>
+            @endforeach
+        </div>
+    </div>
+</section>
+
+<section class="ife-cta" id="solicitar-informacion">
     <div class="ife-shell ife-cta-inner">
         <div>
-            <h2>Empieza con una orientación clara.</h2>
-            <p>Cuéntanos tu objetivo y te ayudamos a elegir el siguiente paso.</p>
+            <span class="ife-eyebrow">Tu siguiente paso</span>
+            <h2>Conversemos sobre {{ $serviceName }}.</h2>
+            <p>Recibe orientación sobre modalidad, horarios y disponibilidad.</p>
         </div>
-        <a class="ife-button ife-button-secondary" href="https://wa.me/59171324941?text={{ $whatsappText }}" target="_blank" rel="noopener">Hablar con IFE</a>
+        <a class="ife-button ife-button-secondary" href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Solicitar información</a>
     </div>
 </section>
 @endsection

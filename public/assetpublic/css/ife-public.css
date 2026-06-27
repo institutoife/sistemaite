@@ -173,6 +173,10 @@ select {
     transition: background .2s ease, border-color .2s ease, transform .2s ease;
 }
 
+.ife-button i {
+    margin-right: 9px;
+}
+
 .ife-button:hover,
 .ife-button:focus-visible {
     color: var(--ife-white);
@@ -261,6 +265,85 @@ select {
     margin: 28px 0 0;
     color: #e7eef1;
     font-size: 1.28rem;
+}
+
+.ife-service-hero {
+    position: relative;
+    min-height: 650px;
+    color: var(--ife-white);
+    background: var(--ife-secondary-dark);
+    border-bottom: 8px solid var(--ife-primary);
+    overflow: hidden;
+}
+
+.ife-service-hero::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 64%;
+    background: var(--ife-secondary-dark);
+    content: "";
+    z-index: 1;
+}
+
+.ife-service-hero-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 650px;
+}
+
+.ife-service-hero-copy {
+    position: relative;
+    z-index: 3;
+    width: min(62%, 720px);
+    padding: 90px 0 105px;
+    animation: ife-rise .65s ease both;
+}
+
+.ife-service-hero h1 {
+    max-width: 760px;
+    margin: 0;
+    font-size: 5rem;
+    line-height: 1;
+    letter-spacing: 0;
+}
+
+.ife-service-hero p {
+    max-width: 650px;
+    margin: 26px 0 0;
+    color: #e7eef1;
+    font-size: 1.22rem;
+}
+
+.ife-david-stage {
+    position: absolute;
+    right: -2%;
+    bottom: 0;
+    z-index: 0;
+    width: 48%;
+    height: 100%;
+}
+
+.ife-david-stage img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: right bottom;
+}
+
+.ife-hero-proof {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    margin-top: 30px;
+    color: #d8e7ec;
+    font-size: .92rem;
+    font-weight: 700;
+}
+
+.ife-hero-proof i {
+    margin-right: 7px;
+    color: var(--ife-primary);
 }
 
 .ife-actions {
@@ -353,6 +436,52 @@ select {
     font-size: .94rem;
 }
 
+.ife-benefit-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.ife-benefit-card {
+    min-height: 250px;
+    padding: 28px;
+    background: var(--ife-white);
+    border: 1px solid var(--ife-line);
+    border-bottom: 4px solid var(--ife-primary);
+    border-radius: var(--ife-radius);
+    box-shadow: 0 10px 28px rgba(23, 36, 45, .06);
+    transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.ife-benefit-card:hover {
+    box-shadow: var(--ife-shadow);
+    transform: translateY(-5px);
+}
+
+.ife-icon-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    color: var(--ife-secondary-dark);
+    background: #dff5f1;
+    border-radius: 6px;
+    font-size: 1.15rem;
+}
+
+.ife-benefit-card h3 {
+    margin: 26px 0 10px;
+    color: var(--ife-secondary-dark);
+    font-size: 1.18rem;
+}
+
+.ife-benefit-card p {
+    margin: 0;
+    color: var(--ife-muted);
+    font-size: .94rem;
+}
+
 .ife-topic-list {
     display: flex;
     flex-wrap: wrap;
@@ -423,6 +552,173 @@ select {
 .ife-richtext iframe,
 .ife-richtext table {
     max-width: 100%;
+}
+
+.ife-services-band {
+    background: var(--ife-white);
+}
+
+.ife-service-links {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.ife-service-link {
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    gap: 16px;
+    align-items: center;
+    min-height: 88px;
+    padding: 18px;
+    color: var(--ife-secondary-dark);
+    background: var(--ife-white);
+    border: 1px solid var(--ife-line);
+    border-radius: var(--ife-radius);
+    text-decoration: none;
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.ife-service-link:hover,
+.ife-service-link:focus-visible {
+    border-color: var(--ife-primary);
+    box-shadow: 0 10px 24px rgba(23, 36, 45, .08);
+    transform: translateY(-3px);
+}
+
+.ife-service-link > i {
+    color: var(--ife-primary-dark);
+}
+
+.ife-video-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.ife-video-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 390px;
+    padding: 28px;
+    color: var(--ife-white);
+    background: #17242d;
+    border: 1px solid #2d414d;
+    border-radius: var(--ife-radius);
+    text-decoration: none;
+    overflow: hidden;
+    transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.ife-video-card::before {
+    position: absolute;
+    top: 0;
+    right: 26px;
+    width: 1px;
+    height: 54%;
+    background: rgba(38, 186, 165, .5);
+    content: "";
+}
+
+.ife-video-card:hover,
+.ife-video-card:focus-visible {
+    box-shadow: 0 18px 38px rgba(23, 36, 45, .18);
+    transform: translateY(-5px);
+}
+
+.ife-video-card > .fa-tiktok {
+    margin-bottom: auto;
+    color: var(--ife-primary);
+    font-size: 2.4rem;
+}
+
+.ife-video-index {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    color: #9eb0ba;
+    font-size: .8rem;
+    font-weight: 900;
+}
+
+.ife-video-card h3 {
+    margin: 0 0 18px;
+    font-size: 1.45rem;
+}
+
+.ife-video-card > span:last-child {
+    color: #c6d4da;
+    font-size: .9rem;
+    font-weight: 700;
+}
+
+.ife-video-card > span:last-child i {
+    margin-left: 7px;
+}
+
+.ife-social-section {
+    padding: 70px 0;
+    color: var(--ife-white);
+    background: var(--ife-secondary);
+}
+
+.ife-social-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 32px;
+    align-items: end;
+    margin-bottom: 34px;
+}
+
+.ife-social-heading h2 {
+    max-width: 620px;
+    margin: 0;
+    font-size: 2.8rem;
+    line-height: 1.08;
+}
+
+.ife-social-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.ife-social-link {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    min-height: 76px;
+    padding: 16px;
+    color: var(--ife-white);
+    border: 1px solid rgba(255, 255, 255, .24);
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background .2s ease, border-color .2s ease;
+}
+
+.ife-social-link:hover,
+.ife-social-link:focus-visible {
+    background: rgba(255, 255, 255, .1);
+    border-color: var(--ife-primary);
+}
+
+.ife-social-link > i {
+    width: 28px;
+    color: var(--ife-primary);
+    font-size: 1.5rem;
+    text-align: center;
+}
+
+.ife-social-link strong,
+.ife-social-link small {
+    display: block;
+}
+
+.ife-social-link small {
+    margin-top: 2px;
+    color: #d7e1e7;
 }
 
 .ife-cta {
@@ -545,6 +841,28 @@ select {
     font-size: .88rem;
 }
 
+.ife-footer-socials {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.ife-footer-socials a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, .2);
+    border-radius: 6px;
+}
+
+@keyframes ife-rise {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 980px) {
     .ife-header-inner {
         grid-template-columns: 1fr auto auto;
@@ -584,6 +902,34 @@ select {
     }
 
     .ife-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ife-service-hero,
+    .ife-service-hero-inner {
+        min-height: 600px;
+    }
+
+    .ife-service-hero-copy {
+        width: 68%;
+    }
+
+    .ife-service-hero h1 {
+        font-size: 4.1rem;
+    }
+
+    .ife-david-stage {
+        right: -9%;
+        width: 55%;
+    }
+
+    .ife-benefit-grid,
+    .ife-social-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ife-service-links,
+    .ife-video-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -643,6 +989,45 @@ select {
         padding: 66px 0 78px;
     }
 
+    .ife-service-hero,
+    .ife-service-hero-inner {
+        min-height: 760px;
+    }
+
+    .ife-service-hero::before {
+        width: 100%;
+        height: 58%;
+        background: var(--ife-secondary-dark);
+    }
+
+    .ife-service-hero-inner {
+        align-items: flex-start;
+    }
+
+    .ife-service-hero-copy {
+        width: 100%;
+        padding: 62px 0 300px;
+    }
+
+    .ife-service-hero h1 {
+        font-size: 3rem;
+    }
+
+    .ife-service-hero p {
+        font-size: 1.05rem;
+    }
+
+    .ife-david-stage {
+        right: -12%;
+        width: 108%;
+        height: 48%;
+    }
+
+    .ife-hero-proof {
+        display: grid;
+        gap: 8px;
+    }
+
     .ife-hero-logo {
         height: 62px;
         margin-bottom: 28px;
@@ -682,6 +1067,10 @@ select {
 
     .ife-grid,
     .ife-offers,
+    .ife-benefit-grid,
+    .ife-service-links,
+    .ife-video-grid,
+    .ife-social-grid,
     .ife-cta-inner,
     .ife-footer-grid {
         grid-template-columns: 1fr;
@@ -689,6 +1078,18 @@ select {
 
     .ife-cta-inner {
         gap: 28px;
+    }
+
+    .ife-social-heading {
+        display: block;
+    }
+
+    .ife-social-heading h2 {
+        font-size: 2.25rem;
+    }
+
+    .ife-video-card {
+        min-height: 330px;
     }
 
     .ife-footer-grid {

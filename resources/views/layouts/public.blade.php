@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#26baa5">
     <link rel="icon" type="image/png" href="{{ asset('assetpublic/images/logo.png') }}">
     <title>@yield('title', 'IFE Educabol')</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="{{ asset('assetpublic/css/ife-public.css') }}">
     @stack('styles')
 </head>
@@ -27,6 +28,7 @@
                 <a href="{{ route('primaria') }}">Primaria</a>
                 <a href="{{ route('secundaria') }}">Secundaria</a>
                 <a href="{{ route('computacion') }}">Computación</a>
+                <a href="{{ route('cursos') }}">Servicios</a>
                 <a href="{{ route('about') }}">Nosotros</a>
                 <a href="{{ route('contact') }}">Contacto</a>
             </nav>
@@ -63,6 +65,13 @@
                 <a href="mailto:info@ife.bo">info@ife.bo</a>
                 <a href="tel:+59171324941">+591 71324941</a>
                 <span>Santa Cruz de la Sierra, Bolivia</span>
+                <div class="ife-footer-socials" aria-label="Redes sociales">
+                    @foreach(config('public_site.socials', []) as $social)
+                        <a href="{{ $social['url'] }}" target="_blank" rel="noopener noreferrer" aria-label="{{ $social['label'] }}">
+                            <i class="{{ $social['icon'] }}" aria-hidden="true"></i>
+                        </a>
+                    @endforeach
+                </div>
             </div>
         </div>
         <div class="ife-shell ife-footer-bottom">
