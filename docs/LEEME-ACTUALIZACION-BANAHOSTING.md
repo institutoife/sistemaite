@@ -8,7 +8,7 @@ Cuenta Google central, cola compartida, pausa administrativa, funcionamiento por
 
 Los envíos y el centro de comunicaciones de cumpleaños, faltas y cobranzas pertenecen a otra entrega. Esta actualización no los activa.
 
-Validación local: 122 pruebas, 634 aserciones; seis escenarios de migración y recuperación con fechas antiguas en MariaDB, dependencias y sintaxis comprobadas. Una resincronización real del registro 26 conservó el contacto existente. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
+Validación local: 127 pruebas, 706 aserciones; seis escenarios de migración y recuperación con fechas antiguas en MariaDB, dependencias y sintaxis comprobadas. Incluye altas HTTP de estudiantes y computación con/sin teléfono y reversión de datos y cola cuando falla el alta. Una resincronización real del registro 26 conservó el contacto existente. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
 
 ## 1. Publicar desde local
 

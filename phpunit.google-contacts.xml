@@ -9,6 +9,7 @@
             <file>tests/Feature/GoogleContactsTest.php</file>
             <file>tests/Feature/GoogleContactsRuntimeTest.php</file>
             <file>tests/Feature/GoogleContactsSourcesTest.php</file>
+            <file>tests/Feature/PersonaStoreTest.php</file>
             <file>tests/Feature/GoogleContactsProfileTest.php</file>
             <file>tests/Feature/GoogleContactsDeploymentTest.php</file>
         </testsuite>

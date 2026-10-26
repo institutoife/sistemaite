@@ -33,6 +33,7 @@ use App\Models\Pais;
 use App\Models\Como;
 use App\Models\Felicitado;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
