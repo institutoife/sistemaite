@@ -4,6 +4,7 @@
         <testsuite name="Google Contacts">
             <file>tests/Unit/TelefonoServiceTest.php</file>
             <file>tests/Unit/GoogleContactsVendorCheckTest.php</file>
+            <file>tests/Unit/GoogleContactsMigrationRunnerTest.php</file>
             <file>tests/Unit/PostGradoTest.php</file>
             <file>tests/Feature/GoogleContactsTest.php</file>
             <file>tests/Feature/GoogleContactsRuntimeTest.php</file>

@@ -61,6 +61,7 @@ function ifeGoogleExistingVendorErrors(string $root): array
         foreach ([
             \App\Console\Commands\CheckGoogleContacts::class,
             \App\Console\Commands\WorkGoogleContacts::class,
+            \App\Console\Commands\MigrateGoogleContacts::class,
             \App\Console\Commands\SyncGoogleContactsBatch::class,
             \App\Exceptions\GoogleContactsException::class,
             \App\Http\Controllers\GoogleContactsController::class,
@@ -70,6 +71,7 @@ function ifeGoogleExistingVendorErrors(string $root): array
             \App\Observers\GoogleLeadObserver::class,
             \App\Observers\GoogleContactServiceObserver::class,
             \App\Services\GoogleContactsService::class,
+            \App\Services\GoogleContactsMigrationRunner::class,
             \App\Services\GoogleContactProfile::class,
             \App\Services\GoogleContactsRuntime::class,
             \App\Services\TelefonoService::class,

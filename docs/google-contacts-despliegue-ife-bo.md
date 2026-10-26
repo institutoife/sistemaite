@@ -2,7 +2,7 @@
 
 Fecha: 26 de octubre de 2026.
 
-Estado: código preparado y probado localmente. No se ha desplegado esta entrega ni creado tareas en la cuenta de BanaHosting. El usuario confirmó `ife.bo` como destino, BanaHosting como proveedor y el plan **Bana Professional Deluxe Unlimited SSD**. Faltan las rutas reales del proyecto y PHP CLI, y confirmar los límites de Cron de esta cuenta.
+Estado: código preparado y probado localmente; el usuario está aplicando la actualización en BanaHosting. Esta sesión no accede al servidor ni crea tareas en esa cuenta. El usuario confirmó `ife.bo` como destino, BanaHosting como proveedor y el plan **Bana Professional Deluxe Unlimited SSD**. Faltan las rutas reales del proyecto y PHP CLI, y confirmar los límites de Cron de esta cuenta.
 
 El usuario confirmó que el mismo sistema ya está instalado en ife.bo y eligió actualizar por **push local y pull en el servidor**. Empezar por [LEEME de actualización por Git](LEEME-ACTUALIZACION-BANAHOSTING.md). El ZIP es una alternativa opcional. Se completaron nombres/códigos, parentescos, servicios, cumpleaños y fotografías propias: [Contactos completos](google-contacts-contactos-completos.md).
 
@@ -33,13 +33,13 @@ El panel muestra **Tarea programada al día** tras una ejecución correcta, aunq
 3. Aplicar únicamente las migraciones incrementales de esta integración que no estén aplicadas y ejecutar su seeder:
 
 ```sh
-php artisan migrate --force --path=database/migrations/2026_10_25_000001_create_google_contact_accounts_table.php --path=database/migrations/2026_10_25_000002_extend_personas_google_contacts.php --path=database/migrations/2026_10_25_000003_add_google_contacts_pause_controls.php --path=database/migrations/2026_10_26_000001_extend_leads_google_contacts.php --path=database/migrations/2026_10_26_000002_add_google_contact_photo_hash.php
+php artisan gcontact:migrate --force
 php artisan db:seed --class=GoogleContactsSeeder --force
 ```
 
 No ejecutar `migrate:fresh`, el seeder general ni generar otra `APP_KEY`. La cola Google ya utiliza `jobs` mediante su conexión dedicada; no hace falta cambiar la conexión global de cola de otros módulos.
 
-Si el servidor aún no aplicó las columnas previas de enlace Google y cola de Persona, el script de despliegue incluye también `2024_03_17_153820_add_column_to_table.php` y `2026_04_15_000007_add_gcontact_sync_queue_fields_to_personas_table.php`, antes de las cinco nuevas. Ejecutar el script después del pull permite aplicar solo este conjunto; Laravel omite las ya registradas.
+Si el servidor aún no aplicó las columnas previas de enlace Google y cola de Persona, el comando incluye también `2024_03_17_153820_add_column_to_table.php` y `2026_04_15_000007_add_gcontact_sync_queue_fields_to_personas_table.php`, antes de las cinco nuevas. Ejecutar el script después del pull permite aplicar solo este conjunto; Laravel omite las ya registradas. `gcontact:migrate` conserva las fechas heredadas mediante un ajuste temporal del modo SQL de su sesión, manteniendo el modo estricto y restaurando el valor original en `finally`. También completa la ampliación de Persona interrumpida por el error 1292, verificando columnas, clave e índices antes de registrarla. No modificar las migraciones históricas ni borrar sus columnas para reintentar.
 
 4. Configurar estas variables en el entorno **del servidor**, sin cambiar la configuración local de pruebas:
 
@@ -89,6 +89,8 @@ Solicitar un contacto de prueba autorizado desde `ife.bo`, esperar al turno de C
 
 Comprobar después que la tarea sigue ejecutándose con esta PC apagada. Si la copia local conserva la misma cuenta y enlaces que producción, dejarla pausada cuando deje de utilizarse como instalación operativa, para que las pruebas no sigan actualizando los contactos reales.
 
-Pruebas locales del código: **118 pruebas, 617 aserciones correctas** en SQLite en memoria y con HTTP simulado. Incluyen límites por turno, continuación sin duplicados, cola vacía, pausa, caducidad del indicador, exclusión de ejecuciones simultáneas, los tres orígenes, conversiones, datos sin teléfono, fotos/cumpleaños, notas conservadas y comprobación de despliegue sin escrituras. No sustituyen la comprobación del Cron real de BanaHosting.
+Pruebas locales del código: **122 pruebas, 634 aserciones correctas**, con SQLite en memoria y HTTP simulado para los escenarios de aplicación. Incluyen límites por turno, continuación sin duplicados, cola vacía, pausa, caducidad del indicador, exclusión de ejecuciones simultáneas, los tres orígenes, conversiones, datos sin teléfono, fotos/cumpleaños, notas conservadas, comprobación de despliegue sin escrituras y restauración del modo SQL ante errores. No sustituyen la comprobación del Cron real de BanaHosting.
+
+La comprobación adicional `php scripts/testing/check-google-contacts-migrations.php` exige un entorno local y MySQL/MariaDB en localhost con permisos para crear bases temporales. Crea y elimina únicamente bases aleatorias de prueba; bloquea HTTP y colas. Seis escenarios comprueban migración normal, fallo original reproducido, columnas parciales, esquema completo sin registro y rechazo de índices o valores predeterminados incompatibles. Verifica repetición sin duplicados, fechas/enlaces intactos y modos SQL de sesión/global conservados. No ejecutar esta comprobación en el alojamiento.
 
 Referencias: [hosting de BanaHosting](https://www.banahosting.com/es/alojamiento-web/), [Cron Jobs de cPanel](https://docs.cpanel.net/cpanel/advanced/cron-jobs/), [colas de Laravel 8](https://laravel.com/docs/8.x/queues), [OAuth de Google para aplicaciones web](https://developers.google.com/identity/protocols/oauth2/web-server).

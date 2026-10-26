@@ -3,6 +3,7 @@
     ".gitattributes",
     ".gitignore",
     "app/Console/Commands/CheckGoogleContacts.php",
+    "app/Console/Commands/MigrateGoogleContacts.php",
     "app/Console/Commands/SyncGoogleContactsBatch.php",
     "app/Console/Commands/WorkGoogleContacts.php",
     "app/Console/Kernel.php",
@@ -33,6 +34,7 @@
     "app/Providers/AuthServiceProvider.php",
     "app/Rules/Recaptcha.php",
     "app/Services/GoogleContactProfile.php",
+    "app/Services/GoogleContactsMigrationRunner.php",
     "app/Services/GoogleContactsRuntime.php",
     "app/Services/GoogleContactsService.php",
     "app/Services/TelefonoService.php",
@@ -72,6 +74,7 @@
     "scripts/hosting/deploy-google-contacts.sh",
     "scripts/hosting/ife-bo.env.example",
     "scripts/hosting/release-files.json",
+    "scripts/testing/check-google-contacts-migrations.php",
     "scripts/windows/Install-GoogleContactsTask.ps1",
     "scripts/windows/Start-GoogleContacts.ps1",
     "tests/Feature/GoogleContactsDeploymentTest.php",
@@ -82,5 +85,6 @@
     "tests/GoogleContactsTestCase.php",
     "tests/Unit/PostGradoTest.php",
     "tests/Unit/GoogleContactsVendorCheckTest.php",
+    "tests/Unit/GoogleContactsMigrationRunnerTest.php",
     "tests/Unit/TelefonoServiceTest.php"
 ]

@@ -8,7 +8,7 @@ Cuenta Google central, cola compartida, pausa administrativa, funcionamiento por
 
 Los envíos y el centro de comunicaciones de cumpleaños, faltas y cobranzas pertenecen a otra entrega. Esta actualización no los activa.
 
-Validación local: 118 pruebas, 617 aserciones; migraciones incrementales en MariaDB, dependencias y sintaxis comprobadas. Una resincronización real del registro 26 conservó el contacto existente. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
+Validación local: 122 pruebas, 634 aserciones; seis escenarios de migración y recuperación con fechas antiguas en MariaDB, dependencias y sintaxis comprobadas. Una resincronización real del registro 26 conservó el contacto existente. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
 
 ## 1. Publicar desde local
 
@@ -69,6 +69,10 @@ PHP_BIN=/RUTA/REAL/AL/PHP COMPOSER_BIN=/RUTA/REAL/A/COMPOSER sh scripts/hosting/
 **Sustituir las dos rutas antes de ejecutarlo.** `COMPOSER_BIN` también acepta la ruta a un archivo `.phar`, que se ejecutará con `PHP_BIN`. Si únicamente cambia PHP, basta con `PHP_BIN=/RUTA/REAL/AL/PHP sh scripts/hosting/deploy-google-contacts.sh`. No definir `COMPOSER_BIN` con una ruta ficticia. Si no se usa el script, la [guía técnica de despliegue](google-contacts-despliegue-ife-bo.md) contiene las migraciones y operaciones equivalentes.
 
 El script comprueba dependencias, limpia la configuración previa y regenera el autoload cuando Composer está disponible; en la alternativa verificada conserva el autoload existente y ejecuta `package:discover`. Aplica las cinco migraciones nuevas de Google y las dos migraciones anteriores de columnas de enlace/cola si todavía estuvieran pendientes. Después ejecuta `GoogleContactsSeeder`, limpia rutas/vistas y reconstruye la caché de configuración. Laravel omite las migraciones ya registradas. No utiliza `route:cache`: el proyecto conserva rutas con closures. No ejecuta otras migraciones pendientes, el seeder general ni genera otra `APP_KEY`.
+
+Las migraciones se ejecutan mediante `php artisan gcontact:migrate --force`. Este comando conserva las fechas heredadas que MySQL/MariaDB pueden rechazar al reconstruir tablas, como `1900-01-00`: ajusta únicamente la aceptación de fechas de su sesión durante el cambio de esquema, mantiene el modo estricto y restaura el modo SQL original al terminar, incluso si falla. No cambia fechas, enlaces Google, la configuración global de MySQL ni las migraciones históricas.
+
+Si `2026_10_25_000002_extend_personas_google_contacts` falló con el error 1292, ejecutar de nuevo el pull y el script habitual. MySQL puede haber añadido columnas antes de fallar al crear la clave foránea. El comando comprueba lo existente, completa las columnas, clave e índices que faltan y registra esa migración solamente después de verificar su estructura. Si encuentra una definición incompatible, se detiene para revisión. No borrar columnas, modificar fechas masivamente ni ejecutar rollback para reintentar.
 
 Si un paso falla, detener la activación del Cron y resolver el resultado indicado. El script no realiza una restauración automática ni declara terminado el mantenimiento; ese paso corresponde al procedimiento de despliegue del sitio.
 

@@ -37,14 +37,7 @@ else
   "$PHP_BIN" artisan config:clear
   "$PHP_BIN" artisan package:discover --ansi
 fi
-"$PHP_BIN" artisan migrate --force \
-  --path=database/migrations/2024_03_17_153820_add_column_to_table.php \
-  --path=database/migrations/2026_04_15_000007_add_gcontact_sync_queue_fields_to_personas_table.php \
-  --path=database/migrations/2026_10_25_000001_create_google_contact_accounts_table.php \
-  --path=database/migrations/2026_10_25_000002_extend_personas_google_contacts.php \
-  --path=database/migrations/2026_10_25_000003_add_google_contacts_pause_controls.php \
-  --path=database/migrations/2026_10_26_000001_extend_leads_google_contacts.php \
-  --path=database/migrations/2026_10_26_000002_add_google_contact_photo_hash.php
+"$PHP_BIN" artisan gcontact:migrate --force
 "$PHP_BIN" artisan db:seed --class=GoogleContactsSeeder --force
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
