@@ -2,193 +2,55 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Persona;
+use App\Services\GoogleContactsService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 class SyncGoogleContactsBatch extends Command
 {
     protected $signature = 'gcontact:sync-batch
-        {--token= : Access token OAuth de Google}
-        {--batch=1000 : Cantidad máxima de personas a procesar}
-        {--only-pending : Procesar solo cola pendiente}
-        {--from-id=0 : Procesar desde este id en adelante}';
+        {--batch=1000 : Máximo de contactos a encolar}
+        {--only-pending : Solo pendientes; no reintentar errores definitivos}
+        {--source=persona : Origen: persona, prospecto o comentario}
+        {--from-id=0 : Procesar desde este ID}';
 
-    protected $description = 'Sincroniza contactos con Google People API por lotes (solo personas con telefono valido).';
+    protected $description = 'Encola contactos IFE sin realizar llamadas a Google dentro del comando.';
 
-    private function hasQueueColumns(): bool
+    public function handle(GoogleContactsService $service): int
     {
-        return Schema::hasColumn('personas', 'gcontact_sync_pending')
-            && Schema::hasColumn('personas', 'gcontact_sync_error')
-            && Schema::hasColumn('personas', 'gcontact_sync_attempts')
-            && Schema::hasColumn('personas', 'gcontact_sync_last_attempt_at');
-    }
-
-    private function normalizePhone(?string $phone): ?string
-    {
-        $digits = preg_replace('/\D+/', '', (string) $phone);
-        if ($digits === '' || preg_match('/^0+$/', $digits)) {
-            return null;
-        }
-
-        if (Str::startsWith($digits, '591')) {
-            $digits = substr($digits, 3);
-        }
-
-        if (strlen($digits) < 8) {
-            return null;
-        }
-
-        return $digits;
-    }
-
-    private function markState(Persona $persona, bool $ok, ?string $error = null): void
-    {
-        if (!$this->hasQueueColumns()) {
-            return;
-        }
-
-        $persona->gcontact_sync_pending = !$ok;
-        $persona->gcontact_sync_error = $ok ? null : Str::limit((string) $error, 2000, '');
-        $persona->gcontact_sync_attempts = (int) ($persona->gcontact_sync_attempts ?? 0) + 1;
-        $persona->gcontact_sync_last_attempt_at = now();
-    }
-
-    private function buildPayload(Persona $persona, string $phone): array
-    {
-        return [
-            'names' => [[
-                'givenName' => (string) $persona->nombre,
-                'familyName' => trim((string) $persona->apellidop.' '.(string) $persona->apellidom),
-            ]],
-            'phoneNumbers' => [[
-                'value' => $phone,
-                'type' => 'mobile',
-            ]],
-        ];
-    }
-
-    public function handle(): int
-    {
-        $token = (string) ($this->option('token') ?: env('GOOGLE_CONTACT_TOKEN', ''));
-        if ($token === '') {
-            $this->error('Debes enviar --token o definir GOOGLE_CONTACT_TOKEN en .env');
+        $source = (string) $this->option('source');
+        if (!isset(GoogleContactsService::SOURCES[$source])) {
+            $this->error('Origen válido: persona, prospecto o comentario.');
             return self::FAILURE;
         }
-
-        $batch = max(1, (int) $this->option('batch'));
-        $fromId = max(0, (int) $this->option('from-id'));
-        $onlyPending = (bool) $this->option('only-pending');
-        $hasQueue = $this->hasQueueColumns();
-
-        $query = Persona::query()
-            ->select('id', 'nombre', 'apellidop', 'apellidom', 'telefono', 'resourseName', 'etag')
-            ->where('id', '>=', $fromId)
-            ->whereNotNull('telefono')
-            ->where('telefono', '<>', '')
-            ->where('telefono', '<>', '0');
-
-        if ($onlyPending && $hasQueue) {
-            $query->where('gcontact_sync_pending', 1);
-        } else {
-            $query->where(function ($q) use ($hasQueue) {
-                $q->whereNull('resourseName')
-                    ->orWhereNull('etag')
-                    ->orWhere('resourseName', '')
-                    ->orWhere('etag', '');
-
-                if ($hasQueue) {
-                    $q->orWhere('gcontact_sync_pending', 1);
-                }
-            });
+        if (!$service->ready() || !$service->account() || !$service->account()->isConnected()) {
+            $this->error('Aplique las migraciones y conecte Google Contacts desde el panel.');
+            return self::FAILURE;
         }
-
-        $personas = $query->orderBy('id')->limit($batch)->get();
-        if ($personas->isEmpty()) {
-            $this->info('No hay personas pendientes para sincronizar con los filtros actuales.');
+        if ($service->account()->isPaused()) {
+            $this->info('Sincronización pausada por un administrador. Se conservan los pendientes.');
             return self::SUCCESS;
         }
-
-        $okCount = 0;
-        $failCount = 0;
-        $skipCount = 0;
-
-        $this->info('Procesando '.$personas->count().' personas...');
-
-        foreach ($personas as $persona) {
-            $phone = $this->normalizePhone((string) $persona->telefono);
-            if (!$phone) {
-                $skipCount++;
-                if ($hasQueue) {
-                    $this->markState($persona, false, 'Telefono invalido para sincronizacion.');
-                    $persona->saveQuietly();
-                }
-                continue;
-            }
-
-            try {
-                if (empty($persona->resourseName) || empty($persona->etag)) {
-                    $payload = $this->buildPayload($persona, $phone);
-                    $response = Http::withToken($token)
-                        ->timeout(20)
-                        ->post('https://people.googleapis.com/v1/people:createContact', $payload);
-
-                    if ($response->successful()) {
-                        $data = $response->json();
-                        $resourceName = data_get($data, 'resourceName');
-                        $etag = data_get($data, 'etag') ?: data_get($data, 'metadata.sources.0.etag');
-
-                        if ($resourceName && $etag) {
-                            $persona->resourseName = $resourceName;
-                            $persona->etag = $etag;
-                            $this->markState($persona, true);
-                            $persona->saveQuietly();
-                            $okCount++;
-                        } else {
-                            $this->markState($persona, false, 'Respuesta de Google sin resourceName/etag.');
-                            $persona->saveQuietly();
-                            $failCount++;
-                        }
-                    } else {
-                        $this->markState($persona, false, 'Google createContact '.$response->status().': '.$response->body());
-                        $persona->saveQuietly();
-                        $failCount++;
-                    }
-                } else {
-                    $payload = $this->buildPayload($persona, $phone);
-                    $payload['resourceName'] = $persona->resourseName;
-                    $payload['etag'] = $persona->etag;
-
-                    $url = 'https://people.googleapis.com/v1/'.$persona->resourseName.':updateContact?updatePersonFields=names,phoneNumbers';
-                    $response = Http::withToken($token)
-                        ->timeout(20)
-                        ->patch($url, $payload);
-
-                    if ($response->successful()) {
-                        $etag = data_get($response->json(), 'etag') ?: data_get($response->json(), 'metadata.sources.0.etag');
-                        if ($etag) {
-                            $persona->etag = $etag;
-                        }
-                        $this->markState($persona, true);
-                        $persona->saveQuietly();
-                        $okCount++;
-                    } else {
-                        $this->markState($persona, false, 'Google updateContact '.$response->status().': '.$response->body());
-                        $persona->saveQuietly();
-                        $failCount++;
-                    }
-                }
-            } catch (\Throwable $e) {
-                $this->markState($persona, false, $e->getMessage());
-                $persona->saveQuietly();
-                $failCount++;
-            }
+        $remaining = max(1, min(10000, (int) $this->option('batch')));
+        $query = $service->eligibleQuery($source)->where('id', '>=', max(0, (int) $this->option('from-id')));
+        if ($this->option('only-pending')) {
+            $query->where('gcontact_sync_pending', true)->whereIn('gcontact_sync_status', ['pending', 'idle']);
         }
-
-        $this->info("Sincronizacion finalizada. OK: {$okCount}, Fallidos: {$failCount}, Omitidos: {$skipCount}");
+        $count = 0;
+        $query->chunkById(100, function ($personas) use ($service, $source, &$remaining, &$count) {
+            foreach ($personas as $persona) {
+                if ($this->option('only-pending')) {
+                    $service->enqueue($persona->id, null, $source);
+                } else {
+                    $service->markPending($persona);
+                }
+                $remaining--;
+                $count++;
+                if ($remaining === 0) {
+                    return false;
+                }
+            }
+        });
+        $this->info('Contactos encolados: '.$count.'. Ejecute el worker google_contacts.');
         return self::SUCCESS;
     }
 }
-

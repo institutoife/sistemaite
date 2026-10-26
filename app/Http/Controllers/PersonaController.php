@@ -51,7 +51,6 @@ use Illuminate\Support\Facades\Notification;
 use App\Notifications\CredencialesPadreNotification;
 class PersonaController extends Controller
 {
-    private ?bool $hasGcontactQueueColumnsCache = null;
     public function __construct()
     {
         $this->middleware('can:Listar Personas')->only("index","tomarfoto","show","verPotencial","contactos");
@@ -59,117 +58,11 @@ class PersonaController extends Controller
         $this->middleware('can:Editar Personas')->only("editarSoloContacto","actualizarSoloContacto","edit","actualizarVolvera","actualizarVuelveFecha","configurar_papeles","update","actualizarRapidingo","editarRapidingo","unsuscribe");
     }
 
-    private function canSyncGoogleContacts(): bool
+    private function syncPersonaWithGoogle(Persona $persona): void
     {
-        return !empty(session('GContactToken'));
+        app(\App\Services\GoogleContactsService::class)->markPending($persona, Auth::id());
     }
 
-    private function hasGcontactQueueColumns(): bool
-    {
-        if ($this->hasGcontactQueueColumnsCache !== null) {
-            return $this->hasGcontactQueueColumnsCache;
-        }
-
-        $this->hasGcontactQueueColumnsCache =
-            Schema::hasColumn('personas', 'gcontact_sync_pending') &&
-            Schema::hasColumn('personas', 'gcontact_sync_error') &&
-            Schema::hasColumn('personas', 'gcontact_sync_attempts') &&
-            Schema::hasColumn('personas', 'gcontact_sync_last_attempt_at');
-
-        return $this->hasGcontactQueueColumnsCache;
-    }
-
-    private function markSyncState(Persona $persona, bool $ok, ?string $error = null): void
-    {
-        if (!$this->hasGcontactQueueColumns()) {
-            return;
-        }
-
-        $persona->gcontact_sync_pending = !$ok;
-        $persona->gcontact_sync_error = $ok ? null : Str::limit((string) $error, 2000, '');
-        $persona->gcontact_sync_attempts = (int) ($persona->gcontact_sync_attempts ?? 0) + 1;
-        $persona->gcontact_sync_last_attempt_at = now();
-    }
-
-    private function processPendingGoogleQueue(?int $excludePersonaId = null, int $limit = 5): void
-    {
-        if (!$this->canSyncGoogleContacts() || !$this->hasGcontactQueueColumns()) {
-            return;
-        }
-
-        $pendientes = Persona::where('gcontact_sync_pending', 1)
-            ->when($excludePersonaId, function ($query, $id) {
-                $query->where('id', '<>', $id);
-            })
-            ->orderBy('gcontact_sync_last_attempt_at', 'asc')
-            ->limit($limit)
-            ->get();
-
-        foreach ($pendientes as $pendiente) {
-            $this->syncPersonaWithGoogle($pendiente, false);
-        }
-    }
-
-    private function syncPersonaWithGoogle(Persona $persona, bool $drainQueue = true): void
-    {
-        if (!$this->canSyncGoogleContacts()) {
-            return;
-        }
-
-        try {
-            $gcontactController = app(GContactController::class);
-            $sincronizado = false;
-
-            if (empty($persona->resourseName) || empty($persona->etag)) {
-                $data = $gcontactController->createContact(
-                    $persona->nombre,
-                    $persona->apellidop,
-                    $persona->apellidom,
-                    null,
-                    $persona->telefono
-                );
-                if (is_array($data) && count($data) >= 2) {
-                    $persona->resourseName = $data[0];
-                    $persona->etag = $data[1];
-                    $this->markSyncState($persona, true);
-                    $sincronizado = true;
-                } else {
-                    $this->markSyncState($persona, false, 'No se pudo crear el contacto en Google (servicio no disponible o respuesta invalida).');
-                    $sincronizado = true;
-                }
-            } else {
-                $nuevoEtag = $gcontactController->updateContact(
-                    $persona->nombre,
-                    $persona->apellidop,
-                    $persona->apellidom,
-                    $persona->telefono,
-                    $persona->resourseName,
-                    $persona->etag
-                );
-                if (is_string($nuevoEtag) && $nuevoEtag !== '') {
-                    $persona->etag = $nuevoEtag;
-                    $this->markSyncState($persona, true);
-                    $sincronizado = true;
-                } else {
-                    $this->markSyncState($persona, false, 'No se pudo actualizar el contacto en Google (servicio no disponible o respuesta invalida).');
-                    $sincronizado = true;
-                }
-            }
-
-            if ($sincronizado) {
-                $persona->saveQuietly();
-            }
-
-            if ($drainQueue) {
-                $this->processPendingGoogleQueue($persona->id);
-            }
-        } catch (\Throwable $e) {
-            $this->markSyncState($persona, false, $e->getMessage());
-            $persona->saveQuietly();
-            report($e);
-        }
-    }
-    
     public function index()
     {
         return view('persona.index');
@@ -202,6 +95,7 @@ class PersonaController extends Controller
      */
     public function store(PersonaStoreRequest $request)
     {
+        return DB::transaction(function () use ($request) {
         
         $persona=new Persona();
         $persona->nombre = $request->nombre;
@@ -379,6 +273,7 @@ class PersonaController extends Controller
                 break;
         }
         return redirect()->route('tomar.foto.persona',['persona'=>$persona]);
+        });
     }
 
     public function storeContacto(PersonaApoderadaRequestStore $request,$id){
@@ -388,6 +283,10 @@ class PersonaController extends Controller
         $apoderado->apellidop = $request->apellidop;
         $apoderado->apellidom = $request->apellidom;
         $apoderado->genero=$request->genero;
+        $apoderado->fechanacimiento = $request->fechanacimiento;
+        if ($request->hasFile('foto')) {
+            $apoderado->foto = $request->file('foto')->store('apoderados', 'public');
+        }
         $apoderado->pais_id = $persona->pais_id;
         $apoderado->ciudad_id = $persona->ciudad_id;
         $apoderado->zona_id = $persona->zona_id;
@@ -439,6 +338,7 @@ class PersonaController extends Controller
         $observacion->usuarios()->attach(Auth::user()->id);
 
         $persona->apoderados()->attach($apoderado->id, ['telefono' => $request->telefono, 'parentesco' => $request->parentesco]);
+        $this->syncPersonaWithGoogle($apoderado);
         $apoderados = $persona->apoderados;
         $this->CrearContacto($persona->id);
         return redirect()->route('telefonos.persona',['persona'=>$persona,'apoderados'=>$apoderados])->with('mensaje','Contacto Creado Corectamente');
@@ -492,10 +392,13 @@ class PersonaController extends Controller
         
     }
     public function actualizarRapidingo(Request $request,Persona $persona){
+        $request->validate(['telefono' => 'nullable|max:10']);
         //dd($persona);
         $persona->nombre = $request->nombre;
         $persona->apellidop = $request->apellidop;
-        $persona->telefono=$request->telefono;
+        if ($request->has('telefono')) {
+            $persona->telefono = $request->telefono;
+        }
         $persona->genero=$request->genero;
         $persona->como_id = $request->como_id;
         $persona->vuelvefecha=$request->vuelvefecha;
@@ -633,10 +536,13 @@ class PersonaController extends Controller
         return redirect()->route('personas.contactos.view');
     }
     public function actualizarSoloContacto(Request $request, Persona $persona){
+        $request->validate(['telefono' => 'nullable|max:10']);
         
         $persona->nombre=$request->nombre;
         $persona->apellidop=$request->apellidop;
-        $persona->telefono=$request->telefono;
+        if ($request->has('telefono')) {
+            $persona->telefono = $request->telefono;
+        }
         $persona->como_id=$request->como_id;
         $persona->save();
 
@@ -845,7 +751,9 @@ class PersonaController extends Controller
         }
         $persona->como_id = $request->como_id;
         $persona->papelinicial = $request->papel;
-        $persona->telefono = $request->telefono;
+        if ($request->has('telefono')) {
+            $persona->telefono = $request->telefono;
+        }
         $persona->persona_id = $request->persona_id;
         // $persona->pais_id = $request->pais_id;
         // $persona->ciudad_id = $request->ciudad_id;

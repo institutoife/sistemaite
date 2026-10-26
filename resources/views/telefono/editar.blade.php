@@ -15,10 +15,11 @@
             <span class="text-center">FORMULARIO EDITAR CONTACTO TELEFONICO </span> <h3 class="text-white float-right" id="tokenExpirationform"></h3>
         </div>
         <div class="card-body">
-            <form action="{{route('telefono.actualizar',['persona_id'=>$registro_pivot[0]->persona_id,'apoderado_id'=>$registro_pivot[0]->persona_id_apoderado])}}" method="POST">
+            <form action="{{route('telefono.actualizar',['persona_id'=>$registro_pivot[0]->persona_id,'apoderado_id'=>$registro_pivot[0]->persona_id_apoderado])}}" method="POST" enctype="multipart/form-data">
                 {{ @method_field('PUT') }}
                 @csrf
                 @include('telefono.form')
+                @include('telefono.datos-propios', ['contacto' => $persona])
                 @include('include.botones')
             </form>
         </div>

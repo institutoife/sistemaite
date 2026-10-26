@@ -30,6 +30,15 @@ return [
 
     'connections' => [
 
+        // Always asynchronous, even when other modules use QUEUE_CONNECTION=sync.
+        'google_contacts' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'google-contacts',
+            'retry_after' => 240,
+            'after_commit' => true,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

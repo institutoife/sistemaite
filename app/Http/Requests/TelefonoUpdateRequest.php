@@ -27,9 +27,11 @@ class TelefonoUpdateRequest extends FormRequest
             'nombre' =>'required',
             'apellidop' => 'required',
             'apellidom'=>'nullable',
-            'telefono'=>'required',
+            'telefono'=>'nullable|max:10',
             'parentesco'=>'required',
             'genero'=>'required',
+            'fechanacimiento' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+            'foto' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120|dimensions:max_width=4000,max_height=4000',
         ];
     }
 }

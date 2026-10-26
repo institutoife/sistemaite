@@ -24,7 +24,7 @@ class GuardarApoderadoExistenteRequest extends FormRequest
     public function rules()
     {
         return [
-            'telefono'=>'required',
+            'telefono'=>'nullable|max:10',
             'parentesco'=>'required',
 
         ];

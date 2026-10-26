@@ -3,47 +3,30 @@
 namespace App\Rules;
 
 use Illuminate\Contracts\Validation\Rule;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
 
 class Recaptcha implements Rule
 {
-    /**
-     * Create a new rule instance.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    /**
-     * Determine if the validation rule passes.
-     *
-     * @param  string  $attribute
-     * @param  mixed  $value
-     * @return bool
-     */
     public function passes($attribute, $value)
     {
-        //return false;
-         $response=Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify',[
-             'secret'=>"6LeZpOQhAAAAAE_HhdRCOAWNPMqMuBBGlXwkTJ26",
-             'response'=>$value])->object();
-        if($response->success && ($response->score>0.7)){
-            return true;
-        }else{
+        // Reuse the configured CAPTCHA secret; never embed credentials in source code.
+        $secret = config('recaptchav3.secret');
+        if (!$secret || !is_string($value) || $value === '') {
             return false;
         }
-        return response();
+        try {
+            $response = Http::asForm()->withOptions(['connect_timeout' => 5])->timeout(15)
+                ->post('https://www.google.com/recaptcha/api/siteverify', ['secret' => $secret, 'response' => $value]);
+        } catch (ConnectionException $exception) {
+            return false;
+        }
+        return $response->successful() && $response->json('success') === true
+            && (float) $response->json('score', 0) > 0.7;
     }
 
-    /**
-     * Get the validation error message.
-     *
-     * @return string
-     */
     public function message()
     {
-        return 'La validacion de recapcha esta fallando';
+        return 'La validación de reCAPTCHA está fallando.';
     }
 }

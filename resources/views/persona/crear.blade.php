@@ -15,7 +15,7 @@
             <div class="card-header bg-secondary">
                 {{-- FORMULARIO CREAR PERSONAS <div class="text-white float-right" id="tokenExpirationform">x</div> --}}
                 FORMULARIO CREAR PERSONAS
-                <a href="{{ route('signIn') }}" class="btn btn-sm btn-light float-right ml-2">Conectar Google Contactos</a>
+                @can('Listar Contactos')<a href="{{ route('contactos.index') }}" class="btn btn-sm btn-light float-right ml-2">Google Contactos</a>@endcan
                 <h3 class="text-white float-right" id="tokenExpirationform"></h3>
             </div>
             <div class="card-body">

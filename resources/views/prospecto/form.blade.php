@@ -18,11 +18,7 @@
     <select class="form-control @error('estado_id') is-invalid @enderror" data-old="{{ old('estado_id') }}" name="estado_id" id="estado_id">
         <option value="" selected>Seleccion un estado</option>
         @foreach ($estados as $estado)
-            @isset($persona)     
-                <option  value="{{$estado->id}}" {{$estado->id==$persona->habilitado ? 'selected':''}}>{{$estado->estado}}</option>     
-            @else
-                <option value="{{ $estado->id}}" {{ old('estado_id') == $estado->id ? 'selected':'' }} >{{ $estado->estado }}</option>
-            @endisset 
+            <option value="{{ $estado->id }}" {{ (string) old('estado_id', $prospecto->estado_id ?? '') === (string) $estado->id ? 'selected' : '' }}>{{ $estado->estado }}</option>
         @endforeach
     </select>
     <label for="como">Estado</label>

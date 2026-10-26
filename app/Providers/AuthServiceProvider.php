@@ -25,6 +25,13 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
+        // Existing Spatie permissions can grant access; administrators retain setup access.
+        foreach (['Listar Contactos', 'Sincronizar Contactos', 'Configurar Google Contacts', 'Ver Diagnostico Google'] as $permission) {
+            Gate::define($permission, function ($user) {
+                return $user->hasRole('Admin');
+            });
+        }
+
         Gate::define('gestionar-productos-admin', function ($user) {
             return $user->hasRole(['Admin']);
         });

@@ -25,6 +25,7 @@ class UpdateProspectoRequest extends FormRequest
     {
         return [
             'telefono' => ['required', 'string', 'max:20'],
+            'estado_id' => ['sometimes', 'required', 'integer', 'exists:estados,id'],
         ];
     }
 }

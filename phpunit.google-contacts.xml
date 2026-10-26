@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="vendor/autoload.php" colors="true" cacheResult="false">
+    <testsuites>
+        <testsuite name="Google Contacts">
+            <file>tests/Unit/TelefonoServiceTest.php</file>
+            <file>tests/Unit/PostGradoTest.php</file>
+            <file>tests/Feature/GoogleContactsTest.php</file>
+            <file>tests/Feature/GoogleContactsRuntimeTest.php</file>
+            <file>tests/Feature/GoogleContactsSourcesTest.php</file>
+            <file>tests/Feature/GoogleContactsProfileTest.php</file>
+            <file>tests/Feature/GoogleContactsDeploymentTest.php</file>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_KEY" value="base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=" force="true"/>
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <env name="DATABASE_URL" value="" force="true"/>
+        <env name="CACHE_DRIVER" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <env name="GOOGLE_OAUTH_ID" value="test-client" force="true"/>
+        <env name="GOOGLE_OAUTH_SECRET" value="test-secret" force="true"/>
+        <env name="GOOGLE_REDIRECT" value="http://localhost/auth/google/callback" force="true"/>
+    </php>
+</phpunit>

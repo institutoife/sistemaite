@@ -96,9 +96,11 @@ class ProspectoController extends Controller
     public function update(UpdateProspectoRequest $request, Prospecto $prospecto)
     {
         $prospecto->telefono=$request->telefono;
-        $prospecto->estado_id=$request->estado_id;
+        if ($request->has('estado_id')) {
+            $prospecto->estado_id = $request->estado_id;
+        }
         $prospecto->save();
-        
+        return redirect()->route('prospecto.view', $prospecto);
     }
 
 

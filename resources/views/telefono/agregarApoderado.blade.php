@@ -25,7 +25,7 @@
                     <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 input-group text-sm" > 
                         <div class="input-group mb-2" >
                             <p class="col-3 form-control bg-secondary p-1" for="">Teléfono</p> 
-                            <input class="form-control" type="text" name="telefono" value="{{$apoderado->telefono}}">
+                            <input class="form-control" type="text" name="telefono" placeholder="Opcional" value="{{ old('telefono', app(\App\Services\TelefonoService::class)->isMissing($apoderado->telefono) ? '' : $apoderado->telefono) }}">
                         </div>
                     </div>
                     <div class="row">

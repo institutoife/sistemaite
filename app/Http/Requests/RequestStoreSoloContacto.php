@@ -27,7 +27,7 @@ class RequestStoreSoloContacto extends FormRequest
         return [
             "nombre" => 'required|max:50|unique_with:personas,apellidop',
             "apellidop" =>'required|string|max:25',
-            "telefono" => 'required|max:8',
+            "telefono" => 'nullable|max:8',
             "como_id" =>'required',
             
             "observacion" =>'required|string|max:250',

@@ -5,7 +5,7 @@
     <link rel="stylesheet" href="{{asset('custom/css/custom.css')}}">
 @stop
 
-@section('title', 'Privincia Editar')
+@section('title', 'Editar prospecto')
 @section('plugins.Jquery', true)
 @section('plugins.Sweetalert2', true)
 @section('plugins.Datatables', true)
@@ -15,7 +15,6 @@
         <div class="">
             <div class="col-md-12">
 
-                {{ $prospecto }}
                 <div class="card card-default">
                     <div class="card-header bg-secondary">
                         <span class="card-title">Actualizar Prospecto</span>

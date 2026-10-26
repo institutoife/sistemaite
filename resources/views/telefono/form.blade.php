@@ -64,8 +64,8 @@
     <div class="row"> 
         <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4" >
             <div class="form-floating mb-3 text-gray">
-                <input class="form-control" type="tel" id="phone" name="telefono" placeholder="71039910" pattern="[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]" value="{{old('telefono',$persona->telefono ?? '')}}">
-                <label class="text-secondary" for="nombre">TELEFONO*</label>  
+                <input class="form-control" type="tel" id="phone" name="telefono" placeholder="71039910" pattern="[0-9]{8}" value="{{ old('telefono', app(\App\Services\TelefonoService::class)->isMissing($persona->telefono ?? null) ? '' : $persona->telefono) }}">
+                <label class="text-secondary" for="phone">TELÉFONO (opcional)</label>
             </div>
         </div>
         {{--%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMPO COMO SE INFORMO  --}}

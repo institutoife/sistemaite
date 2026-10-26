@@ -78,7 +78,7 @@ class ComentarioController extends Controller
         // Retornar respuesta JSON
         return response()->json([
             'message' => 'Comentario enviado exitosamente.',
-            'data' => $comentario
+            'data' => $comentario->only(['id', 'nombre', 'telefono', 'comentario', 'vigente', 'como_id', 'persona_id', 'created_at', 'updated_at'])
         ]);
     }
     
@@ -91,7 +91,7 @@ class ComentarioController extends Controller
 
     
     // $recaptchaResponse = Http::post('https://www.google.com/recaptcha/api/siteverify', [
-    //     'secret' => '6LeTgu4hAAAAAH5VXGnvwn4YSUqYiw5CbtmPoibF', 
+    //     'secret' => env('RECAPTCHA_SECRET'),
     //     'response' => $validatedData['recaptcha_token'],
     // ]);
 
@@ -207,7 +207,6 @@ class ComentarioController extends Controller
             'comentario' => 'required|string|max:400', // Coincide con el tamaño definido en la migración
         ]);
         
-        return response()->json(["success" =>$request->all()]);
                 
 
                 // Guardar el comentario en la base de datos
@@ -222,8 +221,9 @@ class ComentarioController extends Controller
             
                 // Retornar respuesta JSON
                 return response()->json([
+                    'success' => true,
                     'message' => 'Comentario enviado exitosamente.',
-                    'data' => $comentario
+                    'data' => $comentario->only(['id', 'nombre', 'telefono', 'comentario', 'vigente', 'como_id', 'persona_id', 'created_at', 'updated_at'])
                 ]);
     }    
     /**%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Guarda desde sistema %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/

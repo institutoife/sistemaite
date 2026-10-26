@@ -228,6 +228,12 @@ return [
 
     'menu' => [
         [
+            'text' => 'Google Contactos',
+            'route' => 'contactos.index',
+            'icon' => 'fas fa-address-book',
+            'can' => 'Listar Contactos',
+        ],
+        [
             'text'    => 'Panel de Padres',
             'icon'    => 'fas fa-user-friends',
             'url'     => 'padre/home',

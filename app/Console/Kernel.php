@@ -24,7 +24,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->command('gcontact:sync-batch --only-pending --batch=100')
+            ->everyFiveMinutes()->withoutOverlapping()->timezone('America/La_Paz')
+            ->when(function () {
+                $account = app(\App\Services\GoogleContactsService::class)->account();
+                return $account && $account->isConnected();
+            });
     }
 
     /**

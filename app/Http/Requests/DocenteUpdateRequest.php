@@ -32,6 +32,7 @@ class DocenteUpdateRequest extends FormRequest
             "fecha_inicio" =>'required',        
             
             "interests"=>"required",
+            "telefono" => 'nullable|max:10',
         ];
     }
 }

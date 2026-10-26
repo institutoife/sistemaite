@@ -19,7 +19,11 @@ class Comentario extends Model
         return $this->belongsTo(Como::class);
     }
     public function persona(){
-        return $this->belognsTo(Persona::class);
+        return $this->belongsTo(Persona::class);
+    }
+    public function usuarios()
+    {
+        return $this->morphToMany(User::class, 'userable');
     }
     public function interests() {
         return $this->belongsToMany(Interest::class)->withTimestamps();

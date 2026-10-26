@@ -41,7 +41,7 @@ class PersonaUpdateRequest extends FormRequest
             "como_id" =>'required',
             "foto" => 'nullable|file',
             "papel" =>'required|string',
-            "telefono" => 'max:8',
+            "telefono" => 'nullable|max:8',
             'interests'=>'required',
         ];
         

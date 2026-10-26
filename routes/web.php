@@ -93,7 +93,6 @@ use UxWeb\SweetAlert\SweetAlert;
 Auth::routes();  
 //Route::post('/comentario/crear', [ComentarioController::class, 'store'])->name('comentarios.store');
 Route::post('/comentario/crear', [ComentarioController::class, 'store'])
-    ->middleware('recaptchav3')
     ->name('comentarios.store');
 
 Route::get('/',[HomeController::class, 'index']);
@@ -906,7 +905,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::get('prospectos/create',[ProspectoController::class,'create'])->name('prospecto.create');
     Route::post('prospecto/store', [ProspectoController::class,'store'])->name('prospecto.store');  
     Route::get('prospecto/editar/{prospecto}',[ProspectoController::class,'edit'])->name('prospecto.edit');
-    Route::post('prospecto/actualizar', [ProspectoController::class,'update'])->name("prospecto.update");
+    Route::match(['post', 'patch'], 'prospecto/actualizar/{prospecto}', [ProspectoController::class,'update'])->name("prospecto.update");
     Route::get('prospectos/listar', [ProspectoController::class,'listar'])->name("prospectos.listar");
     Route::get('set/prospecto', [ProspectoController::class,'setprospecto'])->name("set.prospecto");
     Route::delete('eliminar/prospecto/{prospecto}', [ProspectoController::class,'destroy'])->name('prospecto.delete');
@@ -1161,7 +1160,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::get('/estadistica', [HomeController::class, 'estadistica'])->name('estadistica');
 
 
-    Route::any('comentario/guardar',[ComentarioController::class,'guardarComentario'])->name('comentario.guardar');
+    Route::post('comentario/guardar',[ComentarioController::class,'guardarComentario'])->name('comentario.guardar');
     
 
     Route::get('/about', [HomeController::class, 'about'])->name('about');
@@ -1184,20 +1183,28 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::get('/estudiantesinscritos', [DocenteController::class, 'estudiantesinscritos'])->name('estudiantesinscritos');
 
     /** google contact */
-    route::get('auth/google',[GContactController::class,'signIn'])->name("signIn");
-    route::get('auth/google/callback',[GContactController::class,'handleCallback']);
-
-    Route::get('/token-expiration', [GContactController::class, 'getTokenExpiration'])->name('token-expiration');
-    Route::get('reset/token-expiration', [GContactController::class, 'resetTokenExpiration'])->name('reset.token-expiration');
-    // TEMPORAL: usar solo para obtener token de sesion durante sincronizacion masiva.
-    Route::get('/debug/gcontact-token', function () {
-        abort_unless(auth()->check() && auth()->user()->hasRole(['Admin']), 403);
-
-        return response()->json([
-            'token' => session('GContactToken'),
-            'expires_at' => session('GContactTokenExpiration'),
-        ]);
-    })->name('debug.gcontact-token');
+    Route::middleware(['auth'])->group(function () {
+        Route::get('auth/google', [GContactController::class, 'signIn'])
+            ->middleware('can:Configurar Google Contacts')->name('signIn');
+        Route::get('auth/google/callback', [GContactController::class, 'handleCallback'])
+            ->middleware('can:Configurar Google Contacts');
+        Route::get('/token-expiration', [GContactController::class, 'getTokenExpiration'])
+            ->middleware('can:Listar Contactos')->name('token-expiration');
+        Route::get('contactos/google', [\App\Http\Controllers\GoogleContactsController::class, 'index'])
+            ->middleware('can:Listar Contactos')->name('contactos.index');
+        Route::post('contactos/google/desconectar', [\App\Http\Controllers\GoogleContactsController::class, 'disconnect'])
+            ->middleware('can:Configurar Google Contacts')->name('contactos.disconnect');
+        Route::post('contactos/google/pausar', [\App\Http\Controllers\GoogleContactsController::class, 'pause'])
+            ->middleware('can:Configurar Google Contacts')->name('contactos.pause');
+        Route::post('contactos/google/reanudar', [\App\Http\Controllers\GoogleContactsController::class, 'resume'])
+            ->middleware('can:Configurar Google Contacts')->name('contactos.resume');
+        Route::post('contactos/google/prospectos/{prospecto}/sincronizar', [\App\Http\Controllers\GoogleContactsController::class, 'syncProspecto'])
+            ->middleware('can:Sincronizar Contactos')->name('contactos.sync-prospecto');
+        Route::post('contactos/google/consultas/{comentario}/sincronizar', [\App\Http\Controllers\GoogleContactsController::class, 'syncComentario'])
+            ->middleware('can:Sincronizar Contactos')->name('contactos.sync-comentario');
+        Route::post('contactos/google/{persona}/sincronizar', [\App\Http\Controllers\GoogleContactsController::class, 'sync'])
+            ->middleware('can:Sincronizar Contactos')->name('contactos.sync');
+    });
     Route::get("informar/estado/general", [EstudianteController::class,'informarEstadoGeneral'])->name("informar.por.estado.General");
 
     /** botones imprimir en los home */

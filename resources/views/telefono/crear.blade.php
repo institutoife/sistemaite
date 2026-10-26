@@ -15,7 +15,7 @@
     <div class="card">
         <div class="card-header bg-primary">
             <span class="text-center">{{$persona->nombre.' '.$persona->apellidop.' '.$persona->apellidom}}</span>
-            <a href="{{ route('signIn') }}" class="btn btn-sm btn-light float-right ml-2">Conectar Google Contactos</a>
+            @can('Listar Contactos')<a href="{{ route('contactos.index') }}" class="btn btn-sm btn-light float-right ml-2">Google Contactos</a>@endcan
             <h3 class="text-white float-right" id="tokenExpirationform"></h3>
            
             <div class="float-right">
@@ -39,7 +39,7 @@
             </div>
         </div>
         <div class="card-body">
-            <form action="{{route('persona.storeContacto',$persona)}}" method="POST">
+            <form action="{{route('persona.storeContacto',$persona)}}" method="POST" enctype="multipart/form-data">
             @csrf
                 <div class="row">
                     <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
@@ -156,6 +156,7 @@
 
          
             
+            @include('telefono.datos-propios', ['contacto' => null])
             <div class="container-fluid h-100 mt-3"> 
                 <div class="row w-100 align-items-center">
                     <div class="col text-center">

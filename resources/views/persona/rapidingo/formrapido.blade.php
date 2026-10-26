@@ -27,8 +27,8 @@
                     </div>
                     <div class="col-xs-12 col-sm-12 col-md-6 col-lg-4" >
                         <div class="form-floating mb-3 text-gray">
-                            <input class="form-control @error('telefono') is-invalid @enderror" type="tel" id="phone" name="telefono" value="{{old('telefono',$persona->telefono ?? '')}}">
-                            <label for="telefono">Telefono*</label>
+                            <input class="form-control @error('telefono') is-invalid @enderror" type="tel" id="phone" name="telefono" value="{{ old('telefono', app(\App\Services\TelefonoService::class)->isMissing($persona->telefono ?? null) ? '' : $persona->telefono) }}">
+                            <label for="phone">Teléfono (opcional)</label>
                         </div>
                     </div>
                     {{-- %%%%%%%%%%%%%%%%%%%%%%% CAMPO APELLIDO MATERNO %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% --}}

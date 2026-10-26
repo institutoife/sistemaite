@@ -28,8 +28,10 @@ class PersonaApoderadaRequestStore extends FormRequest
             "apellidop" => 'required|string|max:25',
             "apellidom" => 'required|string|max:25',
             "genero" => 'required|string',
-            "telefono" => 'required|max:8',
+            "telefono" => 'nullable|max:8',
             "parentesco"=>'required',
+            'fechanacimiento' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+            'foto' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120|dimensions:max_width=4000,max_height=4000',
         ];
     }
 }

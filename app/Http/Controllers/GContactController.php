@@ -1,181 +1,53 @@
 <?php
 
 namespace App\Http\Controllers;
-use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Session;
-use Carbon\Carbon;
+
+use App\Exceptions\GoogleContactsException;
+use App\Services\GoogleContactsService;
 use Illuminate\Http\Request;
+use Laravel\Socialite\Facades\Socialite;
+use Throwable;
 
 class GContactController extends Controller
 {
-    private function buildGooglePersonPayload($nombre, $apellidop, $apellidom, $telefono, $email = null): array
+    public function signIn(Request $request, GoogleContactsService $service)
     {
-        $payload = [
-            'names' => [
-                [
-                    'givenName' => (string) $nombre,
-                    'familyName' => trim((string) $apellidop.' '.(string) $apellidom),
-                ]
-            ],
-        ];
-
-        if (!empty($telefono)) {
-            $payload['phoneNumbers'] = [
-                [
-                    'value' => (string) $telefono,
-                    'type' => 'mobile'
-                ]
-            ];
+        if (!$service->ready()) {
+            return redirect()->route('contactos.index')->with('error', 'Primero aplique las migraciones de Google Contacts.');
         }
-
-        if (!empty($email)) {
-            $payload['emailAddresses'] = [
-                [
-                    'value' => (string) $email,
-                    'type' => 'home'
-                ]
-            ];
+        if (!config('services.google.client_id') || !config('services.google.client_secret') || !config('services.google.redirect')) {
+            return redirect()->route('contactos.index')->with('error', 'Complete la configuración Google del servidor.');
         }
-
-        return $payload;
+        return Socialite::driver('google')->scopes([GoogleContactsService::SCOPE])
+            ->with(['access_type' => 'offline', 'prompt' => 'consent'])->redirect();
     }
 
-    private function extractResourceAndEtag(array $person): ?array
+    public function handleCallback(Request $request, GoogleContactsService $service)
     {
-        $resourceName = data_get($person, 'resourceName');
-        $etag = data_get($person, 'etag');
-
-        if (empty($etag)) {
-            $etag = data_get($person, 'metadata.sources.0.etag');
+        // Keep Socialite's state validation; never use stateless() for this flow.
+        try {
+            if ($request->has('error')) {
+                $request->session()->forget('state');
+                return redirect()->route('contactos.index')->with('error', 'No se autorizó Google Contacts. Puede volver a conectar.');
+            }
+            $service->connect(Socialite::driver('google')->user(), (int) $request->user()->id);
+            $request->session()->forget(['GContactToken', 'GContactTokenExpiration', 'previous_url']);
+            return redirect()->route('contactos.index')->with('success', 'Google Contacts conectado. Ya puede solicitar la sincronización.');
+        } catch (Throwable $e) {
+            $message = $e instanceof GoogleContactsException ? $e->getMessage()
+                : 'No se pudo autorizar Google Contacts. Inicie nuevamente la conexión y compruebe la configuración.';
+            return redirect()->route('contactos.index')->with('error', $message);
         }
-
-        if (empty($resourceName) || empty($etag)) {
-            return null;
-        }
-
-        return [$resourceName, $etag];
     }
 
-    public function signIn(Request $request)
-    {
-        Session::put('previous_url', url()->previous());
-        return Socialite::driver('google')
-                        ->scopes(['https://www.googleapis.com/auth/contacts'])
-                        ->with([
-                            'access_type' => 'offline',
-                            'prompt' => 'consent',
-                        ])
-                        ->redirect();
-    }
-
-    public function handleCallback(Request $request)
-    {
-        $returnUrl = Session::get('previous_url', '/');
-        Session::forget('previous_url');
-        $user = Socialite::driver('google')->user();
-        $expirationTime = Carbon::now()->addSeconds($user->expiresIn);
-        session(['GContactToken' => $user->token, 'GContactTokenExpiration' => $expirationTime]);
-        return redirect($returnUrl);
-    }
-
-    public function getToken()
-    {
-        $token = Session::get('GContactToken');
-        return $token;
-    }
-
-    public function resetTokenExpiration(){
-        session(['GContactTokenExpiration' => '0:10']);
-        return response()->json(["respuesta"=>"reseteado correctamente"]);
-    }
+    // Compatibility for existing forms. Never return the token itself.
     public function getTokenExpiration()
     {
-        $tiempoString = session('GContactTokenExpiration');
-        if (!$tiempoString) {
+        $account = app(GoogleContactsService::class)->account();
+        if (!$account || !$account->isConnected() || !$account->expires_at) {
             return '0:00';
         }
-        $now = Carbon::now();
-        $segundosTranscurridos = $now->diffInSeconds($tiempoString);
-
-        $minutos = floor($segundosTranscurridos / 60);
-        $segundos = $segundosTranscurridos % 60;
-        
-        return sprintf('%02d:%02d', $minutos, $segundos);
+        $seconds = max(0, now()->diffInSeconds($account->expires_at, false));
+        return sprintf('%02d:%02d', intdiv($seconds, 60), $seconds % 60);
     }
-    
-    public function createContact($nombre,$apellidop,$apellidom,$email,$telefono)
-    {
-        if (!$this->getToken()) {
-            return null;
-        }
-
-        $contact = $this->buildGooglePersonPayload($nombre, $apellidop, $apellidom, $telefono, $email);
-    
-        try {
-            $response = Http::withToken($this->getToken())
-                ->timeout(20)
-                ->post('https://people.googleapis.com/v1/people:createContact', $contact);
-
-            if ($response->successful()) {
-                $data = $this->extractResourceAndEtag($response->json());
-                if (!$data) {
-                    return null;
-                }
-                return $data;
-            } else {
-                Log::warning('No se pudo crear contacto en Google People API', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-                return null;
-            }
-        } catch (\Throwable $e) {
-            Log::error('Error al crear contacto en Google People API', ['error' => $e->getMessage()]);
-            return null;
-        }
-    }
-
-    public function updateContact($nombre,$apellidop,$apellidom,$telefono,$resourseName,$etag,$email = null)
-    {
-        if (!$this->getToken() || empty($resourseName) || empty($etag)) {
-            return null;
-        }
-
-        $contact = $this->buildGooglePersonPayload($nombre, $apellidop, $apellidom, $telefono, $email);
-        $contact['resourceName'] = $resourseName;
-        $contact['etag'] = $etag;
-
-    try {
-        $updateFields = 'names,phoneNumbers,emailAddresses';
-        $url = 'https://people.googleapis.com/v1/'.$resourseName.':updateContact?updatePersonFields='.$updateFields;
-
-        $response = Http::withToken($this->getToken())
-            ->timeout(20)
-            ->patch($url, $contact);
-
-        if ($response->successful()) {
-            $etag = data_get($response->json(), 'etag');
-            if (!$etag) {
-                $etag = data_get($response->json(), 'metadata.sources.0.etag');
-            }
-
-            if (!$etag) {
-                return null;
-            }
-
-            return $etag;
-        } else {
-            Log::warning('No se pudo actualizar contacto en Google People API', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-            return null;
-        }
-    } catch (\Throwable $e) {
-        Log::error('Error al actualizar contacto en Google People API', ['error' => $e->getMessage()]);
-        return null;
-    }
-}
 }

@@ -19,7 +19,6 @@ use App\Notifications\CredencialesPadreNotification;
 
 class TelefonoController extends Controller
 {
-    private ?bool $hasGcontactQueueColumnsCache = null;
     public function __construct()
     {
         $this->middleware('can:Listar Telefonos')->only("index","mostrarvista","mostrarvistaConIdPersona","apoderadoExistente");
@@ -28,117 +27,11 @@ class TelefonoController extends Controller
         $this->middleware('can:Eliminar Telefonos')->only("eliminarTelefono");
     }
 
-    private function canSyncGoogleContacts(): bool
+    private function syncPersonaWithGoogle(Persona $persona): void
     {
-        return !empty(session('GContactToken'));
+        app(\App\Services\GoogleContactsService::class)->markPending($persona, \Illuminate\Support\Facades\Auth::id());
     }
 
-    private function hasGcontactQueueColumns(): bool
-    {
-        if ($this->hasGcontactQueueColumnsCache !== null) {
-            return $this->hasGcontactQueueColumnsCache;
-        }
-
-        $this->hasGcontactQueueColumnsCache =
-            Schema::hasColumn('personas', 'gcontact_sync_pending') &&
-            Schema::hasColumn('personas', 'gcontact_sync_error') &&
-            Schema::hasColumn('personas', 'gcontact_sync_attempts') &&
-            Schema::hasColumn('personas', 'gcontact_sync_last_attempt_at');
-
-        return $this->hasGcontactQueueColumnsCache;
-    }
-
-    private function markSyncState(Persona $persona, bool $ok, ?string $error = null): void
-    {
-        if (!$this->hasGcontactQueueColumns()) {
-            return;
-        }
-
-        $persona->gcontact_sync_pending = !$ok;
-        $persona->gcontact_sync_error = $ok ? null : Str::limit((string) $error, 2000, '');
-        $persona->gcontact_sync_attempts = (int) ($persona->gcontact_sync_attempts ?? 0) + 1;
-        $persona->gcontact_sync_last_attempt_at = now();
-    }
-
-    private function processPendingGoogleQueue(?int $excludePersonaId = null, int $limit = 5): void
-    {
-        if (!$this->canSyncGoogleContacts() || !$this->hasGcontactQueueColumns()) {
-            return;
-        }
-
-        $pendientes = Persona::where('gcontact_sync_pending', 1)
-            ->when($excludePersonaId, function ($query, $id) {
-                $query->where('id', '<>', $id);
-            })
-            ->orderBy('gcontact_sync_last_attempt_at', 'asc')
-            ->limit($limit)
-            ->get();
-
-        foreach ($pendientes as $pendiente) {
-            $this->syncPersonaWithGoogle($pendiente, false);
-        }
-    }
-
-    private function syncPersonaWithGoogle(Persona $persona, bool $drainQueue = true): void
-    {
-        if (!$this->canSyncGoogleContacts()) {
-            return;
-        }
-
-        try {
-            $gcontactController = app(GContactController::class);
-            $sincronizado = false;
-
-            if (empty($persona->resourseName) || empty($persona->etag)) {
-                $data = $gcontactController->createContact(
-                    $persona->nombre,
-                    $persona->apellidop,
-                    $persona->apellidom,
-                    null,
-                    $persona->telefono
-                );
-                if (is_array($data) && count($data) >= 2) {
-                    $persona->resourseName = $data[0];
-                    $persona->etag = $data[1];
-                    $this->markSyncState($persona, true);
-                    $sincronizado = true;
-                } else {
-                    $this->markSyncState($persona, false, 'No se pudo crear el contacto en Google (servicio no disponible o respuesta invalida).');
-                    $sincronizado = true;
-                }
-            } else {
-                $nuevoEtag = $gcontactController->updateContact(
-                    $persona->nombre,
-                    $persona->apellidop,
-                    $persona->apellidom,
-                    $persona->telefono,
-                    $persona->resourseName,
-                    $persona->etag
-                );
-                if (is_string($nuevoEtag) && $nuevoEtag !== '') {
-                    $persona->etag = $nuevoEtag;
-                    $this->markSyncState($persona, true);
-                    $sincronizado = true;
-                } else {
-                    $this->markSyncState($persona, false, 'No se pudo actualizar el contacto en Google (servicio no disponible o respuesta invalida).');
-                    $sincronizado = true;
-                }
-            }
-
-            if ($sincronizado) {
-                $persona->saveQuietly();
-            }
-
-            if ($drainQueue) {
-                $this->processPendingGoogleQueue($persona->id);
-            }
-        } catch (\Throwable $e) {
-            $this->markSyncState($persona, false, $e->getMessage());
-            $persona->saveQuietly();
-            report($e);
-        }
-    }
-    
     public function index(Persona $persona)
     {
         if (request()->ajax()) {
@@ -209,10 +102,13 @@ class TelefonoController extends Controller
             $apoderado_id=$request->apoderado_id;
             $apoderado=Persona::findOrFail($apoderado_id);
             $persona=Persona::findOrFail($estudiante_id);
-            $apoderado->telefono=$request->telefono;
+            if ($request->has('telefono')) {
+                $apoderado->telefono = $request->telefono;
+            }
             $apoderado->save();
             $this->syncPersonaWithGoogle($apoderado);
-            $persona->apoderados()->attach($apoderado->id, ['telefono' => $request->telefono, 'parentesco' => $request->parentesco]);
+            $persona->apoderados()->attach($apoderado->id, ['telefono' => $apoderado->telefono, 'parentesco' => $request->parentesco]);
+            $this->syncPersonaWithGoogle($apoderado);
 
             $existingUser = User::where('persona_id', $apoderado->id)->first();
             if (!$existingUser) {
@@ -244,15 +140,19 @@ class TelefonoController extends Controller
         
     }
     public function guardarApoderadoExistenteAjax(Request $request){
+        $request->validate(['telefono' => 'nullable|max:10']);
         
         $estudiante_id=$request->persona_id;
         $apoderado_id=$request->apoderado_id;
         $apoderado=Persona::findOrFail($apoderado_id);
         $persona=Persona::findOrFail($estudiante_id);
-        $apoderado->telefono=$request->telefono;
+        if ($request->has('telefono')) {
+            $apoderado->telefono = $request->telefono;
+        }
         $apoderado->save();
         $this->syncPersonaWithGoogle($apoderado);
-        $persona->apoderados()->attach($apoderado->id, ['telefono' => $request->telefono, 'parentesco' => $request->pariente]);
+        $persona->apoderados()->attach($apoderado->id, ['telefono' => $apoderado->telefono, 'parentesco' => $request->pariente]);
+        $this->syncPersonaWithGoogle($apoderado);
 
         $existingUser = User::where('persona_id', $apoderado->id)->first();
         if (!$existingUser) {
@@ -311,13 +211,22 @@ class TelefonoController extends Controller
         $apoderado->apellidop = $request->apellidop;
         $apoderado->apellidom = $request->apellidom;
         $apoderado->genero = $request->genero;
-        $apoderado->telefono = $request->telefono;
+        if ($request->has('fechanacimiento')) {
+            $apoderado->fechanacimiento = $request->fechanacimiento;
+        }
+        if ($request->hasFile('foto')) {
+            $apoderado->foto = $request->file('foto')->store('apoderados', 'public');
+        }
+        if ($request->has('telefono')) {
+            $apoderado->telefono = $request->telefono;
+        }
         $apoderado->save();
 
         $this->syncPersonaWithGoogle($apoderado);
 
 
-        $persona->apoderados()->updateExistingPivot($registro_pivot[0]->persona_id_apoderado,['telefono'=>$request->telefono,'parentesco'=>$request->parentesco],false);
+        $persona->apoderados()->updateExistingPivot($registro_pivot[0]->persona_id_apoderado,['telefono'=>$apoderado->telefono,'parentesco'=>$request->parentesco],false);
+        $this->syncPersonaWithGoogle($apoderado);
         $apoderados = $persona->apoderados;
         return view('telefono.index', compact('persona', 'apoderados'));
     }
@@ -325,6 +234,7 @@ class TelefonoController extends Controller
     {
         $apoderado=Persona::findOrFail($id);
         $persona->apoderados()->detach($apoderado->id);
+        $this->syncPersonaWithGoogle($apoderado);
         $apoderados = $persona->apoderados;
         $persona->telefono='';
         $persona->save();
