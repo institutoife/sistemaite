@@ -72,7 +72,7 @@ php artisan db:seed --class=GoogleContactsSeeder
 php vendor/phpunit/phpunit/phpunit -c phpunit.google-contacts.xml
 ```
 
-Validación aislada actual: **112 pruebas, 605 aserciones correctas**. Incluye permisos de varios usuarios, pausa/reanudación, conservación de trabajos e intentos, finalización de la operación en curso, contadores globales, caducidad de la señal, ejecución real de Jobs simulados mediante el comando y exclusión de un segundo proceso. También se comprueban los turnos de Cron, los tres orígenes, conversiones, notas, cumpleaños, fotografías propias y comprobación de despliegue sin cambios en los datos. Las pruebas usan SQLite en memoria y bloquean solicitudes HTTP no simuladas.
+Validación aislada actual: **118 pruebas, 617 aserciones correctas**. Incluye permisos de varios usuarios, pausa/reanudación, conservación de trabajos e intentos, finalización de la operación en curso, contadores globales, caducidad de la señal, ejecución real de Jobs simulados mediante el comando y exclusión de un segundo proceso. También se comprueban los turnos de Cron, los tres orígenes, conversiones, notas, cumpleaños, fotografías propias y comprobación de despliegue sin cambios en los datos. Las pruebas usan SQLite en memoria y bloquean solicitudes HTTP no simuladas.
 
 Validación local: migración aplicada en MariaDB, permisos de Secretaria comprobados, tarea activa con usuario Windows `hgf`, privilegios limitados y una sola instancia PHP. Se comprobó la recuperación tras `queue:restart` y una actualización real del registro 26 desde el proceso de la tarea, conservando su identificador Google. La cola quedó vacía. No se reinició Windows ni se cerró su sesión durante esta validación.
 

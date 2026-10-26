@@ -40,7 +40,7 @@ El script `scripts/hosting/deploy-google-contacts.sh` aplica solo las migracione
 
 Guía para la actualización: [LEEME BanaHosting](LEEME-ACTUALIZACION-BANAHOSTING.md). Las pruebas aisladas de esta entrega se ejecutan con `php vendor/phpunit/phpunit/phpunit -c phpunit.google-contacts.xml`; el resultado final acompaña la entrega y la guía de despliegue.
 
-Resultado final: **112 pruebas y 605 aserciones correctas**. Se validaron sintaxis PHP y del script POSIX, dependencias locales con Composer y huellas de cada archivo del ZIP. Además se resincronizó por la cola real el registro 26 previamente autorizado, conservando el mismo recurso Google y quedando sin errores. Esa ficha tiene cumpleaños y no dispone de fotografía propia; el envío de fotos se verificó con archivos y HTTP simulados.
+Resultado final: **118 pruebas y 617 aserciones correctas**. Se validaron sintaxis PHP y del script POSIX, dependencias locales con Composer y huellas de cada archivo del ZIP. Además se resincronizó por la cola real el registro 26 previamente autorizado, conservando el mismo recurso Google y quedando sin errores. Esa ficha tiene cumpleaños y no dispone de fotografía propia; el envío de fotos se verificó con archivos y HTTP simulados.
 
 Durante la revisión se retiró una clave de CAPTCHA incrustada en una regla legada sin consumidores encontrados y en un comentario antiguo. La regla reutiliza ahora `recaptchav3.secret` (configurada mediante `RECAPTCHAV3_SECRET`), mantiene su umbral de puntuación y rechaza fallos de red sin exponer detalles. La validación del formulario público sigue usando el paquete de reCAPTCHA existente; conservar su configuración del servidor.
 

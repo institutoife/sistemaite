@@ -8,7 +8,7 @@ Cuenta Google central, cola compartida, pausa administrativa, funcionamiento por
 
 Los envíos y el centro de comunicaciones de cumpleaños, faltas y cobranzas pertenecen a otra entrega. Esta actualización no los activa.
 
-Validación local: 112 pruebas, 605 aserciones; migraciones incrementales en MariaDB, dependencias y sintaxis comprobadas. Una resincronización real del registro 26 conservó el contacto existente. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
+Validación local: 118 pruebas, 617 aserciones; migraciones incrementales en MariaDB, dependencias y sintaxis comprobadas. Una resincronización real del registro 26 conservó el contacto existente. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
 
 ## 1. Publicar desde local
 
@@ -40,17 +40,25 @@ El ejemplo corresponde a la rama `main`. Si el servidor utiliza otra rama de des
 
 Incorporar las variables de [ife-bo.env.example](../scripts/hosting/ife-bo.env.example) al `.env` **existente**; no reemplazar el archivo completo. Configurar el cliente OAuth del servidor sin pegar tokens en archivos ni comandos. Conservar las credenciales DB y la clave de cifrado actuales.
 
-El código se probó con PHP **8.2.12** y Laravel **8.83.27**, sin actualizar dependencias. Usar el mismo `composer.lock` compatible con esta instalación y ejecutar `composer check-platform-reqs --no-dev` con el PHP CLI correspondiente. Si las dependencias del servidor difieren, resolver esa diferencia antes de aplicar el código; no ejecutar un `composer update` general para instalar esta entrega.
+El código se probó con PHP **8.2.12** y Laravel **8.83.27**, sin actualizar dependencias. Usar el mismo `composer.lock` compatible con esta instalación. Cuando Composer esté disponible, el script ejecuta `composer check-platform-reqs --no-dev`. Si no está en PATH, puede utilizar el `vendor` existente únicamente después de verificar sus versiones, extensiones PHP y carga de todas las clases de esta entrega. Si las dependencias del servidor difieren, resolver esa diferencia antes de aplicar el código; no ejecutar un `composer update` general para instalar esta entrega.
 
 El directorio público del dominio debe mantener la configuración Laravel existente. No publicar `.env`, `storage/logs`, `docs` ni la raíz privada del proyecto. Los procesos PHP web y CLI deben tener las extensiones y permisos indicados por `gcontact:check`; las fotos requieren GD y el disco público local existente.
 
 ## 4. Aplicar migraciones y preparar Laravel
 
-Después del pull y de ajustar el `.env` del servidor, ejecutar desde el directorio real del proyecto. Si `php` y `composer` ya corresponden a la versión del sitio:
+Después del pull y de ajustar el `.env` del servidor, ejecutar desde el directorio real del proyecto con el PHP del sitio:
 
 ```sh
 sh scripts/hosting/deploy-google-contacts.sh
 ```
+
+El script busca `composer` en PATH o `composer.phar` en el proyecto. Si no encuentra ninguno, comprueba las dependencias existentes y continúa sin el ejecutable de Composer cuando son compatibles. Para comprobar únicamente esa alternativa, sin migrar ni arrancar Laravel:
+
+```sh
+php scripts/hosting/check-existing-vendor.php
+```
+
+Si el autoload del servidor fue generado en modo autoritativo y no reconoce las clases nuevas, o faltan paquetes, será necesario utilizar Composer para corregirlo. El script se detiene antes de las migraciones en ese caso. Referencia: [autoload autoritativo de Composer](https://getcomposer.org/doc/articles/autoloader-optimization.md).
 
 Si BanaHosting requiere rutas específicas de los ejecutables:
 
@@ -58,9 +66,9 @@ Si BanaHosting requiere rutas específicas de los ejecutables:
 PHP_BIN=/RUTA/REAL/AL/PHP COMPOSER_BIN=/RUTA/REAL/A/COMPOSER sh scripts/hosting/deploy-google-contacts.sh
 ```
 
-**Sustituir las dos rutas antes de ejecutarlo.** El Composer seleccionado debe utilizar el mismo PHP compatible con el sitio. Si no se usa el script, la [guía técnica de despliegue](google-contacts-despliegue-ife-bo.md) contiene las migraciones y operaciones equivalentes.
+**Sustituir las dos rutas antes de ejecutarlo.** `COMPOSER_BIN` también acepta la ruta a un archivo `.phar`, que se ejecutará con `PHP_BIN`. Si únicamente cambia PHP, basta con `PHP_BIN=/RUTA/REAL/AL/PHP sh scripts/hosting/deploy-google-contacts.sh`. No definir `COMPOSER_BIN` con una ruta ficticia. Si no se usa el script, la [guía técnica de despliegue](google-contacts-despliegue-ife-bo.md) contiene las migraciones y operaciones equivalentes.
 
-El script comprueba dependencias, limpia la configuración previa, regenera el autoload, aplica las cinco migraciones nuevas de Google y las dos migraciones anteriores de columnas de enlace/cola si todavía estuvieran pendientes. Después ejecuta `GoogleContactsSeeder`, limpia rutas/vistas y reconstruye la caché de configuración. Laravel omite las migraciones ya registradas. No utiliza `route:cache`: el proyecto conserva rutas con closures. No ejecuta otras migraciones pendientes, el seeder general ni genera otra `APP_KEY`.
+El script comprueba dependencias, limpia la configuración previa y regenera el autoload cuando Composer está disponible; en la alternativa verificada conserva el autoload existente y ejecuta `package:discover`. Aplica las cinco migraciones nuevas de Google y las dos migraciones anteriores de columnas de enlace/cola si todavía estuvieran pendientes. Después ejecuta `GoogleContactsSeeder`, limpia rutas/vistas y reconstruye la caché de configuración. Laravel omite las migraciones ya registradas. No utiliza `route:cache`: el proyecto conserva rutas con closures. No ejecuta otras migraciones pendientes, el seeder general ni genera otra `APP_KEY`.
 
 Si un paso falla, detener la activación del Cron y resolver el resultado indicado. El script no realiza una restauración automática ni declara terminado el mantenimiento; ese paso corresponde al procedimiento de despliegue del sitio.
 

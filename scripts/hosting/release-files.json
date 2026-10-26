@@ -68,6 +68,7 @@
     "resources/views/telefono/form.blade.php",
     "routes/web.php",
     "scripts/hosting/Build-GoogleContactsRelease.ps1",
+    "scripts/hosting/check-existing-vendor.php",
     "scripts/hosting/deploy-google-contacts.sh",
     "scripts/hosting/ife-bo.env.example",
     "scripts/hosting/release-files.json",
@@ -80,5 +81,6 @@
     "tests/Feature/GoogleContactsTest.php",
     "tests/GoogleContactsTestCase.php",
     "tests/Unit/PostGradoTest.php",
+    "tests/Unit/GoogleContactsVendorCheckTest.php",
     "tests/Unit/TelefonoServiceTest.php"
 ]
