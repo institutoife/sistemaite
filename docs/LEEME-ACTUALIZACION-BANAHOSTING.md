@@ -1,6 +1,6 @@
 # Actualizar Google Contactos en ife.bo
 
-Preparado el 26 de octubre de 2026 para la instalación existente en BanaHosting. El flujo elegido es **commit y push en local → pull en el servidor → migraciones y configuración**. Las operaciones en ife.bo aún no se han ejecutado desde esta sesión.
+Actualizado el 27 de octubre de 2026 para la instalación existente en BanaHosting. El flujo elegido es **commit y push en local → pull en el servidor → migraciones y configuración**. Esta sesión prepara y publica el código; el usuario ejecuta el despliegue en ife.bo.
 
 ## Qué incluye
 
@@ -8,7 +8,7 @@ Cuenta Google central, cola compartida, pausa administrativa, funcionamiento por
 
 Los envíos y el centro de comunicaciones de cumpleaños, faltas y cobranzas pertenecen a otra entrega. Esta actualización no los activa.
 
-Validación local: 127 pruebas, 706 aserciones; seis escenarios de migración y recuperación con fechas antiguas en MariaDB, dependencias y sintaxis comprobadas. Incluye altas HTTP de estudiantes y computación con/sin teléfono y reversión de datos y cola cuando falla el alta. Una resincronización real del registro 26 conservó el contacto existente. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
+También incluye [sincronización masiva y verificación de teléfonos cada seis meses](google-contacts-masivo-y-verificacion.md), compartida entre operadores. El administrador inicia expresamente cada lote histórico. Validación local: 143 pruebas, 837 aserciones; seis escenarios de migración y recuperación con fechas antiguas en MariaDB y comprobación del lote con ese motor. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
 
 ## 1. Publicar desde local
 
@@ -23,7 +23,7 @@ git push origin main
 ## 2. Obtener los cambios en el servidor
 
 1. Desde cPanel, respaldar los archivos y la base de **ife.bo**. Mantener la instalación en su procedimiento habitual de mantenimiento mientras se reemplaza el código y migra el esquema.
-2. Confirmar el directorio que contiene `artisan`, el PHP CLI que usa el sitio y el intervalo/tiempo permitido por Cron en esta cuenta. No se conocen todavía esas rutas ni límites particulares del plan.
+2. Rutas confirmadas por el usuario: `/home/vaninquz/ife.bo/sistemaite` y `/opt/cpanel/ea-php82/root/usr/bin/php`. Ya se registró un Cron `*/5`; conservar una sola tarea y respetar los límites del alojamiento.
 3. Entrar en la carpeta real del repositorio del servidor, donde se encuentra `artisan`, y comprobar su rama y modificaciones locales:
 
 ```sh
@@ -49,7 +49,7 @@ El directorio público del dominio debe mantener la configuración Laravel exist
 Después del pull y de ajustar el `.env` del servidor, ejecutar desde el directorio real del proyecto con el PHP del sitio:
 
 ```sh
-sh scripts/hosting/deploy-google-contacts.sh
+PHP_BIN=/opt/cpanel/ea-php82/root/usr/bin/php sh scripts/hosting/deploy-google-contacts.sh
 ```
 
 El script busca `composer` en PATH o `composer.phar` en el proyecto. Si no encuentra ninguno, comprueba las dependencias existentes y continúa sin el ejecutable de Composer cuando son compatibles. Para comprobar únicamente esa alternativa, sin migrar ni arrancar Laravel:
@@ -68,7 +68,7 @@ PHP_BIN=/RUTA/REAL/AL/PHP COMPOSER_BIN=/RUTA/REAL/A/COMPOSER sh scripts/hosting/
 
 **Sustituir las dos rutas antes de ejecutarlo.** `COMPOSER_BIN` también acepta la ruta a un archivo `.phar`, que se ejecutará con `PHP_BIN`. Si únicamente cambia PHP, basta con `PHP_BIN=/RUTA/REAL/AL/PHP sh scripts/hosting/deploy-google-contacts.sh`. No definir `COMPOSER_BIN` con una ruta ficticia. Si no se usa el script, la [guía técnica de despliegue](google-contacts-despliegue-ife-bo.md) contiene las migraciones y operaciones equivalentes.
 
-El script comprueba dependencias, limpia la configuración previa y regenera el autoload cuando Composer está disponible; en la alternativa verificada conserva el autoload existente y ejecuta `package:discover`. Aplica las cinco migraciones nuevas de Google y las dos migraciones anteriores de columnas de enlace/cola si todavía estuvieran pendientes. Después ejecuta `GoogleContactsSeeder`, limpia rutas/vistas y reconstruye la caché de configuración. Laravel omite las migraciones ya registradas. No utiliza `route:cache`: el proyecto conserva rutas con closures. No ejecuta otras migraciones pendientes, el seeder general ni genera otra `APP_KEY`.
+El script comprueba dependencias, limpia la configuración previa y regenera el autoload cuando Composer está disponible; en la alternativa verificada conserva el autoload existente y ejecuta `package:discover`. Incluye siete migraciones nuevas de Google/verificación y dos migraciones anteriores de columnas de enlace/cola; Laravel omite las ya registradas. Para una instalación que ya recibió la entrega anterior, quedan solamente las dos del 27 de octubre. Después ejecuta `GoogleContactsSeeder`, limpia rutas/vistas y reconstruye la caché de configuración. No utiliza `route:cache`: el proyecto conserva rutas con closures. No ejecuta otras migraciones pendientes, el seeder general ni genera otra `APP_KEY`.
 
 Las migraciones se ejecutan mediante `php artisan gcontact:migrate --force`. Este comando conserva las fechas heredadas que MySQL/MariaDB pueden rechazar al reconstruir tablas, como `1900-01-00`: ajusta únicamente la aceptación de fechas de su sesión durante el cambio de esquema, mantiene el modo estricto y restaura el modo SQL original al terminar, incluso si falla. No cambia fechas, enlaces Google, la configuración global de MySQL ni las migraciones históricas.
 
@@ -100,7 +100,7 @@ En **cPanel → Cron Jobs**, crear **una sola tarea**. Propuesta: `*/5 * * * *`,
 /RUTA/REAL/AL/PHP /home/USUARIO/RUTA_DEL_PROYECTO/artisan gcontact:work --cron >> /home/USUARIO/RUTA_DEL_PROYECTO/storage/logs/google-contacts-cron.log 2>&1
 ```
 
-Cada turno procesa hasta tres trabajos y sale si la cola está vacía. El límite de 50 segundos se comprueba entre trabajos: una operación iniciada puede durar más. No instalar un worker permanente adicional en este alojamiento. El bloqueo de la instalación impide que dos turnos administrados procesen a la vez.
+Cada turno procesa hasta tres trabajos por defecto (`GOOGLE_CONTACTS_CRON_MAX_JOBS`) y sale si la cola está vacía. El límite de 50 segundos se comprueba entre trabajos: una operación iniciada puede durar más. No instalar un worker permanente adicional en este alojamiento. El bloqueo de la instalación impide que dos turnos administrados procesen a la vez.
 
 ## 6. Comprobación final en ife.bo
 

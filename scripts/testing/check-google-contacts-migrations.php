@@ -30,6 +30,7 @@ $pdo = $adminConnection->getPdo();
 $globalMode = $pdo->query('SELECT @@GLOBAL.sql_mode')->fetchColumn();
 Http::fake(function () { throw new RuntimeException('HTTP externo bloqueado en esta comprobación.'); });
 Queue::fake();
+config(['cache.default' => 'array']);
 $dates = ['1900-01-00', '0000-00-00', '2021-02-31', '2000-02-29'];
 $strict = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION';
 $results = [];
@@ -60,6 +61,7 @@ foreach (['fresh', 'interrupted_fk', 'partial_columns', 'unlogged_complete', 'wr
         $schema->create('users', function (Blueprint $table) { $table->id(); });
         $schema->create('personas', function (Blueprint $table) {
             $table->id(); $table->date('fechanacimiento')->nullable();
+            $table->string('telefono')->nullable(); $table->timestamps();
             $table->string('resourseName')->nullable(); $table->string('etag')->nullable();
             $table->boolean('gcontact_sync_pending')->default(false);
             $table->text('gcontact_sync_error')->nullable();
@@ -67,8 +69,9 @@ foreach (['fresh', 'interrupted_fk', 'partial_columns', 'unlogged_complete', 'wr
             $table->timestamp('gcontact_sync_last_attempt_at')->nullable();
         });
         foreach (['prospectos', 'comentarios'] as $tableName) {
-            $schema->create($tableName, function (Blueprint $table) {
-                $table->id(); $table->timestamp('created_at')->nullable();
+            $schema->create($tableName, function (Blueprint $table) use ($tableName) {
+                $table->id(); $table->string('telefono')->nullable(); $table->timestamps();
+                if ($tableName === 'comentarios') { $table->unsignedBigInteger('persona_id')->nullable(); }
             });
         }
         $connection->statement('SET SESSION sql_mode = ?', [GoogleContactsMigrationRunner::ddlSqlMode($strict)]);
@@ -130,6 +133,33 @@ foreach (['fresh', 'interrupted_fk', 'partial_columns', 'unlogged_complete', 'wr
             }
             $assert(Artisan::call('gcontact:migrate', ['--force' => true]) === 0, 'No se pudo repetir la ejecución.');
             $assert($connection->table('migrations')->count() === count(GoogleContactsMigrationRunner::PATHS), 'La repetición duplicó registros del historial.');
+            $assert($schema->hasTable('person_phone_verifications') && $schema->hasTable('google_contact_bulk_items'), 'Faltan las tablas de verificación o lotes.');
+            if ($scenario === 'fresh') {
+                require_once database_path('migrations/2022_03_04_230700_create_jobs_table.php');
+                (new CreateJobsTable)->up();
+                $connection->table('users')->insert(['id' => 1]);
+                \App\Models\GoogleContactAccount::create(['slot' => 'central', 'google_id' => 'migration-test',
+                    'email' => 'migration@example.test', 'installation_id' => '11111111-1111-4111-8111-111111111111',
+                    'refresh_token' => 'test-only', 'expires_at' => now()->addHour()]);
+                foreach ([1 => '70000001', 2 => null, 3 => '123', 4 => '70000004'] as $id => $phone) {
+                    $connection->table('personas')->where('id', $id)->update(['telefono' => $phone]);
+                }
+                $bulk = app(\App\Services\GoogleContactsBulkService::class);
+                $service = app(\App\Services\GoogleContactsService::class);
+                $run = $bulk->start($service, 1, 'persona', false, 0);
+                $bulk->advance($service);
+                $run->refresh();
+                $assert($run->queued === 2 && $run->skipped === 1, 'El lote no separó teléfonos válidos, ausentes e inválidos.');
+                $assert($connection->table('google_contact_bulk_items')->orderBy('id')->pluck('record_id')->all() === [1, 4], 'El lote incluyó otras personas.');
+                $connection->table('personas')->where('id', 1)->update(['gcontact_sync_status' => 'synced', 'gcontact_sync_pending' => 0]);
+                $connection->table('personas')->where('id', 4)->update(['gcontact_sync_status' => 'error', 'gcontact_error_code' => 'invalid_birthday']);
+                $progress = $bulk->progress($run);
+                $assert($progress['synced'] === 1 && $progress['errors'] === 1 && $progress['pending'] === 0, 'El progreso MariaDB no coincide con los resultados.');
+                $bulk->advance($service);
+                $assert($run->fresh()->status === 'completed', 'El lote no terminó en MariaDB.');
+                $assert($connection->table('person_phone_verifications')->count() === 0 && $connection->table('jobs')->count() === 0, 'El lote confirmó teléfonos o ejecutó una cola real.');
+                $assert($connection->select('SELECT id, CAST(fechanacimiento AS CHAR) AS birth, resourseName, etag FROM personas ORDER BY id') == $before, 'El lote cambió fechas o enlaces heredados.');
+            }
         }
         $results[$scenario] = 'OK';
     } finally {
@@ -144,6 +174,7 @@ foreach (['fresh', 'interrupted_fk', 'partial_columns', 'unlogged_complete', 'wr
 }
 $assert($pdo->query('SELECT @@GLOBAL.sql_mode')->fetchColumn() === $globalMode, 'Se alteró SQL_MODE global.');
 Http::assertNothingSent();
-Queue::assertNothingPushed();
+Queue::assertPushed(\App\Jobs\SyncGoogleContact::class, 2);
 echo json_encode(['scenarios' => $results, 'legacy_dates_and_links_preserved' => true,
-    'session_and_global_sql_modes_preserved' => true, 'application_database_untouched' => true], JSON_PRETTY_PRINT).PHP_EOL;
+    'bulk_import_and_progress_on_mariadb' => true, 'session_and_global_sql_modes_preserved' => true,
+    'application_database_untouched' => true], JSON_PRETTY_PRINT).PHP_EOL;

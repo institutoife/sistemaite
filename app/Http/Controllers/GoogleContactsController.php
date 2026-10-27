@@ -9,6 +9,8 @@ use App\Models\Comentario;
 use Illuminate\Database\Eloquent\Model;
 use App\Services\GoogleContactsService;
 use App\Services\GoogleContactsRuntime;
+use App\Services\GoogleContactsBulkService;
+use App\Models\GoogleContactBulkRun;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -74,7 +76,35 @@ class GoogleContactsController extends Controller
                 }
             }
         }
-        return view('contactos.index', compact('ready', 'account', 'personas', 'worker', 'counts', 'source'));
+        $bulk = app(GoogleContactsBulkService::class);
+        $bulkReady = $ready && $bulk->ready();
+        $bulkCounts = $bulkReady ? $bulk->preview($service) : [];
+        $bulkRun = $bulkReady ? GoogleContactBulkRun::orderByDesc('id')->first() : null;
+        $bulkProgress = $bulkRun ? $bulk->progress($bulkRun) : null;
+        return view('contactos.index', compact('ready', 'account', 'personas', 'worker', 'counts', 'source',
+            'bulkReady', 'bulkCounts', 'bulkRun', 'bulkProgress'));
+    }
+
+    public function bulkStart(Request $request, GoogleContactsService $service, GoogleContactsBulkService $bulk)
+    {
+        abort_unless($request->user()->hasRole('Admin'), 403);
+        abort_unless($service->ready() && $bulk->ready(), 503);
+        $data = $request->validate(['source' => 'required|in:all,persona,prospecto,comentario',
+            'limit' => 'required|integer|in:0,100,500,1000', 'include_synced' => 'sometimes|boolean', 'confirm_bulk' => 'accepted']);
+        $run = $bulk->start($service, (int) $request->user()->id, $data['source'], $request->boolean('include_synced'), (int) $data['limit']);
+        return redirect()->route('contactos.index')->with('success', 'Lote masivo #'.$run->id.' registrado. Continuará por turnos en el servidor.');
+    }
+
+    public function bulkStop(Request $request, GoogleContactBulkRun $bulkRun)
+    {
+        abort_unless($request->user()->hasRole('Admin'), 403);
+        DB::transaction(function () use ($bulkRun) {
+            $run = GoogleContactBulkRun::whereKey($bulkRun->id)->lockForUpdate()->firstOrFail();
+            if ($run->active_slot) {
+                $run->update(['active_slot' => null, 'status' => 'stopped', 'finished_at' => now()]);
+            }
+        });
+        return redirect()->route('contactos.index')->with('success', 'Se detuvo la preparación de nuevos lotes. Los contactos ya encolados continuarán.');
     }
 
     public function pause(Request $request, GoogleContactsService $service)

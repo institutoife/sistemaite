@@ -69,4 +69,5 @@
 @section('adminlte_js')
     @stack('js')
     @yield('js')
+    @include('telefono.verificacion-modal')
 @stop

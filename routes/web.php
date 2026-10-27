@@ -1192,6 +1192,14 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
             ->middleware('can:Listar Contactos')->name('token-expiration');
         Route::get('contactos/google', [\App\Http\Controllers\GoogleContactsController::class, 'index'])
             ->middleware('can:Listar Contactos')->name('contactos.index');
+        Route::post('contactos/google/importar', [\App\Http\Controllers\GoogleContactsController::class, 'bulkStart'])
+            ->middleware('can:Sincronizar Contactos Masivamente')->name('contactos.bulk.start');
+        Route::post('contactos/google/importar/{bulkRun}/detener', [\App\Http\Controllers\GoogleContactsController::class, 'bulkStop'])
+            ->middleware('can:Sincronizar Contactos Masivamente')->name('contactos.bulk.stop');
+        Route::get('personas/{persona}/telefono-verificacion', [\App\Http\Controllers\PhoneVerificationController::class, 'show'])
+            ->middleware('can:Verificar Telefonos')->name('telefonos.verificacion.show');
+        Route::post('personas/{persona}/telefono-verificacion', [\App\Http\Controllers\PhoneVerificationController::class, 'store'])
+            ->middleware('can:Verificar Telefonos')->name('telefonos.verificacion.store');
         Route::post('contactos/google/desconectar', [\App\Http\Controllers\GoogleContactsController::class, 'disconnect'])
             ->middleware('can:Configurar Google Contacts')->name('contactos.disconnect');
         Route::post('contactos/google/pausar', [\App\Http\Controllers\GoogleContactsController::class, 'pause'])

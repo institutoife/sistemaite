@@ -65,7 +65,9 @@ class CheckGoogleContacts extends Command
         try {
             DB::connection()->getPdo();
             $check('Conexión a base de datos', true, '');
-            $check('Migraciones Google', $service->ready(), 'Aplicar las cinco migraciones incrementales indicadas en la guía.');
+            $check('Migraciones Google', $service->ready(), 'Aplicar las migraciones incrementales indicadas en la guía.');
+            $check('Verificación telefónica', app(\App\Services\PhoneVerificationService::class)->ready(), 'Aplicar la migración de verificación telefónica con gcontact:migrate.');
+            $check('Lotes masivos', app(\App\Services\GoogleContactsBulkService::class)->ready(), 'Aplicar la migración de lotes masivos con gcontact:migrate.');
             $check('Tablas de cola', Schema::hasTable('jobs') && Schema::hasColumn('jobs', 'reserved_at'), 'Aplicar la migración existente de jobs si falta.');
             $check('Historial de acciones', Schema::hasTable('userables'), 'Revisar la base original y su migración de userables.');
             if ($service->ready()) {

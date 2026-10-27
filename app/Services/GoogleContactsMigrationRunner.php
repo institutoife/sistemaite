@@ -17,6 +17,8 @@ class GoogleContactsMigrationRunner
         'database/migrations/2026_10_25_000003_add_google_contacts_pause_controls.php',
         'database/migrations/2026_10_26_000001_extend_leads_google_contacts.php',
         'database/migrations/2026_10_26_000002_add_google_contact_photo_hash.php',
+        'database/migrations/2026_10_27_000001_create_person_phone_verification_tables.php',
+        'database/migrations/2026_10_27_000002_create_google_contact_bulk_tables.php',
     ];
     private const PERSONA_MIGRATION = '2026_10_25_000002_extend_personas_google_contacts';
     private const COLUMNS = [

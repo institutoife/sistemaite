@@ -63,6 +63,7 @@ class GoogleContactsRuntime
             return false;
         }
         if (now()->timestamp >= $this->nextSweep) {
+            app(GoogleContactsBulkService::class)->advance($service);
             $service->enqueuePending();
             $this->nextSweep = now()->timestamp + 300;
         }

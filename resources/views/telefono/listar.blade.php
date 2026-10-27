@@ -15,7 +15,7 @@
                         {{$persona->nombre.' '.$persona->apellidop.' '.$persona->apellidom}}
                     </td>
                     <td>
-                        <a href="tel:{{$persona->telefono}}">{{$persona->telefono}}</a> 
+                        <a href="tel:{{$persona->telefono}}" data-phone-persona="{{ $persona->id }}">{{$persona->telefono}}</a>
                     </td>
                     <td>
                         PERSONAL
@@ -35,7 +35,7 @@
                         {{$apoderado->nombre.' '.$apoderado->apellidop.' '.$apoderado->apellidom}}
                     </td>
                     <td>
-                        <a href="tel:{{$apoderado->telefono}}">{{$apoderado->telefono}}</a> 
+                        <a href="tel:{{$apoderado->telefono}}" data-phone-persona="{{ $apoderado->id }}">{{$apoderado->telefono}}</a>
                     </td>
                     <td>
                         {{$apoderado->pivot->parentesco}}

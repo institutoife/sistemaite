@@ -5,6 +5,11 @@
 <a href="{{route('personas.show', $id)}}" class="tooltipsC mr-2" title="Ver esta persona">
     <i class="fa fa-fw fa-eye text-primary"></i>
 </a>
+@can('Verificar Telefonos')
+    <button type="button" class="btn btn-sm btn-link p-0 mr-2" data-verify-person="{{ $id }}" title="Verificar teléfono con el cliente" aria-label="Verificar teléfono">
+        <i class="fas fa-phone"></i>
+    </button>
+@endcan
 
 {{-- <form action=""  class="d-inline">
     @csrf

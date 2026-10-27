@@ -7,6 +7,9 @@
 @stop
 
 @section('content')
+    @if ($errors->any())
+        <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
+    @endif
     @foreach (['success' => 'success', 'error' => 'danger'] as $key => $color)
         @if (session($key))
             <div class="alert alert-{{ $color }}" role="alert">{{ session($key) }}</div>
@@ -81,6 +84,8 @@
             <p class="small text-muted mb-0">Los totales corresponden a todos los contactos elegibles. Los casos que requieren atención no se reintentan automáticamente al reanudar.</p>
         </div>
     </div>
+
+    @include('contactos.masivo')
 
     <div class="card">
         <div class="card-header"><h2 class="card-title">Contactos del sistema</h2></div>

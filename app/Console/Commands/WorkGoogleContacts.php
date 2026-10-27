@@ -12,7 +12,7 @@ class WorkGoogleContacts extends Command
 {
     protected $signature = 'gcontact:work
         {--once : Comprobar y procesar como máximo un trabajo}
-        {--cron : Procesar hasta tres trabajos y salir para la siguiente ejecución programada}';
+        {--cron : Procesar un turno limitado y salir para la siguiente ejecución programada}';
     protected $description = 'Mantiene un único proceso central de contactos, con pausa global y señal de actividad.';
 
     public function handle(GoogleContactsService $service, GoogleContactsRuntime $runtime): int
@@ -56,7 +56,8 @@ class WorkGoogleContacts extends Command
             ];
             if ($cron) {
                 // Limits apply between jobs: let a started contact finish within its HTTP limits.
-                $options += ['--stop-when-empty' => true, '--max-jobs' => 3, '--max-time' => 50];
+                $options += ['--stop-when-empty' => true,
+                    '--max-jobs' => max(1, min(50, (int) config('google-contacts.cron_max_jobs', 3))), '--max-time' => 50];
             }
             $result = $this->call('queue:work', $options);
             $completed = $result === self::SUCCESS;

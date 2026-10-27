@@ -97,6 +97,8 @@ abstract class GoogleContactsTestCase extends TestCase
             '2026_10_25_000003_add_google_contacts_pause_controls.php' => 'AddGoogleContactsPauseControls',
             '2026_10_26_000001_extend_leads_google_contacts.php' => 'ExtendLeadsGoogleContacts',
             '2026_10_26_000002_add_google_contact_photo_hash.php' => 'AddGoogleContactPhotoHash',
+            '2026_10_27_000001_create_person_phone_verification_tables.php' => 'CreatePersonPhoneVerificationTables',
+            '2026_10_27_000002_create_google_contact_bulk_tables.php' => 'CreateGoogleContactBulkTables',
         ] as $file => $class) {
             require_once database_path('migrations/'.$file);
             (new $class)->up();
