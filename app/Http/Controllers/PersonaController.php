@@ -76,6 +76,8 @@ class PersonaController extends Controller
      */
     public function create()
     {
+        $crmProspecto=$this->crmOrigen();
+        $persona=$crmProspecto?new Persona(['nombre'=>$crmProspecto->nombre,'telefono'=>$crmProspecto->telefono,'papelinicial'=>request('crm_papel','contacto')]):null;
         $ciudades=Ciudad::get();
         $paises=Pais::get();
         $zonas=Zona::get();
@@ -84,7 +86,7 @@ class PersonaController extends Controller
         $gcontactController  = app(GContactController::class);
         $tiempoToken = tiempoEnSegundos($gcontactController->getTokenExpiration());  // metodo esta en Helper.php
         //dd($tiempoToken.", ".session('GContactTokenExpiration'));
-        return view('persona.crear',compact('ciudades','paises','zonas','interests','comos','tiempoToken','tiempoToken'));
+        return view('persona.crear',compact('ciudades','paises','zonas','interests','comos','tiempoToken','persona','crmProspecto'));
     }
    
 
@@ -128,6 +130,7 @@ class PersonaController extends Controller
         $persona->ciudad_id = 6;
         $persona->zona_id = $request->zona_id;
         $persona->save();
+        $this->crmVincularNuevaPersona($request,$persona);
 
         $this->syncPersonaWithGoogle($persona);
         
@@ -505,26 +508,27 @@ class PersonaController extends Controller
     /*$%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% METODOS DE CONTACTO UNICAMENTE %%%%%%%%%%%%%%%%%%%%%%% */
     public function crearSoloContacto()
     {
+        $crmProspecto=$this->crmOrigen();
+        $persona=$crmProspecto?new Persona(['nombre'=>$crmProspecto->nombre,'telefono'=>$crmProspecto->telefono]):null;
         $comos=Como::get();
         $gcontactController  = app(GContactController::class);
         $tiempoToken = tiempoEnSegundos($gcontactController->getTokenExpiration());  // metodo esta en Helper.php
         
-        return view('persona.contacto.crearcontacto',compact('comos','tiempoToken'));
+        return view('persona.contacto.crearcontacto',compact('comos','tiempoToken','crmProspecto','persona'));
     }
     public function guardarSoloContacto(RequestStoreSoloContacto $request){
+        return DB::transaction(function () use ($request) {
         // dd($request->all()   );
         $persona=new Persona();
         $persona->nombre=$request->nombre;
         $persona->apellidop=$request->apellidop;
         $persona->telefono=$request->telefono;
         $persona->papelinicial='contacto';
-        $persona->como_id=3;
+        $persona->como_id=$request->como_id;
         
         $persona->save();
-
+        $this->crmVincularNuevaPersona($request,$persona);
         $this->syncPersonaWithGoogle($persona);
-
-        
         $persona->usuarios()->attach(Auth::user()->id);
         $this->CrearContacto($persona->id);
         $observacion = new Observacion();
@@ -534,7 +538,24 @@ class PersonaController extends Controller
         $observacion->observable_type = "App\Models\Persona";
         $observacion->save();
         $observacion->usuarios()->attach(Auth::user()->id);
-        return redirect()->route('personas.contactos.view');
+        return $request->filled('crm_prospecto_id')?redirect()->route('prospecto.view',$request->crm_prospecto_id):redirect()->route('personas.contactos.view');
+        });
+    }
+    private function crmOrigen()
+    {
+        if (!request()->filled('crm_prospecto')) { return null; }
+        request()->validate(['crm_prospecto'=>'required|integer|exists:prospectos,id','crm_papel'=>'sometimes|in:contacto,estudiante,computacion']);
+        $record=\App\Models\Prospecto::findOrFail(request('crm_prospecto'));
+        $this->authorize('update',$record);
+        abort_unless(app(\App\Services\CrmService::class)->ready()&&!$record->persona_id&&$record->crm_status==='activo',422,'Revise la oportunidad antes de registrar otra Persona.');
+        return $record;
+    }
+    private function crmVincularNuevaPersona(Request $request, Persona $persona): void
+    {
+        if (!$request->filled('crm_prospecto_id')) { return; }
+        $record=\App\Models\Prospecto::findOrFail($request->crm_prospecto_id);
+        $this->authorize('update',$record);
+        app(\App\Services\CrmService::class)->linkNewContact($record,$persona,(int)$request->crm_prospecto_version,(int)$request->user()->id);
     }
     public function actualizarSoloContacto(Request $request, Persona $persona){
         $request->validate(['telefono' => 'nullable|max:10']);

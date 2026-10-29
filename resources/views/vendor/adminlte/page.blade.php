@@ -47,6 +47,7 @@
             {{-- Main Content --}}
             <div class="content">
                 <div class="{{ config('adminlte.classes_content') ?: $def_container_class }} pt-4">
+                    @include('crm.alerta')
                     @yield('content')
                 </div>
             </div>

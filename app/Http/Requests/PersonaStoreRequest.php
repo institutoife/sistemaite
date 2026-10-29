@@ -41,6 +41,8 @@ class PersonaStoreRequest extends FormRequest
             "papel" =>'required|string',
             "telefono" => 'nullable|max:8',
             'interests'=>'required',
+            'crm_prospecto_id'=>'nullable|integer|exists:prospectos,id',
+            'crm_prospecto_version'=>'required_with:crm_prospecto_id|integer|min:0',
         ];
     }
 }

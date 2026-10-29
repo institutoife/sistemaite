@@ -134,7 +134,7 @@
                     <div class="col-12 col-lg-6">
                         <article class="card card-outline card-{{ $colors[$status] ?? 'secondary' }}">
                             <div class="card-body">
-                                <h3 class="h5">{{ $source === 'prospecto' ? 'Prospecto #'.$persona->id : (trim($persona->nombre.' '.$persona->apellidop.' '.$persona->apellidom) ?: 'Consulta #'.$persona->id) }}</h3>
+                                <h3 class="h5">{{ $source === 'prospecto' ? ($persona->nombre ?: 'Prospecto #'.$persona->id) : (trim($persona->nombre.' '.$persona->apellidop.' '.$persona->apellidom) ?: 'Consulta #'.$persona->id) }}</h3>
                                 <p class="mb-1">Código: {{ $persona->id }} · {{ app(\App\Services\TelefonoService::class)->isMissing($persona->telefono) ? 'Sin teléfono' : $persona->telefono }}</p>
                                 <p class="mb-2">
                                     @if ($source === 'persona')

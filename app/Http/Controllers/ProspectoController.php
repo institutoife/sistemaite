@@ -1,148 +1,55 @@
 <?php
-
 namespace App\Http\Controllers;
-
-use App\Models\Prospecto;
-use App\Models\Observacion;
-use App\Http\Requests\StoreProspectoRequest;
-use App\Http\Requests\UpdateProspectoRequest;
-use Yajra\DataTables\Contracts\DataTable as DataTable; 
-use Yajra\DataTables\DataTables;
-use Carbon\Carbon;
-use App\Models\Estado;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-
-
+use App\Models\{Prospecto,CrmSeguimiento};
+use App\Http\Requests\{StoreProspectoRequest,UpdateProspectoRequest};
+use App\Services\CrmService;
+use Illuminate\Support\Facades\Schema;
 class ProspectoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
+    public function __construct()
     {
-        return view('prospecto.index');
+        $this->middleware('auth');
+        $this->middleware('can:Listar Prospectos')->only('index','show','listar');
+        $this->middleware(function ($request,$next) { abort_unless(app(CrmService::class)->ready(),503,'Prepare el CRM con php artisan crm:prepare --force.'); return $next($request); });
     }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
+    public function index() { return redirect()->route('crm.tablero'); }
+    public function create(CrmService $crm)
     {
-        $estados=Estado::get();
-        return view('prospecto.create',compact('estados'));
+        $this->authorize('create',Prospecto::class);
+        return view('prospecto.create',$crm->catalogs()+['prospecto'=>new Prospecto]);
     }
-
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \App\Http\Requests\StoreProspectoRequest  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(StoreProspectoRequest $request)
+    public function store(StoreProspectoRequest $request, CrmService $crm)
     {
-        
-        $prospecto = new Prospecto();
-        $prospecto->telefono=$request->telefono;
-        $prospecto->estado_id=$request->estado_id;
-        $prospecto->save();
-        $observacion=new Observacion();
-        $observacion->observacion="Prospecto a vender";
-        $observacion->activo=1;
-        $observacion->observable_id=$prospecto->id;
-        $observacion->observable_type="App\Models\Prospecto";
-        $observacion->save();
-                //**%%%%%%%%%%%%%%%%%%%%  B  I  T  A  C  O  R  A  O B S E R V A C I O N   %%%%%%%%%%%%%%%%*/
-        $observacion->usuarios()->attach(Auth::user()->id);
-
-        return view('prospecto.index', compact('prospecto'));
+        $record=$crm->save(null,$request->validated(),$request->user()->id);
+        return redirect()->route('prospecto.view',$record)->with('success','Prospecto registrado.');
     }
-
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Models\Prospecto  $prospecto
-     * @return \Illuminate\Http\Response
-     */
-    public function show(Prospecto $prospecto)
+    public function show(Prospecto $prospecto, CrmService $crm)
     {
-        $observaciones=$prospecto->observaciones;
-        return view('prospecto.show',compact('observaciones','prospecto'));
+        $this->authorize('view',$prospecto); $prospecto->load(CrmService::RELATIONS);
+        $observaciones=$prospecto->observaciones()->leftJoin('crm_actividad_detalles as crm_history','crm_history.observacion_id','=','observacions.id')
+            ->select('observacions.*')->with(['usuarios:id,name','crmDetalle.responsable:id,name'])
+            ->orderByRaw('COALESCE(crm_history.ocurrio_at, observacions.created_at) DESC')->orderByDesc('observacions.id')->paginate(30);
+        $historiaPersona=$prospecto->persona?$prospecto->persona->observaciones()->with('usuarios:id,name')->orderByDesc('id')->limit(50)->get():collect();
+        $seguimientos=$prospecto->persona_id&&Schema::hasTable('crm_seguimientos')?CrmSeguimiento::with('user:id,name')->where('persona_id',$prospecto->persona_id)->latest()->limit(50)->get():collect();
+        return view('prospecto.show',$crm->catalogs()+compact('prospecto','observaciones','historiaPersona','seguimientos')+['mayContact'=>$crm->mayContact($prospecto)]);
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Models\Prospecto  $prospecto
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Prospecto $prospecto)
+    public function edit(Prospecto $prospecto, CrmService $crm)
     {
-        $estados=Estado::get();
-        return view('prospecto.edit', compact('prospecto','estados'));
+        $this->authorize('update',$prospecto);
+        return view('prospecto.edit',$crm->catalogs()+compact('prospecto'));
     }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \App\Http\Requests\UpdateProspectoRequest  $request
-     * @param  \App\Models\Prospecto  $prospecto
-     * @return \Illuminate\Http\Response
-     */
-    public function update(UpdateProspectoRequest $request, Prospecto $prospecto)
+    public function update(UpdateProspectoRequest $request, Prospecto $prospecto, CrmService $crm)
     {
-        $prospecto->telefono=$request->telefono;
-        if ($request->has('estado_id')) {
-            $prospecto->estado_id = $request->estado_id;
-        }
-        $prospecto->save();
-        return redirect()->route('prospecto.view', $prospecto);
+        $crm->save($prospecto,$request->validated(),$request->user()->id);
+        return redirect()->route('prospecto.view',$prospecto)->with('success','Datos comerciales actualizados.');
     }
-
-
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Models\Prospecto  $prospecto
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy(Prospecto $prospecto)
+    public function destroy(Prospecto $prospecto) { $this->authorize('delete',$prospecto); }
+    public function listar(CrmService $crm)
     {
-        $prospecto->delete();
-        return response()->json(['mensaje' => 'Registro Eliminado correctamente']);
-    }
-    public function listar()
-    {
-        // $prospectos = Prospecto::join('estados', 'estados.id', '=', 'prospectos.estado_id')
-        // ->join('observacions', function($join) {
-        //     $join->on('observacions.observable_id', '=', 'prospectos.id')
-        //         ->where('observacions.observable_type', '=', 'App\Models\Prospecto');
-        // })
-        // ->select('prospectos.id','observacions.id as observacion_id', 'telefono', 'estados.estado', DB::raw('MAX(observacions.updated_at) as ultima_observacion'))
-        // ->groupBy('prospectos.id','observacion_id', 'telefono', 'estados.estado')
-        // ->get();
-        $prospectos = Prospecto::join('estados', 'estados.id', '=', 'prospectos.estado_id')
-  
-        ->join('observacions', function($join) {
-            $join->on('observacions.observable_id', '=', 'prospectos.id')
-                ->where('observacions.observable_type', '=', 'App\Models\Prospecto');
-        })
-  		->join('userables','userable_id','observacions.id')
-  		->join('users','users.id','userables.user_id')
-  		->where('userable_type','App\Models\Observacion')
-        ->select('prospectos.id','name', 'telefono', 'estados.estado', DB::raw('MAX(observacions.updated_at) as ultima_observacion'))
-        ->groupBy('prospectos.id','name', 'telefono', 'estados.estado')
-        ->get();
-
-
-        return datatables()->of($prospectos)
-        ->addColumn('btn', 'prospecto.action')
-        ->rawColumns(['btn'])
-        ->toJson();
+        return datatables()->eloquent(Prospecto::with(['etapa','responsable'])->withMax('observaciones','updated_at'))
+            ->addColumn('estado',function ($row) { return optional($row->etapa)->nombre; })
+            ->addColumn('name',function ($row) { return optional($row->responsable)->name; })
+            ->addColumn('ultima_observacion',function ($row) { return $row->observaciones_max_updated_at; })
+            ->addColumn('btn','prospecto.action')->rawColumns(['btn'])->toJson();
     }
 }

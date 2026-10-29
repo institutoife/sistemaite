@@ -69,7 +69,7 @@ class GoogleContactsBulkService
         $photoWarnings = 0;
         foreach (GoogleContactsService::SOURCES as $source => $class) {
             $table = (new $class)->getTable();
-            $removed = 'contact.id IS NULL'.($source === 'comentario' ? ' OR contact.persona_id IS NOT NULL' : '');
+            $removed = 'contact.id IS NULL'.($source === 'comentario' || ($source === 'prospecto' && Schema::hasColumn($table,'persona_id')) ? ' OR contact.persona_id IS NOT NULL' : '');
             $row = DB::table('google_contact_bulk_items as item')->leftJoin($table.' as contact', 'contact.id', '=', 'item.record_id')
                 ->where('item.run_id', $run->id)->where('item.source', $source)
                 ->selectRaw("SUM(CASE WHEN $removed THEN 1 ELSE 0 END) AS removed,

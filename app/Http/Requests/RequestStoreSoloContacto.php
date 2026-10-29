@@ -29,6 +29,8 @@ class RequestStoreSoloContacto extends FormRequest
             "apellidop" =>'required|string|max:25',
             "telefono" => 'nullable|max:8',
             "como_id" =>'required',
+            'crm_prospecto_id'=>'nullable|integer|exists:prospectos,id',
+            'crm_prospecto_version'=>'required_with:crm_prospecto_id|integer|min:0',
             
             "observacion" =>'required|string|max:250',
         ];

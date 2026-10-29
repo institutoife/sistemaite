@@ -7,9 +7,29 @@ use App\Services\GoogleContactsService;
 
 class PersonaObserver
 {
+    public function saving(Persona $persona): void
+    {
+        if ($persona->exists && \Illuminate\Support\Facades\Schema::hasColumn('prospectos','no_contactar')
+            && \App\Models\Prospecto::where('persona_id',$persona->id)->where('no_contactar',true)->exists()) { $persona->votos=0; }
+    }
     public function saved(Persona $persona): void
     {
-        if (!$persona->wasRecentlyCreated && !$persona->wasChanged([
+        $commercialChange=($persona->wasRecentlyCreated||$persona->wasChanged('habilitado'))&&\Illuminate\Support\Facades\Schema::hasColumn('prospectos','legacy_persona_id');
+        if ($commercialChange) {
+            $id=$persona->id;
+            \Illuminate\Support\Facades\DB::afterCommit(function () use ($id) {
+                \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
+                    if (Persona::whereKey($id)->lockForUpdate()->first(['id'])) { app(\App\Services\CrmService::class)->prepareLegacy($id); }
+                });
+            });
+        }
+        if ($persona->wasChanged(['nombre','apellidop','apellidom','telefono'])&&\Illuminate\Support\Facades\Schema::hasColumn('prospectos','persona_id')) {
+            \App\Models\Prospecto::where('persona_id',$persona->id)->where('crm_status','<>','convertido')->update([
+                'nombre'=>trim($persona->nombre.' '.$persona->apellidop.' '.$persona->apellidom),'telefono'=>(string)$persona->telefono,
+                'telefono_normalizado'=>app(\App\Services\TelefonoService::class)->normalize($persona->telefono),
+                'crm_version'=>\Illuminate\Support\Facades\DB::raw('crm_version + 1')]);
+        }
+        if (!$persona->wasRecentlyCreated && !$commercialChange && !$persona->wasChanged([
             'nombre', 'apellidop', 'apellidom', 'telefono', 'fechanacimiento', 'foto', 'papelinicial',
         ])) {
             return;

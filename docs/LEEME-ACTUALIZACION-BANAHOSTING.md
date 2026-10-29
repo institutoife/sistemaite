@@ -1,4 +1,4 @@
-# Actualizar Google Contactos en ife.bo
+# Actualizar Google Contactos y CRM IFE en ife.bo
 
 Actualizado el 29 de octubre de 2026 para la instalación existente en BanaHosting. El flujo elegido es **commit y push en local → pull en el servidor → migraciones y configuración**. Esta sesión prepara y publica el código; el usuario ejecuta el despliegue en ife.bo.
 
@@ -51,7 +51,7 @@ El directorio público del dominio debe mantener la configuración Laravel exist
 Después del pull y de ajustar el `.env` del servidor, ejecutar desde el directorio real del proyecto con el PHP del sitio:
 
 ```sh
-PHP_BIN=/opt/cpanel/ea-php82/root/usr/bin/php sh scripts/hosting/deploy-google-contacts.sh
+PHP_BIN=/opt/cpanel/ea-php82/root/usr/bin/php sh scripts/hosting/deploy-crm.sh
 ```
 
 El script busca `composer` en PATH o `composer.phar` en el proyecto. Si no encuentra ninguno, comprueba las dependencias existentes y continúa sin el ejecutable de Composer cuando son compatibles. Para comprobar únicamente esa alternativa, sin migrar ni arrancar Laravel:
@@ -65,10 +65,10 @@ Si el autoload del servidor fue generado en modo autoritativo y no reconoce las 
 Si BanaHosting requiere rutas específicas de los ejecutables:
 
 ```sh
-PHP_BIN=/RUTA/REAL/AL/PHP COMPOSER_BIN=/RUTA/REAL/A/COMPOSER sh scripts/hosting/deploy-google-contacts.sh
+PHP_BIN=/RUTA/REAL/AL/PHP COMPOSER_BIN=/RUTA/REAL/A/COMPOSER sh scripts/hosting/deploy-crm.sh
 ```
 
-**Sustituir las dos rutas antes de ejecutarlo.** `COMPOSER_BIN` también acepta la ruta a un archivo `.phar`, que se ejecutará con `PHP_BIN`. Si únicamente cambia PHP, basta con `PHP_BIN=/RUTA/REAL/AL/PHP sh scripts/hosting/deploy-google-contacts.sh`. No definir `COMPOSER_BIN` con una ruta ficticia. Si no se usa el script, la [guía técnica de despliegue](google-contacts-despliegue-ife-bo.md) contiene las migraciones y operaciones equivalentes.
+**Sustituir las dos rutas antes de ejecutarlo.** `COMPOSER_BIN` también acepta la ruta a un archivo `.phar`, que se ejecutará con `PHP_BIN`. Si únicamente cambia PHP, basta con `PHP_BIN=/RUTA/REAL/AL/PHP sh scripts/hosting/deploy-crm.sh`. No definir `COMPOSER_BIN` con una ruta ficticia. Si no se usa el script, la [guía técnica de despliegue](google-contacts-despliegue-ife-bo.md) contiene las migraciones y operaciones equivalentes.
 
 El script comprueba dependencias, limpia la configuración previa y regenera el autoload cuando Composer está disponible; en la alternativa verificada conserva el autoload existente y ejecuta `package:discover`. Incluye siete migraciones nuevas de Google/verificación y dos migraciones anteriores de columnas de enlace/cola; Laravel omite las ya registradas. Para una instalación que ya recibió la entrega anterior, quedan solamente las dos del 27 de octubre. Después ejecuta `GoogleContactsSeeder`, limpia rutas/vistas y reconstruye la caché de configuración. No utiliza `route:cache`: el proyecto conserva rutas con closures. No ejecuta otras migraciones pendientes, el seeder general ni genera otra `APP_KEY`.
 

@@ -779,7 +779,8 @@ return [
             'icon'    => 'fas fa-house-user',
             'icon_color' => 'secondary',
             'classes'  => 'text-white text-bold bg-primary',
-            'url'  => 'crm/potenciales',
+            'url'  => 'crm/ife',
+            'can' => 'Listar Prospectos',
         ],
         /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INICIO GRUPO PERSONAS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
         

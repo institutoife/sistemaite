@@ -1,0 +1,85 @@
+<?php
+namespace App\Http\Controllers;
+use App\Models\{Prospecto,Persona,CrmEtapa,CrmSede};
+use App\Http\Requests\{CrmFilterRequest,CrmActionRequest};
+use App\Services\{CrmService,CrmAnalytics,CrmConversionService};
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+class CrmProspectoController extends Controller
+{
+    public function __construct()
+    {
+        $this->middleware(['auth','can:Listar Prospectos']);
+        $this->middleware(function ($request,$next) { abort_unless(app(CrmService::class)->ready(),503,'Prepare el CRM con php artisan crm:prepare --force.'); return $next($request); });
+    }
+    public function index(CrmFilterRequest $request, CrmService $crm)
+    {
+        $filters=$request->validated();
+        return view('crm.tablero',$crm->catalogs()+$crm->board($filters)+['filters'=>$filters,'stats'=>app(CrmAnalytics::class)->report($filters)]);
+    }
+    public function listing(CrmFilterRequest $request, CrmService $crm)
+    {
+        return view('crm.lista',$crm->catalogs()+['records'=>$crm->query($request->validated())->with(CrmService::RELATIONS)->orderByDesc('id')->paginate(30)->withQueryString()]);
+    }
+    public function report(CrmFilterRequest $request, CrmService $crm, CrmAnalytics $analytics)
+    {
+        return view('crm.dashboard',$crm->catalogs()+['stats'=>$analytics->report($request->validated())]);
+    }
+    public function matches(Request $request, CrmService $crm)
+    {
+        $data=$request->validate(['telefono'=>'required|string|max:20','except'=>'nullable|integer']);
+        return response()->json(['matches'=>$crm->duplicates($data['telefono'],$data['except']??null)])->header('Cache-Control','private, no-store');
+    }
+    public function people(Request $request)
+    {
+        $data=$request->validate(['q'=>'required|string|min:1|max:100']);
+        if (!ctype_digit($data['q'])&&mb_strlen(trim($data['q']))<3) { throw ValidationException::withMessages(['q'=>'Escriba al menos tres letras o un código numérico.']); }
+        $people=Persona::where(function ($query) use ($data) { $query->where('nombre','like','%'.$data['q'].'%')->orWhere('apellidop','like','%'.$data['q'].'%')->orWhere('telefono','like','%'.$data['q'].'%'); if (ctype_digit($data['q'])) { $query->orWhere('id',(int)$data['q']); } })
+            ->with(['estudiante:id,persona_id','computacion:id,persona_id'])->limit(20)->get(['id','nombre','apellidop','apellidom']);
+        return response()->json(['people'=>$people->map(function ($row) { return ['id'=>$row->id,'nombre'=>trim($row->nombre.' '.$row->apellidop.' '.$row->apellidom),
+            'url'=>route('personas.show',$row->id),'academico'=>$row->estudiante?route('inscribir',$row->id):null,
+            'computacion'=>$row->computacion?route('configuracion.gestionar.carreras',$row->id):null]; })])->header('Cache-Control','private, no-store');
+    }
+    public function move(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm)
+    {
+        $record=$crm->move($prospecto,(int)$request->etapa_id,(int)$request->version,$request->user()->id);
+        if ($request->expectsJson()) { return response()->json(['saved'=>true,'version'=>(int)$record->crm_version,'etapa_id'=>(int)$record->crm_etapa_id,'etapa_desde'=>$record->etapa_desde->format('d/m/Y H:i')]); }
+        return back()->with('success','Etapa actualizada.');
+    }
+    public function activity(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->activity($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Actividad registrada.'); }
+    public function deactivate(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->deactivate($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Baja registrada; se conserva el historial.'); }
+    public function reactivate(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->reactivate($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Oportunidad reactivada.'); }
+    public function convert(CrmActionRequest $request, Prospecto $prospecto, CrmConversionService $service) { $service->convert($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Conversión registrada con su inscripción y contacto vinculados.'); }
+    public function whatsapp(Request $request, Prospecto $prospecto, CrmService $crm)
+    {
+        $this->authorize('update',$prospecto);
+        $data=$request->validate(['plantilla'=>'required|in:primer_contacto,informacion,seguimiento,inscripcion,reactivacion']);
+        return response()->json($crm->whatsapp($prospecto,$data['plantilla']))->header('Cache-Control','private, no-store');
+    }
+    public function settings(CrmService $crm) { abort_unless(auth()->user()->can('Configurar CRM'),403); return view('crm.configuracion',$crm->catalogs()); }
+    public function stage(Request $request, ?CrmEtapa $etapa=null)
+    {
+        abort_unless($request->user()->can('Configurar CRM'),403);
+        $data=$request->validate(['nombre'=>'required|string|max:80','color'=>'required|regex:/^#[0-9A-Fa-f]{6}$/','orden'=>'required|integer|min:0|max:10000',
+            'activa'=>'required|boolean','inicial'=>'required|boolean','conversion'=>'required|boolean','version'=>$etapa?'required|integer|min:0':'sometimes|integer']);
+        DB::transaction(function () use ($etapa,$data) {
+            $all=CrmEtapa::orderBy('id')->lockForUpdate()->get(); $row=$etapa?$all->firstWhere('id',$etapa->id):new CrmEtapa;
+            if ($etapa&&(int)$row->version!==(int)$data['version']) { abort(409,'Otra persona modificó esta etapa. Actualice la página.'); }
+            if ($data['inicial']&&(!$data['activa']||$data['conversion'])) { throw ValidationException::withMessages(['inicial'=>'La etapa inicial debe estar activa y permitir nuevas oportunidades.']); }
+            if (!$data['inicial']&&$row->inicial) { throw ValidationException::withMessages(['inicial'=>'Seleccione primero otra etapa como inicial.']); }
+            if ($data['conversion']&&!$row->conversion&&$row->id&&Prospecto::where('crm_etapa_id',$row->id)->exists()) { throw ValidationException::withMessages(['conversion'=>'Una etapa con oportunidades no puede cambiarse a etapa de conversión.']); }
+            if ($data['inicial']) { CrmEtapa::whereNotNull('inicial')->update(['inicial'=>null,'version'=>DB::raw('version + 1')]); }
+            $row->fill(array_diff_key($data,['inicial'=>true,'version'=>true])); $row->inicial=$data['inicial']?'central':null;
+            $row->version=(int)$row->version+1; $row->save();
+        });
+        return back()->with('success','Etapa guardada.');
+    }
+    public function sede(Request $request, ?CrmSede $sede=null)
+    {
+        abort_unless($request->user()->can('Configurar CRM'),403);
+        $data=$request->validate(['nombre'=>'required|string|max:100|unique:crm_sedes,nombre,'.($sede?$sede->id:'NULL').',id','activa'=>'required|boolean']);
+        ($sede?:new CrmSede)->fill($data)->save();
+        return back()->with('success','Sede guardada.');
+    }
+}

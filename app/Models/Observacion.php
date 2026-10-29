@@ -19,6 +19,16 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Observacion extends Model
 {
+    protected static function booted()
+    {
+        $protectCrmHistory=function (Observacion $observation) {
+            if (\Illuminate\Support\Facades\Schema::hasTable('crm_actividad_detalles')&&$observation->crmDetalle()->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['observacion'=>'El historial del CRM se conserva sin modificaciones. Registre una nueva actividad para aclarar o corregir la gestión.']);
+            }
+        };
+        static::updating($protectCrmHistory);
+        static::deleting($protectCrmHistory);
+    }
     
     static $rules = [
 		'activo' => 'required',
@@ -42,6 +52,7 @@ class Observacion extends Model
     {
         return $this->morphTo();
     }
+    public function crmDetalle() { return $this->hasOne(CrmActividadDetalle::class,'observacion_id'); }
 
     public function usuarios()
     {

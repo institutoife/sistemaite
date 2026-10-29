@@ -11,11 +11,11 @@ class GoogleLeadObserver
 {
     public function saved(Model $record): void
     {
-        if (!$record->wasRecentlyCreated && !$record->wasChanged(['nombre', 'telefono', 'persona_id'])) {
+        if (!$record->wasRecentlyCreated && !$record->wasChanged(['nombre', 'telefono', 'persona_id','crm_status'])) {
             return;
         }
         $service = app(GoogleContactsService::class);
-        if ($record instanceof Comentario && $record->persona_id) {
+        if (($record instanceof Comentario || $record instanceof \App\Models\Prospecto) && $record->persona_id) {
             // Persona owns the contact after conversion. The service recovers the enquiry link
             // under the account lock, even if its API request was still in flight at conversion.
             if ($persona = Persona::find($record->persona_id)) {

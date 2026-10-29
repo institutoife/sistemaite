@@ -900,6 +900,23 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::get('set/calificacion', [CalificacionController::class,'setCalificacion'])->name("set.calificacion");
 
     /** -------------------------------------- PROSPECTO ----------------------------------------- */
+    Route::prefix('crm/ife')->group(function () {
+        $controller=\App\Http\Controllers\CrmProspectoController::class;
+        Route::get('/',[$controller,'index'])->name('crm.tablero');
+        Route::get('/lista',[$controller,'listing'])->name('crm.lista');
+        Route::get('/dashboard',[$controller,'report'])->name('crm.dashboard');
+        Route::get('/coincidencias',[$controller,'matches'])->name('crm.coincidencias');
+        Route::get('/personas',[$controller,'people'])->name('crm.personas');
+        Route::get('/configuracion',[$controller,'settings'])->name('crm.configuracion');
+        Route::post('/etapas/{etapa?}',[$controller,'stage'])->name('crm.configurar.etapa');
+        Route::post('/sedes/{sede?}',[$controller,'sede'])->name('crm.configurar.sede');
+        Route::post('/{prospecto}/etapa',[$controller,'move'])->name('crm.mover');
+        Route::post('/{prospecto}/actividad',[$controller,'activity'])->name('crm.actividad');
+        Route::post('/{prospecto}/baja',[$controller,'deactivate'])->name('crm.baja');
+        Route::post('/{prospecto}/reactivar',[$controller,'reactivate'])->name('crm.reactivar');
+        Route::post('/{prospecto}/convertir',[$controller,'convert'])->name('crm.convertir');
+        Route::get('/{prospecto}/whatsapp',[$controller,'whatsapp'])->name('crm.whatsapp');
+    });
     Route::get('prospectos',[ProspectoController::class,'index'])->name('prospecto.index');
     Route::get('prospectos/view/{prospecto}',[ProspectoController::class,'show'])->name('prospecto.view');
     Route::get('prospectos/create',[ProspectoController::class,'create'])->name('prospecto.create');
@@ -907,7 +924,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::get('prospecto/editar/{prospecto}',[ProspectoController::class,'edit'])->name('prospecto.edit');
     Route::match(['post', 'patch'], 'prospecto/actualizar/{prospecto}', [ProspectoController::class,'update'])->name("prospecto.update");
     Route::get('prospectos/listar', [ProspectoController::class,'listar'])->name("prospectos.listar");
-    Route::get('set/prospecto', [ProspectoController::class,'setprospecto'])->name("set.prospecto");
+    Route::get('set/prospecto', [ProspectoController::class,'index'])->name("set.prospecto");
     Route::delete('eliminar/prospecto/{prospecto}', [ProspectoController::class,'destroy'])->name('prospecto.delete');
 
     /** %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ROUTES P R O G R A M A C I O N   C O N T R E L L E R %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/

@@ -38,7 +38,7 @@ class GoogleContactsController extends Controller
         if ($search !== '') {
             $query->where(function ($query) use ($search, $source) {
                 $query->where('telefono', 'like', '%'.$search.'%');
-                if ($source !== 'prospecto') {
+                if ($source !== 'prospecto' || \Illuminate\Support\Facades\Schema::hasColumn('prospectos','nombre')) {
                     $query->orWhere('nombre', 'like', '%'.$search.'%');
                 }
                 if ($source === 'persona') {

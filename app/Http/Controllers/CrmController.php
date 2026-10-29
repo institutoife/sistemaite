@@ -18,8 +18,7 @@ class CrmController extends Controller
      */
     public function index()
     {
-        $potencialesinicio=Persona::where("habilitado",">",1)->get();
-        return view("crm.crmpotenciales",compact("potencialesinicio"));
+        return redirect()->route('crm.tablero');
     }
     public function esperaNuevoView(){
 

@@ -65,7 +65,8 @@ class GoogleContactsService
         $class = $this->modelClass($source);
         $query = $class::query();
         // A converted enquiry shares its person's contact, instead of creating another one.
-        return $source === 'comentario' ? $query->whereNull('persona_id') : $query;
+        return $source === 'comentario' || ($source === 'prospecto' && Schema::hasColumn('prospectos','persona_id'))
+            ? $query->whereNull('persona_id') : $query;
     }
 
     private function locked(callable $callback)
@@ -274,7 +275,7 @@ class GoogleContactsService
 
     private function payload(Model $persona): array
     {
-        $name = $persona instanceof Prospecto ? '' : trim($persona->nombre.' '.$persona->apellidop.' '.$persona->apellidom);
+        $name = $persona instanceof Prospecto ? trim((string)$persona->nombre) : trim($persona->nombre.' '.$persona->apellidop.' '.$persona->apellidom);
         if ($persona instanceof Comentario && strtolower($name) === 'anonymous') {
             $name = '';
         }
@@ -289,6 +290,10 @@ class GoogleContactsService
             ? [['givenName' => (string) $persona->nombre, 'familyName' => trim($persona->apellidop.' '.$persona->apellidom)]]
             : [['givenName' => $name]]),
             'phoneNumbers' => $phone ? [['value' => $phone, 'type' => 'mobile']] : []];
+        if ($persona instanceof Prospecto) {
+            $payload['names']=[['givenName'=>$name!==''?$name:'Prospecto IFE | '.(strpos((string)$phone,'+591')===0?substr($phone,4):$phone)]];
+            if ($name!=='') { $payload['names'][0]['honorificSuffix']='| Prospecto IFE'; }
+        }
         if ($persona instanceof Persona) {
             $payload = array_merge($payload, app(GoogleContactProfile::class)->fields($persona));
         }
@@ -350,7 +355,7 @@ class GoogleContactsService
                 $structuredName = trim(($remoteName['givenName'] ?? '').' '.($remoteName['familyName'] ?? ''));
                 $remoteName = $normalizeName($structuredName !== '' ? $structuredName
                     : preg_replace('/\s*\|.*$/u', '', $remoteName['displayName'] ?? ''));
-                if (($localName !== '' && $remoteName === $localName) || ($localName === '' && $localPhone)) {
+                if (($localName !== '' && $remoteName === $localName) || (($localName === '' || strpos($localName,'prospecto ife | ')===0) && $localPhone)) {
                     foreach ($remote['phoneNumbers'] ?? [] as $remotePhone) {
                         if ($localPhone && app(TelefonoService::class)->normalize($remotePhone['value'] ?? null) === $localPhone) {
                             $possibleLegacy = true;
@@ -392,8 +397,10 @@ class GoogleContactsService
         $intent = $record->gcontact_create_started_at;
         // Called under the Google account lock: any in-flight enquiry creation has finished.
         // Recover the same resource (or uncertain creation) after an enquiry becomes a person.
-        foreach (Comentario::where('persona_id', $record->id)->get() as $enquiry) {
-            $markers[] = ['key' => 'IFE_COMENTARIO', 'value' => $account->installation_id.':'.$enquiry->id];
+        $linked=Comentario::where('persona_id',$record->id)->get();
+        if (Schema::hasColumn('prospectos','persona_id')) { $linked=$linked->concat(Prospecto::where('persona_id',$record->id)->get()); }
+        foreach ($linked as $enquiry) {
+            $markers[] = ['key' => $enquiry instanceof Prospecto?'IFE_PROSPECTO':'IFE_COMENTARIO', 'value' => $account->installation_id.':'.$enquiry->id];
             if ($enquiry->gcontact_account_id && (int) $enquiry->gcontact_account_id !== (int) $account->id) {
                 throw new GoogleContactsException('account_mismatch', 'La consulta vinculada pertenece a otra conexión de Google. Requiere revisión.');
             }
@@ -491,6 +498,20 @@ class GoogleContactsService
                 }
             } else {
                 $source = $this->contactSource($remote);
+                if ($persona instanceof Prospecto || collect($markers)->contains(function ($marker) { return $marker['key']==='IFE_PROSPECTO'; })) {
+                    $owned=collect($remote['userDefined']??[])->contains(function ($field) use ($markers) {
+                        return in_array(['key'=>$field['key']??'','value'=>$field['value']??''],$markers,true);
+                    });
+                    $remoteName=$remote['names'][0]??[];
+                    $remoteText=trim(($remoteName['givenName']??'').' '.($remoteName['familyName']??'')) ?: trim($remoteName['displayName']??'');
+                    $synthetic=$remoteText===''||preg_match('/^Prospecto IFE\s*\|\s*[+0-9 ()-]+$/iu',$remoteText)||app(TelefonoService::class)->normalize($remoteText)!==null;
+                    $samePhone=collect($remote['phoneNumbers']??[])->contains(function ($number) use ($payload) {
+                        return isset($payload['phoneNumbers'][0]['value'])&&app(TelefonoService::class)->normalize($number['value']??null)===$payload['phoneNumbers'][0]['value'];
+                    });
+                    // A saved legacy link alone is not permission to overwrite a personal contact's real name.
+                    if (!$owned&&(!$synthetic||!$samePhone)) { throw new GoogleContactsException('unverified_contact_owner','No se pudo comprobar que el contacto Google pertenece a este Prospecto IFE. Revise su enlace antes de modificarlo.'); }
+                    if ($persona instanceof Prospecto&&trim((string)$persona->nombre)===''&&!$synthetic) { unset($payload['names']); }
+                }
                 $fields = [];
                 foreach ($remote['userDefined'] ?? [] as $field) {
                     if (in_array($field['key'] ?? '', ['IFE_PERSONA', 'IFE_PROSPECTO', 'IFE_COMENTARIO'], true)) {

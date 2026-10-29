@@ -1,3 +1,4 @@
+                @include('crm.persona-origen')
                 <div class="row">
                     <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
                         @if($errors->has('nombre'))
@@ -47,7 +48,7 @@
                                     @isset($persona)     
                                         <option  value="{{$como->id}}" {{$como->id==$persona->como_id ? 'selected':''}}>{{$como->como}}</option>     
                                     @else
-                                        <option value="{{ $como->id}}" {{ old('como_id') == $como->id ? 'selected':'' }} >{{ $como->como }}</option>
+                                        <option value="{{ $como->id}}" {{ old('como_id',$crmProspecto->como_id??null) == $como->id ? 'selected':'' }} >{{ $como->como }}</option>
                                     @endisset 
                                 @endforeach
                             </select>

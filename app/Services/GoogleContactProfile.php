@@ -18,6 +18,8 @@ class GoogleContactProfile
             $query->orderBy('personas.id')->with($relations);
         }]));
         $suffix = '| IFE | '.$person->id;
+        $commercial=\Illuminate\Support\Facades\Schema::hasColumn('prospectos','crm_status')
+            && \App\Models\Prospecto::where('persona_id',$person->id)->where('crm_status','activo')->exists();
         $notes = ['IFE', 'Código de persona: '.$person->id, 'Nombre: '.$this->name($person)];
         $student = $person->estudiante || $person->computacion;
         if ($student) {
@@ -47,6 +49,7 @@ class GoogleContactProfile
         foreach ($this->services($person) as $service) {
             $notes[] = 'Servicio registrado: '.$service;
         }
+        if ($commercial) { $suffix.=' | Prospecto IFE'; $notes[]='Condición comercial: Prospecto IFE'; }
         $fields = ['names' => [['givenName' => trim((string) $person->nombre),
             'familyName' => trim($person->apellidop.' '.$person->apellidom),
             'honorificSuffix' => mb_strimwidth($suffix, 0, 200, '…')]],

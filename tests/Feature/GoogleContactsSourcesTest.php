@@ -19,6 +19,7 @@ use Tests\GoogleContactsTestCase;
 
 class GoogleContactsSourcesTest extends GoogleContactsTestCase
 {
+    use \Tests\CrmFixtures;
     private function person(array $attributes = [], bool $events = false): Persona
     {
         $save = function () use ($attributes) {
@@ -156,7 +157,7 @@ class GoogleContactsSourcesTest extends GoogleContactsTestCase
             $this->assertSame('synced', $record->fresh()->gcontact_sync_status);
         }
         Http::assertSent(function ($request) {
-            return $request->method() === 'POST' && $request['names'] === []
+            return $request->method() === 'POST' && $request['names'][0]['givenName'] === 'Prospecto IFE | 60902299'
                 && ($request['userDefined'][0]['key'] ?? '') === 'IFE_PROSPECTO';
         });
         $this->assertCount(3, array_unique([$person->fresh()->resourseName, $prospect->fresh()->resourseName, $enquiry->fresh()->resourseName]));
@@ -164,11 +165,11 @@ class GoogleContactsSourcesTest extends GoogleContactsTestCase
         $prospect->save();
         $this->assertTrue((bool) $prospect->fresh()->gcontact_sync_pending);
         $resource = $prospect->fresh()->resourseName;
-        $this->fakeHttp(['*'.$resource.'*' => Http::response($this->remote($resource))]);
+        $this->fakeHttp(['*'.$resource.'*' => Http::response(array_merge($this->remote($resource),['userDefined'=>[['key'=>'IFE_PROSPECTO','value'=>$this->service()->account()->installation_id.':'.$prospect->id]]]))]);
         $this->service()->sync($prospect->id, null, 'prospecto');
         $this->assertSame($resource, $prospect->fresh()->resourseName);
         Http::assertSent(function ($request) {
-            return $request->method() === 'PATCH' && !isset($request['names'])
+            return $request->method() === 'PATCH' && $request['names'][0]['givenName']==='Prospecto IFE | 71002299'
                 && ($request['phoneNumbers'][0]['value'] ?? '') === '+59171002299';
         });
         Http::assertSentCount(2);
@@ -365,9 +366,10 @@ class GoogleContactsSourcesTest extends GoogleContactsTestCase
 
     public function test_prospect_edit_updates_existing_record_and_enqueues_it_instead_of_creating_another()
     {
+        $this->prepareCrmFixtures();
         $this->account();
         $prospect = $this->prospect(['estado_id' => 1]);
-        $this->actingAs($this->actor())->patch(route('prospecto.update', $prospect), ['telefono' => '71002299'])
+        $this->actingAs($this->actor())->patch(route('prospecto.update', $prospect), ['telefono' => '71002299','version'=>0])
             ->assertRedirect(route('prospecto.view', $prospect));
         $this->assertSame(1, Prospecto::count());
         $this->assertSame('71002299', $prospect->fresh()->telefono);

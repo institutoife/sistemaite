@@ -5,6 +5,7 @@
 /storage/framework/google-contacts-worker.lock
 /storage/framework/google-contacts-runner.lock
 /storage/framework/google-contacts-migrate.lock
+/storage/framework/crm-prepare.lock
 /vendor
 /artifacts/banahosting/
 .env
