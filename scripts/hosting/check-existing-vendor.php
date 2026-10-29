@@ -60,6 +60,7 @@ function ifeGoogleExistingVendorErrors(string $root): array
         }));
         foreach ([
             \App\Console\Commands\CheckGoogleContacts::class,
+            \App\Console\Commands\CheckGoogleContactPhoto::class,
             \App\Console\Commands\WorkGoogleContacts::class,
             \App\Console\Commands\MigrateGoogleContacts::class,
             \App\Console\Commands\SyncGoogleContactsBatch::class,

@@ -151,10 +151,11 @@ foreach (['fresh', 'interrupted_fk', 'partial_columns', 'unlogged_complete', 'wr
                 $run->refresh();
                 $assert($run->queued === 2 && $run->skipped === 1, 'El lote no separó teléfonos válidos, ausentes e inválidos.');
                 $assert($connection->table('google_contact_bulk_items')->orderBy('id')->pluck('record_id')->all() === [1, 4], 'El lote incluyó otras personas.');
-                $connection->table('personas')->where('id', 1)->update(['gcontact_sync_status' => 'synced', 'gcontact_sync_pending' => 0]);
+                $connection->table('personas')->where('id', 1)->update(['gcontact_sync_status' => 'synced', 'gcontact_sync_pending' => 0, 'gcontact_error_code' => 'invalid_photo']);
                 $connection->table('personas')->where('id', 4)->update(['gcontact_sync_status' => 'error', 'gcontact_error_code' => 'invalid_birthday']);
                 $progress = $bulk->progress($run);
                 $assert($progress['synced'] === 1 && $progress['errors'] === 1 && $progress['pending'] === 0, 'El progreso MariaDB no coincide con los resultados.');
+                $assert($progress['photo_warnings'] === 1, 'El progreso MariaDB no separó el aviso de fotografía de los errores y pendientes.');
                 $bulk->advance($service);
                 $assert($run->fresh()->status === 'completed', 'El lote no terminó en MariaDB.');
                 $assert($connection->table('person_phone_verifications')->count() === 0 && $connection->table('jobs')->count() === 0, 'El lote confirmó teléfonos o ejecutó una cola real.');

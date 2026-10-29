@@ -66,6 +66,7 @@ class GoogleContactsBulkService
     public function progress(GoogleContactBulkRun $run): array
     {
         $totals = ['synced' => 0, 'errors' => 0, 'removed' => 0];
+        $photoWarnings = 0;
         foreach (GoogleContactsService::SOURCES as $source => $class) {
             $table = (new $class)->getTable();
             $removed = 'contact.id IS NULL'.($source === 'comentario' ? ' OR contact.persona_id IS NOT NULL' : '');
@@ -74,10 +75,15 @@ class GoogleContactsBulkService
                 ->selectRaw("SUM(CASE WHEN $removed THEN 1 ELSE 0 END) AS removed,
                     SUM(CASE WHEN NOT ($removed) AND contact.gcontact_sync_status = 'synced'
                         AND contact.gcontact_sync_pending = 0 AND contact.gcontact_revision >= item.revision THEN 1 ELSE 0 END) AS synced,
-                    SUM(CASE WHEN NOT ($removed) AND contact.gcontact_sync_status = 'error' THEN 1 ELSE 0 END) AS errors")->first();
+                    SUM(CASE WHEN NOT ($removed) AND contact.gcontact_sync_status = 'error' THEN 1 ELSE 0 END) AS errors,
+                    SUM(CASE WHEN NOT ($removed) AND contact.gcontact_sync_status = 'synced'
+                        AND contact.gcontact_sync_pending = 0 AND contact.gcontact_revision >= item.revision
+                        AND contact.gcontact_error_code IN ('invalid_photo', 'photo_extension') THEN 1 ELSE 0 END) AS photo_warnings")->first();
             foreach (array_keys($totals) as $key) { $totals[$key] += (int) $row->$key; }
+            $photoWarnings += (int) $row->photo_warnings;
         }
         $totals['pending'] = max(0, $run->queued - array_sum($totals));
+        $totals['photo_warnings'] = $photoWarnings;
         $totals['finished'] = $run->status !== 'preparing' && $totals['pending'] === 0;
         return $totals;
     }

@@ -128,6 +128,8 @@
                         $status = $persona->gcontact_sync_pending && $persona->gcontact_sync_status === 'idle' ? 'pending' : ($persona->gcontact_sync_status ?: 'idle');
                         $labels = ['idle' => 'Sin verificar', 'pending' => 'Pendiente', 'processing' => 'Procesando', 'synced' => 'Sincronizado', 'retrying' => 'Reintentando', 'error' => 'Requiere atención'];
                         $colors = ['synced' => 'success', 'error' => 'danger', 'processing' => 'info', 'retrying' => 'warning'];
+                        $photoWarning = $status === 'synced' && in_array($persona->gcontact_error_code, ['invalid_photo', 'photo_extension'], true);
+                        if ($photoWarning) { $labels['synced'] = 'Sincronizado · revisar foto'; $colors['synced'] = 'warning'; }
                     @endphp
                     <div class="col-12 col-lg-6">
                         <article class="card card-outline card-{{ $colors[$status] ?? 'secondary' }}">
@@ -156,7 +158,7 @@
                                     <p class="small text-muted mb-2">Última sincronización: {{ \Carbon\Carbon::parse($persona->gcontact_synced_at)->format('d/m/Y H:i') }}</p>
                                 @endif
                                 @if ($persona->gcontact_sync_error)
-                                    <p class="small text-danger">{{ $persona->gcontact_error_code ? $persona->gcontact_sync_error : 'Existe un error previo. Solicite una nueva comprobación del contacto.' }}</p>
+                                    <p class="small text-{{ $photoWarning ? 'warning' : 'danger' }}">{{ $persona->gcontact_error_code ? $persona->gcontact_sync_error : 'Existe un error previo. Solicite una nueva comprobación del contacto.' }}</p>
                                 @endif
                                 @can('Ver Diagnostico Google')
                                     @if ($persona->resourseName || $persona->gcontact_error_code)

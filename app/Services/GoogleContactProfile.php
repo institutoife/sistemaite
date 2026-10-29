@@ -118,22 +118,17 @@ class GoogleContactProfile
 
     public function photo(Persona $person): ?array
     {
-        $relative = str_replace('\\', '/', trim((string) $person->foto));
-        if ($relative === '' || preg_match('~^(sinfoto|sinperfil|foto|default|avatar|no[-_]?photo)\.(jpe?g|png|gif|webp)$~i', basename($relative))) {
-            return null;
+        $file = $this->photoFile($person);
+        if (!$file) { return null; }
+        // Bound the read even if an upload is replaced between the size check and this read.
+        $bytes = @file_get_contents($file['path'], false, null, 0, 5 * 1024 * 1024 + 1);
+        if ($bytes === false) {
+            throw new GoogleContactsException('invalid_photo', 'La fotografía propia existe, pero PHP no puede leerla. Revise los permisos del archivo.');
         }
-        // Read only this person's local upload. Never fetch a URL or use a child's photo.
-        $root = realpath(Storage::disk('public')->path(''));
-        $path = strpos($relative, "\0") === false && !preg_match('~(^/|:|(^|/)\.\.(/|$))~', $relative) && $root
-            ? realpath($root.DIRECTORY_SEPARATOR.$relative) : false;
-        $rootPrefix = $root ? $root.DIRECTORY_SEPARATOR : '';
-        $inside = $path && (DIRECTORY_SEPARATOR === '\\'
-            ? strncasecmp($path, $rootPrefix, strlen($rootPrefix)) === 0
-            : strpos($path, $rootPrefix) === 0);
-        if (!$inside || !is_file($path) || !is_readable($path) || filesize($path) > 5 * 1024 * 1024) {
-            throw new GoogleContactsException('invalid_photo', 'No se pudo leer la fotografía propia. Revise el archivo guardado en la ficha.');
+        if (strlen($bytes) > 5 * 1024 * 1024) {
+            throw new GoogleContactsException('invalid_photo', 'La fotografía propia supera el tamaño permitido de 5 MB. Vuelva a subir una imagen más pequeña.');
         }
-        $info = @getimagesize($path);
+        $info = @getimagesizefromstring($bytes);
         if (!$info || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)
             || $info[0] * $info[1] > 20000000) {
             throw new GoogleContactsException('invalid_photo', 'La fotografía debe ser una imagen JPG, PNG o WebP válida de hasta 5 MB y 20 megapíxeles.');
@@ -141,7 +136,7 @@ class GoogleContactProfile
         if (!extension_loaded('gd')) {
             throw new GoogleContactsException('photo_extension', 'El servidor necesita la extensión GD de PHP para sincronizar fotografías.');
         }
-        $input = @imagecreatefromstring(file_get_contents($path));
+        $input = @imagecreatefromstring($bytes);
         if (!$input) {
             throw new GoogleContactsException('invalid_photo', 'No se pudo interpretar la fotografía de esta persona.');
         }
@@ -158,5 +153,54 @@ class GoogleContactProfile
             imagedestroy($output);
         }
         return ['hash' => hash('sha256', $bytes), 'bytes' => base64_encode($bytes)];
+    }
+
+    public function photoFile(Persona $person): ?array
+    {
+        $stored = (string) $person->foto;
+        if (strpos($stored, "\0") !== false) {
+            throw new GoogleContactsException('invalid_photo', 'La ruta de la fotografía no es una ruta local válida. Vuelva a guardar la foto desde la ficha.');
+        }
+        $relative = str_replace('\\', '/', trim($stored));
+        if ($relative === '' || preg_match('~^(sinfoto|sinperfil|foto|default|avatar|no[-_]?photo)\.(jpe?g|png|gif|webp)$~i', basename($relative))) {
+            return null;
+        }
+        $alias = preg_replace('~^/?(?:storage/app/public|public/storage|storage|public/foto|foto)/~', '', $relative, 1, $aliases);
+        if (strpos($relative, "\0") !== false || preg_match('~(:|(^|/)\.\.(/|$)|^//)~', $relative)
+            || ($relative[0] === '/' && !$aliases)) {
+            throw new GoogleContactsException('invalid_photo', 'La ruta de la fotografía no es una ruta local válida. Vuelva a guardar la foto desde la ficha.');
+        }
+        $variants = array_unique($aliases ? [$relative, $alias] : [$relative]);
+        // Some shared-hosting installations serve an actual public/storage directory, not a link.
+        // Use only explicit upload roots and the exact saved filename; never fetch URLs or search by basename.
+        $roots = ['disco público' => Storage::disk('public')->path(''),
+            'public/storage' => public_path('storage'), 'public/foto' => public_path('foto')];
+        $visited = [];
+        foreach ($roots as $location => $directory) {
+            $root = @realpath($directory);
+            if (!$root || in_array($root, $visited, true)) { continue; }
+            $visited[] = $root;
+            $prefix = $root.DIRECTORY_SEPARATOR;
+            foreach ($variants as $variant) {
+                $candidate = $prefix.ltrim($variant, '/');
+                clearstatcache(true, $candidate);
+                $path = @realpath($candidate);
+                if (!$path) { continue; }
+                $inside = DIRECTORY_SEPARATOR === '\\'
+                    ? strncasecmp($path, $prefix, strlen($prefix)) === 0 : strpos($path, $prefix) === 0;
+                if (!$inside) {
+                    throw new GoogleContactsException('invalid_photo', 'La fotografía apunta fuera del directorio de imágenes permitido. Vuelva a subirla desde la ficha.');
+                }
+                if (!is_file($path)) { continue; }
+                if (!is_readable($path)) {
+                    throw new GoogleContactsException('invalid_photo', 'La fotografía propia existe, pero PHP no puede leerla. Revise los permisos del archivo.');
+                }
+                if (filesize($path) > 5 * 1024 * 1024) {
+                    throw new GoogleContactsException('invalid_photo', 'La fotografía propia supera el tamaño permitido de 5 MB. Vuelva a subir una imagen más pequeña.');
+                }
+                return ['path' => $path, 'location' => $location];
+            }
+        }
+        throw new GoogleContactsException('invalid_photo', 'No se encontró la fotografía propia en los directorios de imágenes del servidor. Vuelva a subirla desde la ficha.');
     }
 }

@@ -244,16 +244,26 @@ class GoogleContactsProfileTest extends GoogleContactsTestCase
         $this->assertSame(1, $posts);
     }
 
-    public function test_invalid_photo_and_paths_never_trigger_google_requests()
+    public function test_invalid_photos_do_not_block_contact_data_or_fetch_untrusted_image_urls()
     {
         $this->account();
         Storage::disk('public')->put('apoderados/broken.jpg', 'not an image');
-        foreach (['https://example.test/a.jpg', '../secret.jpg', 'apoderados/broken.jpg', 'missing.jpg'] as $path) {
-            $person = $this->persona(['foto' => $path]);
+        $this->fakeHttp(function ($request) {
+            preg_match('~v1/(people/[A-Za-z0-9_-]+)~', $request->url(), $match);
+            return Http::response($this->remote($match[1]));
+        });
+        foreach (['https://example.test/a.jpg', '../secret.jpg', 'apoderados/broken.jpg', 'missing.jpg'] as $index => $path) {
+            $person = $this->persona(['foto' => $path, 'resourseName' => 'people/warning'.$index]);
             (new SyncGoogleContact($person->id))->handle($this->service());
             $this->assertSame('invalid_photo', $person->fresh()->gcontact_error_code);
+            $this->assertSame('synced', $person->fresh()->gcontact_sync_status);
+            $this->assertFalse((bool) $person->fresh()->gcontact_sync_pending);
         }
-        Http::assertNothingSent();
+        Http::assertNotSent(function ($request) {
+            return parse_url($request->url(), PHP_URL_HOST) !== 'people.googleapis.com'
+                || strpos($request->url(), 'ContactPhoto') !== false || isset($request['photoBytes']);
+        });
+        Http::assertSentCount(8);
     }
 
     public function test_default_photos_are_omitted_and_invalid_legacy_birthday_is_reported()

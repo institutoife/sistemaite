@@ -439,7 +439,17 @@ class GoogleContactsService
             $revision = (int) $persona->gcontact_revision;
             $payload = $this->payload($persona);
             $profile = app(GoogleContactProfile::class);
-            $photo = $persona instanceof Persona ? $profile->photo($persona) : null;
+            $photo = null;
+            $photoWarning = null;
+            if ($persona instanceof Persona) {
+                try { $photo = $profile->photo($persona); }
+                catch (GoogleContactsException $exception) {
+                    if (!in_array($exception->reason, ['invalid_photo', 'photo_extension'], true)) { throw $exception; }
+                    // A missing legacy upload must not prevent names and phone numbers from reaching Google.
+                    // Keep a visible warning and never clear an existing remote photograph.
+                    $photoWarning = $exception;
+                }
+            }
             $hash = hash('sha256', json_encode([$payload, $photo['hash'] ?? null]));
             $marker = $markers[0];
             $model::whereKey($personaId)->update(['gcontact_sync_status' => 'processing',
@@ -541,10 +551,15 @@ class GoogleContactsService
             }
             $model::whereKey($personaId)->update(['gcontact_payload_hash' => $hash, 'gcontact_synced_at' => now()]);
             $saved = $model::whereKey($personaId)->where('gcontact_revision', $revision)->update([
-                'gcontact_sync_pending' => false, 'gcontact_sync_status' => 'synced', 'gcontact_sync_error' => null, 'gcontact_error_code' => null,
+                'gcontact_sync_pending' => false, 'gcontact_sync_status' => 'synced',
+                'gcontact_sync_error' => $photoWarning ? 'Datos sincronizados. '.$photoWarning->getMessage().' Se conserva la foto existente en Google.' : null,
+                'gcontact_error_code' => $photoWarning ? $photoWarning->reason : null,
             ]);
             if (!$saved) {
                 $model::whereKey($personaId)->update(['gcontact_sync_pending' => true, 'gcontact_sync_status' => 'pending']);
+            }
+            if ($photoWarning) {
+                Log::warning('Fotografía Google omitida', ['source' => $sourceType, 'record_id' => $personaId, 'code' => $photoWarning->reason]);
             }
             Log::info('Contacto Google sincronizado', ['source' => $sourceType, 'record_id' => $personaId, 'user_id' => $actorId]);
         });

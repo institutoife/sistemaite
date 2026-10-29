@@ -1,6 +1,6 @@
 # Actualizar Google Contactos en ife.bo
 
-Actualizado el 27 de octubre de 2026 para la instalación existente en BanaHosting. El flujo elegido es **commit y push en local → pull en el servidor → migraciones y configuración**. Esta sesión prepara y publica el código; el usuario ejecuta el despliegue en ife.bo.
+Actualizado el 29 de octubre de 2026 para la instalación existente en BanaHosting. El flujo elegido es **commit y push en local → pull en el servidor → migraciones y configuración**. Esta sesión prepara y publica el código; el usuario ejecuta el despliegue en ife.bo.
 
 ## Qué incluye
 
@@ -8,7 +8,9 @@ Cuenta Google central, cola compartida, pausa administrativa, funcionamiento por
 
 Los envíos y el centro de comunicaciones de cumpleaños, faltas y cobranzas pertenecen a otra entrega. Esta actualización no los activa.
 
-También incluye [sincronización masiva y verificación de teléfonos cada seis meses](google-contacts-masivo-y-verificacion.md), compartida entre operadores. El administrador inicia expresamente cada lote histórico. Validación local: 143 pruebas, 837 aserciones; seis escenarios de migración y recuperación con fechas antiguas en MariaDB y comprobación del lote con ese motor. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
+También incluye [sincronización masiva y verificación de teléfonos cada seis meses](google-contacts-masivo-y-verificacion.md), compartida entre operadores. El administrador inicia expresamente cada lote histórico. Validación local actual: 151 pruebas, 940 aserciones; seis escenarios de migración y recuperación con fechas antiguas en MariaDB y comprobación del lote con ese motor. El ZIP anterior queda como alternativa opcional; no es necesario para actualizar por Git.
+
+La [corrección de fotografías del 29 de octubre](google-contacts-fotografias.md) permite sincronizar los demás datos cuando falta una imagen, con aviso visible y preservando la fotografía existente en Google. Añade diagnóstico local y recuperación selectiva de fichas antes bloqueadas. Esta corrección no requiere migraciones nuevas; el script habitual sigue omitiendo las ya aplicadas.
 
 ## 1. Publicar desde local
 

@@ -16,7 +16,7 @@ Los formularios existentes de alta y edición de apoderados ahora permiten cumpl
 
 ## Fotografías y reintentos
 
-Se usa exclusivamente el archivo local indicado por `Persona.foto`. Se excluyen imágenes predeterminadas, URLs externas, rutas fuera del disco público y archivos inexistentes o inválidos. Nunca se busca una fotografía en los hijos ni se usa el sustituto de vCard.
+Se usa exclusivamente el archivo local indicado por `Persona.foto`. Se excluyen imágenes predeterminadas, URLs externas y rutas fuera de los directorios públicos de imágenes permitidos. Nunca se busca una fotografía en los hijos ni se usa el sustituto de vCard. La corrección del 29 de octubre admite también las carpetas públicas históricas del alojamiento; un archivo inexistente o inválido deja un aviso **Sincronizado · revisar foto**, permitiendo sincronizar los demás datos y conservando la foto remota. Ver [diagnóstico y recuperación de fotografías](google-contacts-fotografias.md).
 
 Para exportar, se comprueba formato JPG/PNG/WebP, hasta 5 MB y 20 megapíxeles; se genera un JPEG de hasta 720 píxeles por lado con GD. La imagen subida desde el formulario del apoderado se limita además a 4000 × 4000 píxeles. No se incorporan los metadatos EXIF de la imagen original.
 

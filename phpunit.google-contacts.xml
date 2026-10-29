@@ -13,6 +13,7 @@
             <file>tests/Feature/PhoneVerificationTest.php</file>
             <file>tests/Feature/GoogleContactsBulkTest.php</file>
             <file>tests/Feature/GoogleContactsProfileTest.php</file>
+            <file>tests/Feature/GoogleContactsPhotoRecoveryTest.php</file>
             <file>tests/Feature/GoogleContactsDeploymentTest.php</file>
         </testsuite>
     </testsuites>

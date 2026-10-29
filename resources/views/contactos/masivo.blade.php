@@ -13,6 +13,9 @@
                 @endforeach
             </div>
             <p class="small text-muted">Revisados: {{ $bulkRun->scanned }}. Números inválidos omitidos: {{ $bulkRun->skipped }}. Fichas eliminadas o consultas convertidas: {{ $bulkProgress['removed'] }}. Actualice el estado para consultar el progreso.</p>
+            @if ($bulkProgress['photo_warnings'])
+                <p class="text-warning">{{ $bulkProgress['photo_warnings'] }} contactos sincronizados con fotografía pendiente de revisión. Sus nombres y teléfonos ya se procesaron; se conservan las fotos existentes en Google.</p>
+            @endif
         @endif
         @can('Sincronizar Contactos Masivamente')
             @if (!$bulkRun || !$bulkRun->active_slot || $bulkProgress['finished'])
