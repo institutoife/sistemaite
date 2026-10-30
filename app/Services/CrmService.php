@@ -13,13 +13,20 @@ class CrmService
         'programado'=>'Seguimiento programado','observacion'=>'Observación'];
     public const REASONS=['sin_interes'=>'No está interesado','precio'=>'Precio','sin_respuesta'=>'No responde','otra_institucion'=>'Eligió otra institución',
         'sin_necesidad'=>'No necesita el servicio','numero_incorrecto'=>'Número incorrecto','duplicado'=>'Duplicado','no_mensajes'=>'Solicitó no recibir mensajes','otro'=>'Otro'];
-    public const RELATIONS=['etapa','sede','interest','como','grado','responsable','persona','estudiantePersona'];
-    public function ready(): bool { return Schema::hasTable('crm_etapas')&&Schema::hasColumn('prospectos','crm_version'); }
+    public const CONTACT_TYPES=['llamada','no_contestada','whatsapp','informacion','visita','cotizacion'];
+    public const RELATIONS=['etapa','sede','interests','como','grado','responsable','persona','estudiantePersona','creador','responsableInicial','convertidoPor','responsableConversion'];
+    public function ready(): bool { return Schema::hasTable('interest_prospecto')&&Schema::hasColumn('prospectos','creado_por'); }
     public function catalogs(): array
     {
         return ['etapas'=>CrmEtapa::orderBy('orden')->orderBy('id')->get(),'sedes'=>CrmSede::orderBy('nombre')->get(),
             'interests'=>Interest::orderBy('interest')->get(),'comos'=>Como::orderBy('como')->get(),
-            'grados'=>Grado::orderBy('grado')->get(),'responsables'=>User::role(['Admin','Secretaria'])->orderBy('name')->get(['id','name'])];
+            'grados'=>Grado::orderBy('grado')->get(),'responsables'=>$this->responsibleUsers()->orderBy('name')->get(['id','name'])];
+    }
+    public function responsibleUsers()
+    {
+        return User::where(function ($query) {
+            $query->role('Admin')->orWhere(function ($allowed) { $allowed->permission(['Crear Prospectos','Editar Prospectos']); });
+        });
     }
     public function initial(): CrmEtapa
     {
@@ -27,8 +34,9 @@ class CrmService
         if (!$stage) { throw ValidationException::withMessages(['crm'=>'Configure una etapa inicial activa en el CRM.']); }
         return $stage;
     }
-    public function prepareLegacy(?int $personId=null): int
+    public function prepareLegacy(?int $personId=null, ?int $actor=null): int
     {
+        if ($personId&&!$actor) { return 0; }
         $initial=$this->initial();
         $states=Estado::pluck('estado','id');
         $stageMap=['ESPERANUEVO'=>'nuevo','PROSPECTO'=>'nuevo','SEGUIMIENTO'=>'seguimiento','ESPERAREINSCRIPCION'=>'inscripcion',
@@ -47,23 +55,25 @@ class CrmService
         Persona::with('interests')->whereIn('habilitado',$states->filter(function ($name) use ($stageMap) { return isset($stageMap[$name]); })->keys())
             ->when($personId,function ($query) use ($personId) { $query->whereKey($personId); })
             ->whereNotExists(function ($query) { $query->selectRaw('1')->from('prospectos')->whereColumn('prospectos.persona_id','personas.id'); })
-            ->orderBy('id')->chunkById(100,function ($people) use (&$count,$initial,$stages,$states,$stageMap) {
-                $oldTasks=Schema::hasTable('crm_seguimientos')?\App\Models\CrmSeguimiento::whereIn('persona_id',$people->pluck('id'))->whereNotNull('proximo_contacto')->orderByDesc('id')->get()->unique('persona_id')->keyBy('persona_id'):collect();
+            ->orderBy('id')->chunkById(100,function ($people) use (&$count,$initial,$stages,$states,$stageMap,$actor,$personId) {
                 foreach ($people as $person) {
                     $state=$states[$person->habilitado]??'';
                     $interest=$person->interests->first();
                     $rawDate=trim((string)$person->getRawOriginal('vuelvefecha'));
                     $next=preg_match('/^(\d{4})-(\d{2})-(\d{2})$/',$rawDate,$parts)&&checkdate((int)$parts[2],(int)$parts[3],(int)$parts[1])?$rawDate.' 00:00:00':null;
-                    $owner=$oldTasks->get($person->id);
                     $record=new Prospecto;
                     $record->forceFill(['telefono'=>(string)$person->telefono,'telefono_normalizado'=>app(TelefonoService::class)->normalize($person->telefono),
                         'nombre'=>trim($person->nombre.' '.$person->apellidop.' '.$person->apellidom),'estado_id'=>$person->habilitado,
                         'persona_id'=>$person->id,'legacy_persona_id'=>$person->id,'interest_id'=>$interest->id??null,'como_id'=>$person->como_id,
                         'no_contactar'=>$person->votos!==null&&(int)$person->votos===0,'crm_status'=>in_array($state,['CANCELADO','PERDIDO','PERDID'],true)?'baja':'activo',
-                        'crm_etapa_id'=>$stages[$stageMap[$state]??'nuevo']??$initial->id,'etapa_desde'=>now(),'proximo_contacto_at'=>$next,'responsable_id'=>$owner->user_id??null,
+                        'crm_etapa_id'=>$stages[$stageMap[$state]??'nuevo']??$initial->id,'etapa_desde'=>now(),'proximo_contacto_at'=>$next,
+                        'responsable_id'=>$personId?$actor:null,'creado_por'=>$personId?$actor:null,'responsable_inicial_id'=>$personId?$actor:null,
+                        'crm_services_migrated_at'=>now(),
                         // Import date is the CRM registration date; historical Persona dates remain in the linked record.
                         'observacion'=>'Potencial incorporado desde Persona #'.$person->id]);
                     Prospecto::withoutEvents(function () use ($record) { $record->save(); });
+                    $record->interests()->sync($person->interests->modelKeys());
+                    if ($personId&&$actor) { $this->log($record,$actor,'alta','Potencial incorporado desde Persona #'.$person->id); }
                     $count++;
                 }
             });
@@ -80,6 +90,9 @@ class CrmService
             if ($kind==='prospecto'&&$except) { $query->where('id','<>',$except); }
             foreach ($query->limit(30)->get() as $row) {
                 if (app(TelefonoService::class)->normalize($row->telefono)!==$normal) { continue; }
+                if ($kind==='prospecto'&&!$row->responsable_id&&!(auth()->user()&&auth()->user()->can('Configurar CRM'))) {
+                    $matches[]=['id'=>null,'tipo'=>'prospecto','nombre'=>'Registro histórico sin responsable; consulte al administrador.','url'=>null]; continue;
+                }
                 $matches[]=['id'=>$row->id,'tipo'=>$kind,'nombre'=>$kind==='persona'?trim($row->nombre.' '.$row->apellidop.' '.$row->apellidom):$row->identificacion,
                     'url'=>route($kind==='persona'?'personas.show':'prospecto.view',$row->id)];
             }
@@ -89,7 +102,12 @@ class CrmService
     public function query(array $filters, bool $active=true)
     {
         $query=Prospecto::query();
-        foreach (['crm_sede_id','responsable_id','interest_id','como_id','crm_etapa_id'] as $field) { if (!empty($filters[$field])) { $query->where($field,$filters[$field]); } }
+        $assignment=$filters['asignacion']??'asignados';
+        if ($assignment!=='asignados') { abort_unless(auth()->user()&&auth()->user()->can('Configurar CRM'),403); }
+        if ($assignment==='sin_responsable') { $query->whereNull('responsable_id'); }
+        elseif ($assignment!=='todos') { $query->whereNotNull('responsable_id'); }
+        foreach (['crm_sede_id','responsable_id','como_id','crm_etapa_id'] as $field) { if (!empty($filters[$field])) { $query->where($field,$filters[$field]); } }
+        if (!empty($filters['interest_id'])) { $query->whereHas('interests',function ($where) use ($filters) { $where->where('interests.id',$filters['interest_id']); }); }
         if (!empty($filters['q'])) { $q=$filters['q']; $query->where(function ($where) use ($q) { $where->where('nombre','like','%'.$q.'%')->orWhere('telefono','like','%'.$q.'%')->orWhere('estudiante_nombre','like','%'.$q.'%'); }); }
         if (($filters['origen_tipo']??'')==='potencial') { $query->whereNotNull('legacy_persona_id'); }
         if (($filters['origen_tipo']??'')==='telefonico') { $query->whereNull('legacy_persona_id'); }
@@ -125,8 +143,11 @@ class CrmService
     {
         $observation=$record->observaciones()->create(['observacion'=>mb_substr($note,0,400),'activo'=>1]);
         $observation->usuarios()->attach($actor);
-        CrmActividadDetalle::create(['observacion_id'=>$observation->id,'tipo'=>$type,'ocurrio_at'=>$data['ocurrio_at']??now(),
-            'responsable_id'=>$data['responsable_id']??$actor,'resultado'=>$data['resultado']??null,
+        CrmActividadDetalle::create(['observacion_id'=>$observation->id,'tipo'=>$type,'ocurrio_at'=>$data['ocurrio_at']??now(),'registrado_at'=>now(),
+            'actor_id'=>$actor,'responsable_id'=>$actor,'responsable_comercial_id'=>$record->responsable_id,'crm_sede_id'=>$record->crm_sede_id,
+            'asignacion_comercial'=>in_array($type,['alta','reasignacion'],true)&&!$record->convertido_at,
+            'servicios_ids'=>$record->interests()->orderBy('interests.id')->pluck('interests.id')->map(function ($id) { return (int)$id; })->all(),
+            'resultado'=>$data['resultado']??null,
             'proxima_accion'=>$data['proxima_accion']??null,'proximo_contacto_at'=>$data['proximo_contacto_at']??null,'datos'=>$data['datos']??null]);
     }
     public function save(?Prospecto $record, array $data, int $actor): Prospecto
@@ -139,7 +160,7 @@ class CrmService
                 throw ValidationException::withMessages(['crm'=>'Actualice el nombre y teléfono desde la Persona vinculada.']);
             }
             if ($record&&$current->crm_status==='convertido') { throw ValidationException::withMessages(['crm'=>'La ficha convertida conserva su historial. Actualice los datos personales desde Persona.']); }
-            foreach (['nombre','telefono','interest_id','como_id','grado_id','crm_sede_id','responsable_id','estudiante_nombre','observacion','proximo_contacto_at'] as $field) {
+            foreach (['nombre','telefono','como_id','grado_id','crm_sede_id','estudiante_nombre','observacion','proximo_contacto_at'] as $field) {
                 if (array_key_exists($field,$data)) { $current->$field=$data[$field]; }
             }
             $normal=app(TelefonoService::class)->normalize($current->telefono);
@@ -147,12 +168,16 @@ class CrmService
             if ($normal) { $current->telefono=strpos($normal,'+591')===0?substr($normal,4):$normal; }
             if (!$record) {
                 $current->crm_etapa_id=$this->initial()->id; $current->etapa_desde=now();
-                $current->responsable_id=$current->responsable_id?:$actor;
+                $current->responsable_id=$actor; $current->creado_por=$actor; $current->responsable_inicial_id=$actor;
                 $current->estado_id=$data['estado_id']??Estado::where('estado','PROSPECTO')->value('id');
                 if (!$current->estado_id) { throw ValidationException::withMessages(['crm'=>'No se encontró el estado histórico PROSPECTO. Revise el catálogo de Estados.']); }
             }
+            $services=array_key_exists('interests',$data)?array_values(array_unique(array_map('intval',$data['interests']))):null;
+            if ($services!==null) { $current->interest_id=$services[0]??null; }
+            $current->crm_services_migrated_at=now();
             if (!$current->crm_etapa_id) { $current->crm_etapa_id=$this->initial()->id; $current->etapa_desde=now(); }
             $current->crm_version=(int)$current->crm_version+1; $current->save();
+            if ($services!==null) { $current->interests()->sync($services); }
             $current->usuarios()->attach($actor);
             $this->log($current,$actor,$record?'edicion':'alta',($record?'Datos comerciales actualizados.':'Prospecto registrado.').' '.($current->observacion??''),
                 ['datos'=>['campos'=>array_keys($data),'observacion_anterior'=>$previousNote,'observacion_actual'=>$current->observacion]]);
@@ -177,11 +202,23 @@ class CrmService
             if ($current->crm_status==='convertido'&&$data['tipo']!=='observacion') { throw ValidationException::withMessages(['crm'=>'Registre las gestiones del cliente en su ficha personal.']); }
             if (!$this->mayContact($current)&&in_array($data['tipo'],['llamada','no_contestada','whatsapp','informacion','cotizacion'],true)) { throw ValidationException::withMessages(['crm'=>'Esta ficha tiene restringido el contacto comercial. Registre una visita u observación interna.']); }
             if (!empty($data['cerrar_seguimiento'])) { $current->proximo_contacto_at=null; }
-            if (!empty($data['proximo_contacto_at'])) { $current->proximo_contacto_at=$data['proximo_contacto_at']; $current->responsable_id=$data['responsable_id']; }
-            if (in_array($data['tipo'],['llamada','no_contestada','whatsapp','informacion','visita','cotizacion'],true)) { $current->contactado_at=$current->contactado_at?:now(); }
+            if (!empty($data['proximo_contacto_at'])) { $current->proximo_contacto_at=$data['proximo_contacto_at']; }
+            $data['ocurrio_at']=now();
+            if (in_array($data['tipo'],self::CONTACT_TYPES,true)) { $current->contactado_at=$current->contactado_at?:now(); $current->ultimo_seguimiento_at=now(); }
             $current->ultimo_resultado=$data['tipo']==='no_contestada'?'sin_respuesta':($data['resultado']??null);
             $current->crm_version++; $current->save();
             $this->log($current,$actor,$data['tipo'],$data['observacion']??self::TYPES[$data['tipo']],$data);
+        });
+    }
+    public function reassign(Prospecto $record, array $data, int $actor): void
+    {
+        DB::transaction(function () use ($record,$data,$actor) {
+            $current=$this->lock($record,(int)$data['version']); $owner=(int)$data['responsable_id'];
+            if ((int)$current->responsable_id===$owner) { return; }
+            $previous=$current->responsable_id; $current->responsable_id=$owner; $current->crm_version++; $current->save();
+            $names=User::whereIn('id',array_filter([$previous,$owner]))->pluck('name','id');
+            $this->log($current,$actor,'reasignacion','Responsable comercial: '.($names[$previous]??'Sin asignar').' → '.($names[$owner]??'Usuario #'.$owner).'. '.$data['observacion'],
+                ['datos'=>['anterior'=>$previous,'nuevo'=>$owner]]);
         });
     }
     public function deactivate(Prospecto $record, array $data, int $actor): void
@@ -232,7 +269,8 @@ class CrmService
         $phone=app(TelefonoService::class)->normalize($record->telefono);
         if (!$phone) { throw ValidationException::withMessages(['whatsapp'=>'Complete un teléfono válido antes de contactar.']); }
         $intro=$record->nombre?'Hola, '.$record->nombre.'. ':'Hola. ';
-        $service=$record->interest?' sobre '.$record->interest->interest:'';
+        $names=$record->interests->pluck('interest')->implode(', ');
+        $service=$names!==''?' sobre '.$names:'';
         $texts=['primer_contacto'=>'Le saludamos del Instituto IFE. ¿Podemos ayudarle con su consulta'.$service.'?',
             'informacion'=>'Le escribimos del Instituto IFE para atender su solicitud de información'.$service.'. ¿Qué información necesita?',
             'seguimiento'=>'Le saludamos del Instituto IFE. ¿Pudo revisar la información'.$service.'? Quedamos atentos a sus consultas.',

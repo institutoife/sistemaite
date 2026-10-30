@@ -37,6 +37,7 @@ class CrmConversionService
                 $current->persona_id=$contact->id; $current->estudiante_persona_id=$student->id;
                 $current->inscripcione_id=$academic?$data['inscripcion_id']:null; $current->matriculacion_id=$academic?null:$data['inscripcion_id'];
                 $current->convertido_at=now(); $current->crm_status='convertido'; $current->crm_etapa_id=$stage->id;
+                $current->convertido_por=$actor; $current->responsable_conversion_id=$current->responsable_id;
                 $current->etapa_desde=now(); $current->proximo_contacto_at=null; $current->crm_version++;
                 // Suppress the generic observer; explicitly hand off to Persona after commit.
                 $current->gcontact_sync_pending=false;

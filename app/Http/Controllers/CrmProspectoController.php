@@ -24,7 +24,11 @@ class CrmProspectoController extends Controller
     }
     public function report(CrmFilterRequest $request, CrmService $crm, CrmAnalytics $analytics)
     {
-        return view('crm.dashboard',$crm->catalogs()+['stats'=>$analytics->report($request->validated())]);
+        $filters=$request->validated(); $general=$request->user()->can('Ver Estadisticas CRM');
+        if (!$general) { $filters['usuario_id']=$request->user()->id; $filters['responsable_id']=$request->user()->id; unset($filters['asignacion']); }
+        return view('crm.dashboard',$crm->catalogs()+['usuariosEstadisticas'=>$general?\App\Models\User::orderBy('name')->get(['id','name']):collect(),
+            'stats'=>$general&&!$request->filled('usuario_id')?$analytics->report($filters):null,'general'=>$general,
+            'userStats'=>app(\App\Services\CrmUserAnalytics::class)->report($filters)]);
     }
     public function matches(Request $request, CrmService $crm)
     {
@@ -48,6 +52,7 @@ class CrmProspectoController extends Controller
         return back()->with('success','Etapa actualizada.');
     }
     public function activity(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->activity($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Actividad registrada.'); }
+    public function reassign(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->reassign($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Responsable reasignado; se conserva la atribución histórica.'); }
     public function deactivate(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->deactivate($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Baja registrada; se conserva el historial.'); }
     public function reactivate(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->reactivate($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Oportunidad reactivada.'); }
     public function convert(CrmActionRequest $request, Prospecto $prospecto, CrmConversionService $service) { $service->convert($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Conversión registrada con su inscripción y contacto vinculados.'); }
@@ -69,17 +74,25 @@ class CrmProspectoController extends Controller
             if ($data['inicial']&&(!$data['activa']||$data['conversion'])) { throw ValidationException::withMessages(['inicial'=>'La etapa inicial debe estar activa y permitir nuevas oportunidades.']); }
             if (!$data['inicial']&&$row->inicial) { throw ValidationException::withMessages(['inicial'=>'Seleccione primero otra etapa como inicial.']); }
             if ($data['conversion']&&!$row->conversion&&$row->id&&Prospecto::where('crm_etapa_id',$row->id)->exists()) { throw ValidationException::withMessages(['conversion'=>'Una etapa con oportunidades no puede cambiarse a etapa de conversión.']); }
+            if (!$data['conversion']&&$row->id&&Prospecto::where('crm_etapa_id',$row->id)->whereNotNull('convertido_at')->exists()) { throw ValidationException::withMessages(['conversion'=>'Esta etapa conserva conversiones confirmadas.']); }
             if ($data['inicial']) { CrmEtapa::whereNotNull('inicial')->update(['inicial'=>null,'version'=>DB::raw('version + 1')]); }
             $row->fill(array_diff_key($data,['inicial'=>true,'version'=>true])); $row->inicial=$data['inicial']?'central':null;
             $row->version=(int)$row->version+1; $row->save();
         });
         return back()->with('success','Etapa guardada.');
     }
+    public function deleteStage(Request $request, CrmEtapa $etapa, \App\Services\CrmStageService $service)
+    {
+        abort_unless($request->user()->can('Configurar CRM'),403);
+        $data=$request->validate(['version'=>'required|integer|min:0','destino_id'=>'nullable|integer|exists:crm_etapas,id']);
+        $service->archive($etapa,$data,$request->user()->id);
+        return back()->with('success','Etapa eliminada del tablero. Sus fichas e historial se conservan.');
+    }
     public function sede(Request $request, ?CrmSede $sede=null)
     {
         abort_unless($request->user()->can('Configurar CRM'),403);
         $data=$request->validate(['nombre'=>'required|string|max:100|unique:crm_sedes,nombre,'.($sede?$sede->id:'NULL').',id','activa'=>'required|boolean']);
         ($sede?:new CrmSede)->fill($data)->save();
-        return back()->with('success','Sede guardada.');
+        return back()->with('success','Sucursal guardada.');
     }
 }

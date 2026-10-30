@@ -14,12 +14,12 @@ class PersonaObserver
     }
     public function saved(Persona $persona): void
     {
-        $commercialChange=($persona->wasRecentlyCreated||$persona->wasChanged('habilitado'))&&\Illuminate\Support\Facades\Schema::hasColumn('prospectos','legacy_persona_id');
+        $commercialChange=($persona->wasRecentlyCreated||$persona->wasChanged('habilitado'))&&app(\App\Services\CrmService::class)->ready();
         if ($commercialChange) {
-            $id=$persona->id;
-            \Illuminate\Support\Facades\DB::afterCommit(function () use ($id) {
-                \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
-                    if (Persona::whereKey($id)->lockForUpdate()->first(['id'])) { app(\App\Services\CrmService::class)->prepareLegacy($id); }
+            $id=$persona->id; $actor=auth()->id();
+            \Illuminate\Support\Facades\DB::afterCommit(function () use ($id,$actor) {
+                \Illuminate\Support\Facades\DB::transaction(function () use ($id,$actor) {
+                    if (Persona::whereKey($id)->lockForUpdate()->first(['id'])) { app(\App\Services\CrmService::class)->prepareLegacy($id,$actor); }
                 });
             });
         }

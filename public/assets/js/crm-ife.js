@@ -5,10 +5,23 @@
     function status(message,bad){notice.textContent=message;notice.className='alert alert-'+(bad?'danger':'success');}
     async function json(url,options){const response=await fetch(url,Object.assign({credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}},options));let data;try{data=await response.json();}catch(_){throw new Error('No se pudo confirmar el resultado. Actualice la página.');}if(!response.ok)throw new Error(data.errors?Object.values(data.errors).flat().join(' '):data.message||'No se pudo guardar.');return data;}
     const board=root.querySelector('[data-board]'); let dragging=null;
+    try{
+        if(board)sessionStorage.setItem('ifeCrmBoardUrl',location.pathname+location.search);
+        const saved=sessionStorage.getItem('ifeCrmBoardUrl');
+        if(saved)root.querySelectorAll('[data-return-board]').forEach(link=>{const url=new URL(saved,location.href);if(url.origin===location.origin&&url.pathname===new URL(link.href).pathname)link.href=url.href;});
+    }catch(_){}
+    if(board){
+        const key='ifeCrmBoard:'+location.pathname+location.search;
+        try{const saved=Number(sessionStorage.getItem(key)||0);requestAnimationFrame(()=>{board.scrollLeft=saved;});}catch(_){}
+        board.addEventListener('scroll',()=>{try{sessionStorage.setItem(key,String(board.scrollLeft));}catch(_){}},{passive:true});
+        root.querySelectorAll('[data-board-scroll]').forEach(button=>button.addEventListener('click',()=>board.scrollBy({left:Number(button.dataset.boardScroll)*Math.max(280,board.clientWidth*.8),behavior:'smooth'})));
+        board.addEventListener('dragover',event=>{if(!dragging)return;const bounds=board.getBoundingClientRect();if(event.clientX<bounds.left+55)board.scrollLeft-=30;else if(event.clientX>bounds.right-55)board.scrollLeft+=30;});
+    }
     async function move(card,stage){
         if(card.dataset.busy||card.parentElement.closest('[data-stage]').dataset.stage===stage.dataset.stage)return;
         const origin=card.parentElement;const after=card.nextSibling;
-        card.dataset.busy='1';card.setAttribute('aria-busy','true');stage.querySelector('.crm-cards').appendChild(card);
+        const scroll=board.scrollLeft;
+        card.dataset.busy='1';card.setAttribute('aria-busy','true');stage.querySelector('.crm-cards').appendChild(card);board.scrollLeft=scroll;
         try{
             const result=await json(card.dataset.move,{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':board.dataset.token},body:JSON.stringify({etapa_id:Number(stage.dataset.stage),version:Number(card.dataset.version)})});
             card.dataset.version=result.version;card.querySelector('[data-stage-time]').textContent='En etapa: desde ahora';
@@ -18,7 +31,7 @@
         finally{delete card.dataset.busy;card.removeAttribute('aria-busy');const select=card.querySelector('[data-change-stage]');if(select)select.value='';}
     }
     if(board){
-        board.addEventListener('dragstart',event=>{const card=event.target.closest('[data-card][draggable=true]');if(!card||card.dataset.busy){event.preventDefault();return;}dragging=card;event.dataTransfer.setData('text/plain',card.dataset.card);event.dataTransfer.effectAllowed='move';});
+        board.addEventListener('dragstart',event=>{const card=event.target.closest('[data-card][draggable=true]');if(!card||card.dataset.busy||event.target.closest('select,input,button')){event.preventDefault();return;}dragging=card;event.dataTransfer.setData('text/plain',card.dataset.card);event.dataTransfer.effectAllowed='move';});
         board.addEventListener('dragover',event=>{const stage=event.target.closest('[data-stage-active="1"]');if(stage&&dragging){event.preventDefault();event.dataTransfer.dropEffect='move';stage.classList.add('crm-drop-target');}});
         board.addEventListener('dragleave',event=>{const stage=event.target.closest('[data-stage]');if(stage&&!stage.contains(event.relatedTarget))stage.classList.remove('crm-drop-target');});
         board.addEventListener('drop',event=>{const stage=event.target.closest('[data-stage-active="1"]');if(stage&&dragging){event.preventDefault();move(dragging,stage);}board.querySelectorAll('.crm-drop-target').forEach(item=>item.classList.remove('crm-drop-target'));dragging=null;});
@@ -26,9 +39,14 @@
         board.addEventListener('change',event=>{if(!event.target.matches('[data-change-stage]')||!event.target.value)return;const stage=Array.from(board.querySelectorAll('[data-stage]')).find(item=>item.dataset.stage===event.target.value);if(stage)move(event.target.closest('[data-card]'),stage);});
         board.addEventListener('click',event=>{const card=event.target.closest('[data-card]');if(card&&!event.target.closest('a,button,select,input,label'))location.href=card.querySelector('.crm-card-title').href;});
     }
+    root.querySelectorAll('[data-filter-select]').forEach(input=>{
+        const select=document.getElementById(input.dataset.filterSelect);if(!select)return;
+        const normalize=text=>text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase();
+        input.addEventListener('input',()=>{const query=normalize(input.value.trim());Array.from(select.options).forEach(option=>{option.hidden=!!option.value&&!option.selected&&!normalize(option.textContent).includes(query);});});
+    });
     const form=root.querySelector('[data-prospect-form]');
     if(form){let timer;let request=0;const phone=form.querySelector('[name=telefono]');const consent=form.querySelector('[name=confirmar_coincidencias]');
-        async function lookup(){const seq=++request;const box=form.querySelector('[data-matches-box]');const list=form.querySelector('[data-matches-list]');if(!phone.value.trim()){box.classList.add('d-none');return;}try{const data=await json(form.dataset.matches+'?'+new URLSearchParams({telefono:phone.value,except:form.dataset.record||''}));if(seq!==request)return;list.replaceChildren();data.matches.forEach(item=>{const li=document.createElement('li');const link=document.createElement('a');link.href=item.url;link.target='_blank';link.rel='noopener';link.textContent=item.tipo+' #'+item.id+': '+item.nombre;li.appendChild(link);list.appendChild(li);});box.classList.toggle('d-none',!data.matches.length);}catch(error){status(error.message,true);}}
+        async function lookup(){const seq=++request;const box=form.querySelector('[data-matches-box]');const list=form.querySelector('[data-matches-list]');if(!phone.value.trim()){box.classList.add('d-none');return;}try{const data=await json(form.dataset.matches+'?'+new URLSearchParams({telefono:phone.value,except:form.dataset.record||''}));if(seq!==request)return;list.replaceChildren();data.matches.forEach(item=>{const li=document.createElement('li');const link=document.createElement(item.url?'a':'span');if(item.url){link.href=item.url;link.target='_blank';link.rel='noopener';}link.textContent=item.tipo+' #'+item.id+': '+item.nombre;li.appendChild(link);list.appendChild(li);});box.classList.toggle('d-none',!data.matches.length);}catch(error){status(error.message,true);}}
         phone.addEventListener('input',()=>{consent.checked=false;clearTimeout(timer);timer=setTimeout(lookup,400);});if(phone.value)lookup();
     }
     const wa=root.querySelector('[data-wa-dialog]');const open=root.querySelector('[data-open-wa]');

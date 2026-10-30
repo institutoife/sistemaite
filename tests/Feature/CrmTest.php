@@ -14,7 +14,7 @@ class CrmTest extends CrmTestCase
         $this->assertSame(1,CrmEtapa::whereNotNull('inicial')->count());
         foreach (['crm.tablero','crm.lista','crm.dashboard','crm.configuracion','prospecto.create'] as $route) { $this->get(route($route))->assertOk(); }
         $this->get(route('prospecto.view',$lead))->assertOk()->assertSee('María Pérez')->assertSee('Registrar actividad');
-        $this->get(route('prospecto.edit',$lead))->assertOk()->assertSee('Servicio de interés');
+        $this->get(route('prospecto.edit',$lead))->assertOk()->assertSee('Servicios de interés');
         $this->actingAs($this->actor('Padre'))->get(route('crm.tablero'))->assertForbidden();
         $this->get(route('crm.personas',['q'=>'Mar']))->assertForbidden();
         $this->post(route('crm.mover',$lead),['version'=>0,'etapa_id'=>2])->assertForbidden();
@@ -28,8 +28,8 @@ class CrmTest extends CrmTestCase
         $this->post(route('prospecto.store'),['telefono'=>'+591 70000001'])->assertRedirect();
         $lead=Prospecto::sole(); $this->assertSame('70000001',$lead->telefono); $this->assertNull($lead->nombre);
         $this->assertSame($this->operator->id,$lead->responsable_id);
-        $data=['telefono'=>'70000001','nombre'=>'Juan Pérez','interest_id'=>1,'como_id'=>1,'grado_id'=>1,'crm_sede_id'=>2,
-            'responsable_id'=>$this->operator->id,'estudiante_nombre'=>'Ana Pérez','observacion'=>'Consulta sobre horarios.',
+        $data=['telefono'=>'70000001','nombre'=>'Juan Pérez','interests'=>[1],'como_id'=>1,'grado_id'=>1,'crm_sede_id'=>2,
+            'estudiante_nombre'=>'Ana Pérez','observacion'=>'Consulta sobre horarios.',
             'proximo_contacto_at'=>now()->addDay()->format('Y-m-d H:i:s'),'version'=>$lead->crm_version];
         $this->patch(route('prospecto.update',$lead),$data)->assertRedirect(route('prospecto.view',$lead));
         $this->assertDatabaseHas('prospectos',['id'=>$lead->id,'nombre'=>'Juan Pérez','crm_sede_id'=>2,'estudiante_nombre'=>'Ana Pérez']);
@@ -97,14 +97,14 @@ class CrmTest extends CrmTestCase
         $lead=Prospecto::sole(); $this->assertSame($person->id,$lead->persona_id); $this->assertTrue($lead->no_contactar);
         $this->assertSame(1,$lead->interest_id); $this->assertSame(1,CrmSeguimiento::count()); $this->assertNotNull($old->fresh());
         $this->assertSame('2026-11-05 00:00:00',$lead->proximo_contacto_at->format('Y-m-d H:i:s'));
-        $this->assertSame($this->operator->id,$lead->responsable_id);
+        $this->assertNull($lead->responsable_id);
         $this->get(route('prospecto.view',$lead))->assertOk()->assertSee('Consulta original')->assertSee('posponer');
         Queue::assertNothingPushed(); Http::assertNothingSent();
     }
     public function test_prepare_command_can_be_repeated_without_resetting_catalogs_or_exporting_legacy_people(): void
     {
         \Illuminate\Support\Facades\Schema::create('migrations',function ($table) { $table->increments('id'); $table->string('migration'); $table->integer('batch'); });
-        DB::table('migrations')->insert(['migration'=>'2026_10_29_000001_extend_prospectos_crm','batch'=>1]);
+        DB::table('migrations')->insert([['migration'=>'2026_10_29_000001_extend_prospectos_crm','batch'=>1],['migration'=>'2026_10_30_000001_extend_crm_ownership_and_interests','batch'=>1]]);
         $person=$this->persona(['habilitado'=>2,'votos'=>null]);
         $stage=app(CrmService::class)->initial(); $stage->nombre='Primer ingreso'; $stage->save();
         foreach ([0,1] as $repeat) { $this->assertSame(0,\Illuminate\Support\Facades\Artisan::call('crm:prepare',['--force'=>true])); }
@@ -118,8 +118,8 @@ class CrmTest extends CrmTestCase
         $lead=$this->lead(['observacion'=>'Consulta previa']);
         $this->patch(route('prospecto.update',$lead),['version'=>0,'telefono'=>$lead->telefono,'observacion'=>'Consulta actual'])->assertRedirect();
         foreach (['ayer'=>now()->subDay(),'antes'=>now()->subDays(2)] as $note=>$date) {
-            $this->post(route('crm.actividad',$lead),['version'=>$lead->fresh()->crm_version,'tipo'=>'observacion','ocurrio_at'=>$date->toDateTimeString(),
-                'responsable_id'=>$this->operator->id,'resultado'=>'otro','observacion'=>$note])->assertRedirect();
+            // Existing backdated history keeps its event order. New UI activities use server time.
+            app(CrmService::class)->log($lead,$this->operator->id,'observacion',$note,['ocurrio_at'=>$date]);
         }
         $this->get(route('prospecto.view',$lead))->assertOk()->assertSeeInOrder(['Consulta actual','Consulta previa','ayer','antes']);
         $this->assertSame('Consulta previa',\App\Models\CrmActividadDetalle::where('tipo','edicion')->first()->datos['observacion_anterior']);
@@ -199,8 +199,8 @@ class CrmTest extends CrmTestCase
     public function test_cohort_conversion_rate_and_period_conversions_are_separate_and_filters_apply(): void
     {
         $this->travelTo(\Carbon\Carbon::parse('2026-10-29 12:00:00'));
-        $this->lead(['created_at'=>'2026-09-01 00:00:00','convertido_at'=>'2026-10-10 00:00:00','crm_status'=>'convertido','crm_sede_id'=>1]);
-        $this->lead(['created_at'=>'2026-10-01 00:00:00','convertido_at'=>'2026-10-11 00:00:00','crm_status'=>'convertido','crm_sede_id'=>1]);
+        $this->lead(['created_at'=>'2026-09-01 00:00:00','convertido_at'=>'2026-10-10 00:00:00','inscripcione_id'=>1,'crm_status'=>'convertido','crm_sede_id'=>1]);
+        $this->lead(['created_at'=>'2026-10-01 00:00:00','convertido_at'=>'2026-10-11 00:00:00','inscripcione_id'=>2,'crm_status'=>'convertido','crm_sede_id'=>1]);
         $this->lead(['created_at'=>'2026-10-12 00:00:00','crm_sede_id'=>1,'proximo_contacto_at'=>'2026-10-28 12:00:00']);
         $this->lead(['created_at'=>'2026-10-15 00:00:00','crm_sede_id'=>2]);
         $stats=app(CrmAnalytics::class)->report(['desde'=>'2026-10-01','hasta'=>'2026-10-29','crm_sede_id'=>1]);

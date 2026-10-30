@@ -1,5 +1,7 @@
 # CRM IFE: actualización y operación
 
+La [mejora del 30 de octubre de 2026](crm-ife-mejoras-2026-10-30.md) actualiza responsables, servicios múltiples, sucursales, estadísticas por usuario, históricos sin responsable y eliminación de etapas. Sus reglas reemplazan las indicaciones anteriores sobre selección de responsable y programación manual de la hora de la gestión. El comando de actualización sigue siendo el mismo.
+
 ## Actualizar ife.bo en BanaHosting
 
 Esta entrega actualiza el sistema existente. Primero conserve un respaldo de la base y los archivos del servidor. Desde su terminal habitual:

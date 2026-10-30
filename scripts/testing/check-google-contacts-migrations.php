@@ -183,16 +183,36 @@ foreach (['fresh', 'interrupted_fk', 'partial_columns', 'unlogged_complete', 'wr
                         } else { $table->unsignedBigInteger('userable_id'); $table->string('userable_type'); $table->unsignedBigInteger('user_id'); }
                     });
                 }
+                $schema->create('interests',function (Blueprint $table) { $table->id(); $table->string('interest'); });
+                $schema->table('users',function (Blueprint $table) { $table->string('name')->nullable(); });
+                $connection->table('users')->where('id',1)->update(['name'=>'Operador de prueba']);
+                $connection->table('interests')->insert([['id'=>1,'interest'=>'Servicio uno'],['id'=>2,'interest'=>'Servicio dos']]);
+                for ($repeat=0; $repeat<2; $repeat++) {
+                    $exit=$runner->withLegacyDateMode($connection,function () {
+                        return Artisan::call('migrate',['--path'=>'database/migrations/2026_10_30_000001_extend_crm_ownership_and_interests.php','--force'=>true]);
+                    });
+                    $assert($exit===0,'Falló la ampliación CRM en MariaDB.');
+                }
+                $assert($connection->table('migrations')->count()===count(GoogleContactsMigrationRunner::PATHS)+2,'Se duplicó el historial de migraciones CRM.');
+                $assert($connection->selectOne('SELECT @@SESSION.sql_mode AS mode',[],false)->mode===$original,'La ampliación CRM no restauró SQL_MODE.');
+                $assert($connection->table('prospectos')->where('id',1)->value('created_at')==='0000-00-00 00:00:00','La ampliación alteró las fechas antiguas.');
                 $first=\App\Models\CrmEtapa::create(['nombre'=>'Inicial','inicial'=>'central','orden'=>1]);
                 $second=\App\Models\CrmEtapa::create(['nombre'=>'Seguimiento','orden'=>2]);
                 // The original prospect keeps its zero date untouched; a second fixture tests normal writes in strict mode.
-                $id=$connection->table('prospectos')->insertGetId(['telefono'=>'70000009','created_at'=>now(),'updated_at'=>now(),'crm_etapa_id'=>$first->id]);
+                $id=$connection->table('prospectos')->insertGetId(['telefono'=>'70000009','created_at'=>now(),'updated_at'=>now(),'crm_etapa_id'=>$first->id,'responsable_id'=>1,'creado_por'=>1,'crm_sede_id'=>1]);
                 $record=\App\Models\Prospecto::findOrFail($id);
+                $record->interests()->sync([1,2]);
                 app(\App\Services\CrmService::class)->move($record,$second->id,0,1);
                 $assert((int)$record->fresh()->crm_etapa_id===$second->id&&(int)$record->fresh()->crm_version===1,'No persistió el cambio de etapa en MariaDB.');
                 $activity=\App\Models\CrmActividadDetalle::first();
                 $assert($activity&&$activity->tipo==='etapa'&&(int)$activity->datos['anterior']===$first->id&&(int)$activity->datos['nueva']===$second->id,'No se conservó el historial tipado JSON en MariaDB.');
                 $assert($connection->table('userables')->where('user_id',1)->count()===1,'Falta la auditoría del actor de la etapa.');
+                $assert((int)$activity->actor_id===1&&(int)$activity->responsable_comercial_id===1&&$activity->servicios_ids===[1,2],'Falta la atribución histórica de la actividad.');
+                $stats=app(\App\Services\CrmUserAnalytics::class)->report(['interest_id'=>2,'crm_sede_id'=>1]);
+                $assert($stats['totals']['stage_changes']===1&&$stats['totals']['moved_leads']===1&&$stats['totals']['assigned']===1,'Las estadísticas MariaDB no filtraron correctamente servicios e identidad.');
+                $third=\App\Models\CrmEtapa::create(['nombre'=>'Destino','orden'=>3]);
+                app(\App\Services\CrmStageService::class)->archive($second,['version'=>0,'destino_id'=>$third->id],1);
+                $assert(\App\Models\CrmEtapa::find($second->id)===null&&(int)$record->fresh()->crm_etapa_id===$third->id,'No se archivó la etapa conservando sus fichas en MariaDB.');
             }
         }
         $results[$scenario] = 'OK';
@@ -212,4 +232,5 @@ Queue::assertPushed(\App\Jobs\SyncGoogleContact::class, 2);
 echo json_encode(['scenarios' => $results, 'legacy_dates_and_links_preserved' => true,
     'bulk_import_and_progress_on_mariadb' => true, 'session_and_global_sql_modes_preserved' => true,
     'crm_migration_stage_and_audit_on_mariadb' => true,
+    'crm_ownership_multi_service_statistics_and_archival_on_mariadb' => true,
     'application_database_untouched' => true], JSON_PRETTY_PRINT).PHP_EOL;

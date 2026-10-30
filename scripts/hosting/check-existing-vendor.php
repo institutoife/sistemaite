@@ -94,6 +94,9 @@ function ifeGoogleExistingVendorErrors(string $root): array
             \App\Services\CrmService::class,
             \App\Services\CrmConversionService::class,
             \App\Services\CrmAnalytics::class,
+            \App\Services\CrmUserAnalytics::class,
+            \App\Services\CrmHistoryBackfill::class,
+            \App\Services\CrmStageService::class,
             \Database\Seeders\GoogleContactsSeeder::class,
             \Database\Seeders\CrmSeeder::class,
         ] as $class) {

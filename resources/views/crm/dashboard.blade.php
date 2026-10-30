@@ -2,6 +2,9 @@
 @extends('crm.layout')
 @section('crm_content')
 @include('crm.filtros')
+@include('crm.estadisticas-usuarios')
+@if($stats)
+<h2 class="h4 mt-4">Resumen general de la cartera operativa</h2>
 <p>Período: <strong>{{ $stats['start']->format('d/m/Y') }} al {{ $stats['end']->format('d/m/Y') }}</strong>. Los activos y la agenda reflejan el estado actual de la cartera filtrada.</p>
 <div class="crm-summary">
 @foreach(['created'=>'Registrados en el período','converted'=>'Conversiones en el período','active'=>'Activos actuales','inactive'=>'Bajas actuales','deactivations'=>'Bajas registradas en el período','scheduled'=>'Seguimientos pendientes','overdue'=>'Seguimientos vencidos'] as $key=>$label)<div><strong>{{ $stats[$key] }}</strong><span>{{ $label }}</span></div>
@@ -20,4 +23,5 @@
 @forelse($stats['reasons'] as $item)<tr><td>{{ \App\Services\CrmService::REASONS[$item->motivo_baja]??'Sin motivo histórico' }}</td><td>{{ $item->total }}</td></tr>
 @empty<tr><td>Sin bajas</td></tr>
 @endforelse</table></div></div></div>
+@endif
 @stop

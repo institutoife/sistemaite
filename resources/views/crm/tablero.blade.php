@@ -10,7 +10,8 @@
 </div>
 @include('crm.filtros')
 <p class="text-muted">Arrastre una tarjeta o utilice «Cambiar etapa». Se muestran hasta 50 fichas por columna; «Ver todas» abre la lista completa. Las bajas conservan su historial.</p>
-<div class="crm-board" data-board data-token="{{ csrf_token() }}">
+<div class="crm-board-controls"><span>Desplace el tablero horizontalmente para ver todas las etapas.</span><div><button type="button" class="btn btn-outline-primary btn-sm" data-board-scroll="-1" aria-label="Ver etapas anteriores">←</button> <button type="button" class="btn btn-outline-primary btn-sm" data-board-scroll="1" aria-label="Ver etapas siguientes">→</button></div></div>
+<div class="crm-board" data-board data-token="{{ csrf_token() }}" tabindex="0" aria-label="Etapas comerciales con desplazamiento horizontal">
 @foreach($stages as $stage)
 <section class="crm-column" style="--stage-color:{{ $stage->color }}" data-stage="{{ $stage->id }}" data-stage-active="{{ $stage->activa&&!$stage->conversion?'1':'0' }}" aria-label="{{ $stage->nombre }}">
     <header><h2>{{ $stage->nombre }}

@@ -6,7 +6,7 @@
 @section('content')
 <div class="ife-crm" data-crm-root>
     <header class="crm-heading"><div><p class="crm-eyebrow">Gestión comercial</p><h1>CRM IFE</h1></div>
-        <nav aria-label="Navegación CRM"><a class="btn btn-outline-primary" href="{{ route('crm.tablero') }}">Tablero</a> <a class="btn btn-outline-primary" href="{{ route('crm.lista') }}">Lista</a> <a class="btn btn-outline-primary" href="{{ route('crm.dashboard') }}">Indicadores</a>
+        <nav aria-label="Navegación CRM"><a class="btn btn-outline-primary" data-return-board href="{{ route('crm.tablero') }}">Tablero</a> <a class="btn btn-outline-primary" href="{{ route('crm.lista') }}">Lista</a> <a class="btn btn-outline-primary" href="{{ route('crm.dashboard') }}">Indicadores</a>
 
 @can('Crear Prospectos')<a class="btn btn-primary" href="{{ route('prospecto.create') }}">Nuevo prospecto</a>
 @endcan

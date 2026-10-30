@@ -11,8 +11,22 @@
 @if(old('confirmar_coincidencias')) checked
 @endif> Revisé las coincidencias y deseo conservar esta oportunidad comercial.</label></div>
 
-@foreach(['interest_id'=>['Servicio de interés',$interests,'interest'],'grado_id'=>['Curso o nivel',$grados,'grado'],'crm_sede_id'=>['Sede de interés',$sedes,'nombre'],'como_id'=>['Origen',$comos,'como'],'responsable_id'=>['Responsable',$responsables,'name']] as $field=>$catalog)
-    <div class="col-md-6 form-group"><label for="prospect-{{ $field }}">{{ $catalog[0] }}</label><select class="form-control" id="prospect-{{ $field }}" name="{{ $field }}"><option value="">Por definir</option>
+<fieldset class="col-12 form-group"><legend class="h6 font-weight-bold">Servicios de interés</legend>
+<input type="hidden" name="interests_present" value="1">
+@foreach($interests as $service)
+<label class="mr-4"><input type="checkbox" name="interests[]" value="{{ $service->id }}"
+@if(in_array($service->id,(array)old('interests',$prospecto->exists?$prospecto->interests->modelKeys():[]))) checked
+@endif> {{ $service->interest }}</label>
+@endforeach
+</fieldset>
+<div class="col-12 form-group"><strong>Responsable comercial:</strong> {{ $prospecto->exists?(optional($prospecto->responsable)->name?:'Sin asignar'):auth()->user()->name }}
+@if(!$prospecto->exists)<span class="text-muted">Se asigna automáticamente a su usuario.</span>
+@endif</div>
+@foreach(['grado_id'=>['Curso o nivel',$grados,'grado'],'crm_sede_id'=>['Sucursal de interés',$sedes,'nombre'],'como_id'=>['Origen',$comos,'como']] as $field=>$catalog)
+    <div class="col-md-6 form-group"><label for="prospect-{{ $field }}">{{ $catalog[0] }}</label>
+@if($field==='grado_id')<input type="search" class="form-control mb-1" data-filter-select="prospect-grado_id" placeholder="Buscar curso o nivel" aria-label="Buscar curso o nivel existente">
+@endif
+<select class="form-control" id="prospect-{{ $field }}" name="{{ $field }}"><option value="">Por definir</option>
 @foreach($catalog[1] as $option)
 @if(!isset($option->activa)||$option->activa||(string)$prospecto->$field===(string)$option->id)<option value="{{ $option->id }}"
 @if((string)old($field,$prospecto->$field)===(string)$option->id) selected

@@ -13,11 +13,12 @@ class PrepareCrm extends Command
         $file=@fopen(storage_path('framework/crm-prepare.lock'),'c');
         if (!$file||!flock($file,LOCK_EX|LOCK_NB)) { if ($file) { fclose($file); } $this->error('Otra preparación del CRM está en curso o no se pudo abrir su bloqueo.'); return 1; }
         try { return $runner->withLegacyDateMode(DB::connection(),function () use ($crm) {
-            $code=$this->call('migrate',['--path'=>['database/migrations/2026_10_29_000001_extend_prospectos_crm.php'],'--force'=>(bool)$this->option('force')]);
+            $code=$this->call('migrate',['--path'=>['database/migrations/2026_10_29_000001_extend_prospectos_crm.php','database/migrations/2026_10_30_000001_extend_crm_ownership_and_interests.php'],'--force'=>(bool)$this->option('force')]);
             if ($code!==0) { return $code; }
             $code=$this->call('db:seed',['--class'=>'CrmSeeder','--force'=>(bool)$this->option('force')]);
             if ($code!==0) { return $code; }
             $count=$crm->prepareLegacy();
+            app(\App\Services\CrmHistoryBackfill::class)->run();
             $this->info('CRM preparado. Potenciales vinculados: '.$count.'. No se han solicitado sincronizaciones ni enviado mensajes.');
             return 0;
         }); } finally { flock($file,LOCK_UN); fclose($file); }

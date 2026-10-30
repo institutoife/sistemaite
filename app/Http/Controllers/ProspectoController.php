@@ -27,7 +27,7 @@ class ProspectoController extends Controller
     {
         $this->authorize('view',$prospecto); $prospecto->load(CrmService::RELATIONS);
         $observaciones=$prospecto->observaciones()->leftJoin('crm_actividad_detalles as crm_history','crm_history.observacion_id','=','observacions.id')
-            ->select('observacions.*')->with(['usuarios:id,name','crmDetalle.responsable:id,name'])
+            ->select('observacions.*')->with(['usuarios:id,name','crmDetalle.actor:id,name','crmDetalle.responsableComercial:id,name'])
             ->orderByRaw('COALESCE(crm_history.ocurrio_at, observacions.created_at) DESC')->orderByDesc('observacions.id')->paginate(30);
         $historiaPersona=$prospecto->persona?$prospecto->persona->observaciones()->with('usuarios:id,name')->orderByDesc('id')->limit(50)->get():collect();
         $seguimientos=$prospecto->persona_id&&Schema::hasTable('crm_seguimientos')?CrmSeguimiento::with('user:id,name')->where('persona_id',$prospecto->persona_id)->latest()->limit(50)->get():collect();
@@ -46,7 +46,7 @@ class ProspectoController extends Controller
     public function destroy(Prospecto $prospecto) { $this->authorize('delete',$prospecto); }
     public function listar(CrmService $crm)
     {
-        return datatables()->eloquent(Prospecto::with(['etapa','responsable'])->withMax('observaciones','updated_at'))
+        return datatables()->eloquent($crm->query([])->with(['etapa','responsable'])->withMax('observaciones','updated_at'))
             ->addColumn('estado',function ($row) { return optional($row->etapa)->nombre; })
             ->addColumn('name',function ($row) { return optional($row->responsable)->name; })
             ->addColumn('ultima_observacion',function ($row) { return $row->observaciones_max_updated_at; })

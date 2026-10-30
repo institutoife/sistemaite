@@ -3,10 +3,10 @@
 @section('crm_content')
 <div class="row"><section class="col-lg-5"><div class="card card-body">
 <h2 class="h4">{{ $prospecto->identificacion }}</h2><p class="text-muted">#{{ $prospecto->id }} · {{ $prospecto->legacy_persona_id?'Potencial vinculado':'Prospecto' }} · {{ ucfirst($prospecto->crm_status) }}</p>
-<dl class="crm-details"><dt>Teléfono</dt><dd>{{ $prospecto->telefono ?: 'Sin teléfono' }}</dd><dt>Servicio</dt><dd>{{ optional($prospecto->interest)->interest ?: 'Por definir' }}</dd><dt>Estudiante</dt><dd>{{ $prospecto->estudiante_nombre ?: 'Por definir' }}</dd><dt>Curso o nivel</dt><dd>{{ optional($prospecto->grado)->grado ?: 'Por definir' }}</dd><dt>Sede</dt><dd>{{ optional($prospecto->sede)->nombre ?: 'Por definir' }}</dd><dt>Origen</dt><dd>{{ optional($prospecto->como)->como ?: 'Por definir' }}</dd><dt>Responsable</dt><dd>{{ optional($prospecto->responsable)->name ?: 'Sin asignar' }}</dd><dt>Etapa</dt><dd>{{ optional($prospecto->etapa)->nombre }}</dd><dt>Próxima actividad</dt><dd>{{ $prospecto->proximo_contacto_at?$prospecto->proximo_contacto_at->format('d/m/Y H:i'):'Sin programar' }}</dd><dt>Observaciones</dt><dd class="crm-prewrap">{{ $prospecto->observacion ?: 'Sin observaciones' }}</dd></dl>
+<dl class="crm-details"><dt>Teléfono</dt><dd>{{ $prospecto->telefono ?: 'Sin teléfono' }}</dd><dt>Servicios</dt><dd>{{ $prospecto->interests->pluck('interest')->implode(', ') ?: 'Por definir' }}</dd><dt>Estudiante</dt><dd>{{ $prospecto->estudiante_nombre ?: 'Por definir' }}</dd><dt>Curso o nivel</dt><dd>{{ optional($prospecto->grado)->grado ?: 'Por definir' }}</dd><dt>Sucursal</dt><dd>{{ optional($prospecto->sede)->nombre ?: 'Por definir' }}</dd><dt>Origen</dt><dd>{{ optional($prospecto->como)->como ?: 'Por definir' }}</dd><dt>Responsable comercial</dt><dd>{{ optional($prospecto->responsable)->name ?: 'Sin asignar' }}</dd><dt>Creado por</dt><dd>{{ optional($prospecto->creador)->name ?: 'Sin registro histórico' }}</dd><dt>Responsable al alta</dt><dd>{{ optional($prospecto->responsableInicial)->name ?: 'Sin registro histórico' }}</dd><dt>Sin seguimiento</dt><dd>{{ $prospecto->dias_sin_seguimiento===null?'Sin fecha histórica':$prospecto->dias_sin_seguimiento.' días' }}</dd><dt>Etapa</dt><dd>{{ optional($prospecto->etapa)->nombre }}</dd><dt>Próxima actividad</dt><dd>{{ $prospecto->proximo_contacto_at?$prospecto->proximo_contacto_at->format('d/m/Y H:i'):'Sin programar' }}</dd><dt>Observaciones</dt><dd class="crm-prewrap">{{ $prospecto->observacion ?: 'Sin observaciones' }}</dd></dl>
 @if($prospecto->persona_id)<p><a href="{{ route('personas.show',$prospecto->persona_id) }}">Abrir Persona #{{ $prospecto->persona_id }}</a></p>
 @endif
-@if($prospecto->convertido_at)<p>Conversión: {{ $prospecto->convertido_at->format('d/m/Y H:i') }}. Estudiante #{{ $prospecto->estudiante_persona_id }}; {{ $prospecto->inscripcione_id?'inscripción #'.$prospecto->inscripcione_id:'matrícula #'.$prospecto->matriculacion_id }}.</p>
+@if($prospecto->convertido_at)<p>Conversión: {{ $prospecto->convertido_at->format('d/m/Y H:i') }}. Estudiante #{{ $prospecto->estudiante_persona_id }}; {{ $prospecto->inscripcione_id?'inscripción #'.$prospecto->inscripcione_id:'matrícula #'.$prospecto->matriculacion_id }}. Registrada por {{ optional($prospecto->convertidoPor)->name ?: 'Sin registro histórico' }}. Responsable en la conversión: {{ optional($prospecto->responsableConversion)->name ?: 'Sin registro histórico' }}.</p>
 @endif
 @if(!$mayContact)<p class="alert alert-warning">El contacto comercial está restringido. Puede conservar notas y registrar visitas presenciales.</p>
 @endif
@@ -45,21 +45,28 @@
 @include('crm.conversion')
 @endif
 @endcan
+@can('Reasignar Prospectos')
+<details class="card card-body"><summary>Reasignar responsable comercial</summary>
+<form method="POST" action="{{ route('crm.reasignar',$prospecto) }}" class="mt-3">
+@csrf
+<input type="hidden" name="version" value="{{ $prospecto->crm_version }}">
+<label for="reassign-owner">Nuevo responsable</label><select id="reassign-owner" class="form-control mb-2" name="responsable_id" required><option value="">Seleccione</option>
+@foreach($responsables as $owner)<option value="{{ $owner->id }}">{{ $owner->name }}</option>
+@endforeach</select>
+<label for="reassign-note">Motivo de la reasignación *</label><textarea id="reassign-note" class="form-control mb-2" name="observacion" maxlength="400" required></textarea>
+<p class="small">Se conserva quién lo creó y quién realizó las gestiones y conversiones anteriores. Asignar una ficha histórica permite recuperarla en el tablero operativo.</p>
+<button class="btn btn-outline-primary">Confirmar reasignación</button></form></details>
+@endcan
 </section>
 <section class="col-lg-7">
 @can('update',$prospecto)<div class="card card-body"><h2 class="h5">Registrar actividad</h2>
+<p class="small text-muted">Se registra con su usuario: {{ auth()->user()->name }}, y la fecha y hora actuales. El responsable comercial se conserva.</p>
 <form method="POST" action="{{ route('crm.actividad',$prospecto) }}">
 @csrf<input type="hidden" name="version" value="{{ $prospecto->crm_version }}">
 <div class="row"><div class="col-md-6 form-group"><label for="activity-type">Tipo *</label><select id="activity-type" class="form-control" name="tipo">
 @foreach(\App\Services\CrmService::TYPES as $value=>$label)<option value="{{ $value }}"
 @if(old('tipo','observacion')===$value) selected
 @endif>{{ $label }}</option>
-@endforeach</select></div>
-<div class="col-md-6 form-group"><label for="activity-date">Fecha y hora *</label><input id="activity-date" type="datetime-local" class="form-control" name="ocurrio_at" value="{{ old('ocurrio_at',now()->format('Y-m-d\TH:i')) }}" required></div>
-<div class="col-md-6 form-group"><label for="activity-owner">Responsable *</label><select id="activity-owner" class="form-control" name="responsable_id">
-@foreach($responsables as $owner)<option value="{{ $owner->id }}"
-@if((int)old('responsable_id',$prospecto->responsable_id??auth()->id())===$owner->id) selected
-@endif>{{ $owner->name }}</option>
 @endforeach</select></div>
 <div class="col-md-6 form-group"><label for="activity-result">Resultado *</label><select id="activity-result" class="form-control" name="resultado">
 @foreach(['pendiente'=>'Pendiente','respondio'=>'Respondió','sin_respuesta'=>'Sin respuesta','interesado'=>'Interesado','enviado_confirmado'=>'Envío confirmado por el operador','otro'=>'Otro'] as $value=>$label)<option value="{{ $value }}">{{ $label }}</option>
@@ -74,7 +81,7 @@
 @endcan
 <div class="card card-body"><h2 class="h5">Historial comercial</h2>
 @forelse($observaciones as $observation)<article class="crm-timeline"><strong>{{ $observation->crmDetalle?(\App\Services\CrmService::TYPES[$observation->crmDetalle->tipo]??ucfirst($observation->crmDetalle->tipo)):'Observación anterior' }}</strong><p class="small text-muted">{{ $observation->crmDetalle?$observation->crmDetalle->ocurrio_at->format('d/m/Y H:i'):$observation->created_at }} · {{ $observation->usuarios->pluck('name')->implode(', ') }}</p><p class="crm-prewrap">{{ strip_tags($observation->observacion??'') }}</p>
-@if($observation->crmDetalle)<p class="small">Responsable: {{ optional($observation->crmDetalle->responsable)->name }} · Resultado: {{ $observation->crmDetalle->resultado }}</p>
+@if($observation->crmDetalle)<p class="small">Autor: {{ optional($observation->crmDetalle->actor)->name ?: $observation->usuarios->pluck('name')->implode(', ') }} ? Responsable comercial en esa fecha: {{ optional($observation->crmDetalle->responsableComercial)->name ?: 'Sin registro histórico' }} · Resultado: {{ $observation->crmDetalle->resultado }}</p>
 @if($observation->crmDetalle->tipo==='edicion'&&!empty($observation->crmDetalle->datos['observacion_anterior']))
 <details><summary>Observación anterior a esta edición</summary><p class="crm-prewrap">{{ $observation->crmDetalle->datos['observacion_anterior'] }}</p></details>
 @endif

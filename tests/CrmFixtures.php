@@ -16,6 +16,7 @@ trait CrmFixtures
             '2021_04_29_030205_create_observacions_table.php'=>'CreateObservacionsTable',
             '2026_04_03_120000_create_crm_seguimientos_table.php'=>'CreateCrmSeguimientosTable',
             '2026_10_29_000001_extend_prospectos_crm.php'=>'ExtendProspectosCrm',
+            '2026_10_30_000001_extend_crm_ownership_and_interests.php'=>'ExtendCrmOwnershipAndInterests',
         ] as $file=>$class) { require_once database_path('migrations/'.$file); (new $class)->up(); }
         DB::table('interests')->insert(['id'=>1,'interest'=>'Computación','descripcion'=>'Prueba']);
         DB::table('grados')->insert(['id'=>1,'grado'=>'Primaria']);
