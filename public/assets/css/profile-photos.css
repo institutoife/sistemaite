@@ -1,3 +1,13 @@
 img[data-profile-photo]{object-fit:cover}img[data-profile-photo][role=button]{cursor:zoom-in}img[data-profile-photo][role=button]:focus-visible{outline:3px solid #26baa5;outline-offset:3px}.ife-photo-dialog{width:min(96vw,1100px);max-width:96vw;max-height:96dvh;padding:0;border:0;border-radius:10px;background:#f5f8f9;color:#233e50;box-shadow:0 12px 60px #0005}.ife-photo-dialog::backdrop{background:#102632d9}.ife-photo-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;background:#fff;border-bottom:1px solid #dce6eb}.ife-photo-toolbar h2{font:600 18px/1.4 sans-serif;margin:0;overflow-wrap:anywhere;flex:1 1 220px}.ife-photo-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ife-photo-controls button{padding:8px 12px;border:1px solid #375f7a;border-radius:5px;background:#fff;color:#375f7a;cursor:pointer;min-width:42px}.ife-photo-controls button:focus-visible{outline:3px solid #26baa5;outline-offset:2px}.ife-photo-controls button:disabled{opacity:.45;cursor:default}.ife-photo-controls [data-photo-close]{background:#375f7a;color:#fff}.ife-photo-viewport{height:min(72dvh,760px);min-height:180px;overflow:auto;background:#142b38;touch-action:none;cursor:grab;overscroll-behavior:contain}.ife-photo-viewport:active{cursor:grabbing}.ife-photo-canvas{position:relative;min-width:100%;min-height:100%}.ife-photo-canvas img{position:absolute;display:block;max-width:none!important;max-height:none!important;user-select:none;-webkit-user-drag:none;object-fit:contain}.ife-photo-help{margin:0;padding:10px 16px;font:14px/1.4 sans-serif}.ife-photo-error{padding:20px;color:#fff}.ife-photo-zoom{min-width:52px;text-align:center;font-size:14px}.ife-photo-open{overflow:hidden!important}@media(max-width:600px){.ife-photo-dialog{width:96vw}.ife-photo-toolbar{gap:8px;padding:10px}.ife-photo-toolbar h2{font-size:16px;flex-basis:100%}.ife-photo-controls{width:100%;justify-content:space-between;gap:4px}.ife-photo-controls button{padding:8px}.ife-photo-viewport{height:62dvh}.ife-photo-help{font-size:12px}}
 
 [data-profile-photo-cell]>.codigo-encima,[data-profile-photo-cell]>.texto-encima{pointer-events:none}
+
+/* Keep table thumbnails proportional when Bootstrap overrides the HTML height. */
+img.ife-profile-photo{
+    width:auto!important;
+    height:auto!important;
+    max-width:var(--ife-photo-width,80px)!important;
+    max-height:var(--ife-photo-height,50px)!important;
+    object-fit:contain;
+    vertical-align:middle;
+}

@@ -98,7 +98,7 @@
                             "name": "foto",
                             "data": "foto",
                             "render": function (data, type, full, meta) {
-                                return IFEPhotos.render(data,type,full,{height:75});
+                                return IFEPhotos.render(data,type,full,{height:50});
                             },
                             "title": "FOTO",
                             "orderable": false,
@@ -493,7 +493,7 @@
                             "name": "foto",
                             "data": "foto",
                             "render": function (data, type, full, meta) {
-                                return IFEPhotos.render(data,type,full,{height:75});
+                                return IFEPhotos.render(data,type,full,{height:50});
                             },
                             "title": "FOTO",
                             "orderable": false,

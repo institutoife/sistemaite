@@ -14,6 +14,8 @@ El acceso común a archivos locales verifica autenticación, rutas permitidas y 
 
 ## Ampliación y zoom
 
+Las miniaturas de las tablas tienen un máximo predeterminado de **50 píxeles de alto y 80 de ancho**, conservando la proporción del archivo. Este límite se aplica también cuando una vista carga Bootstrap después de los estilos compartidos y cuando la tabla redibuja sus filas. Los detalles que solicitan otro tamaño mantienen su límite específico. La versión de los recursos contempla cambios tanto en JavaScript como en CSS para renovar la caché al actualizar.
+
 Haga clic en una fotografía disponible, incluida la del usuario conectado. El visor permite ampliar y reducir con **+ / −**, rueda del ratón y gesto de dos dedos; arrastrar para desplazarse; **Ajustar** para volver a encajar la imagen y **Cerrar** o **Escape** para regresar. También admite teclado y devuelve el foco a la fotografía al cerrar.
 
 La carga y los eventos funcionan en filas nuevas o redibujadas por las tablas y en los detalles que se abren dinámicamente. El visor común evita que se abra a la vez la ampliación anterior de las miniaturas.
@@ -45,3 +47,5 @@ Compruebe la Persona **#5300** en la lista y en su ficha: ambas deben mostrar el
 Suite completa: **217 pruebas y 1584 aserciones**, todas correctas, y compilación de todas las vistas Blade. En el servidor se confirmó mediante el diagnóstico de solo lectura que la fotografía #5300 está disponible en `public/storage`; la actualización utiliza ese directorio sin pedir que se suba de nuevo.
 
 Las pruebas aisladas cubren rutas antiguas, directorios físicos sin enlace `storage`, el caso de una Persona #5300 sintética, URLs de listas, autenticación y permisos, archivos inválidos, avatar de Persona, conservación de archivos y referencias, cámara sin cuenta de usuario, imágenes proporcionadas y separación de autores en reportes. La revisión en Chrome usa fotografías sintéticas y comprueba las tablas dinámicas, nombres escapados, zoom, arrastre, teclado, foco, gesto de dos dedos, recuperación de imágenes y cámara simulada. No accede a producción ni activa una cámara real.
+
+La corrección del tamaño de las miniaturas se verifica además en Chrome con imágenes horizontales, verticales, cuadradas, panorámicas y predeterminadas, con Bootstrap cargado después del CSS compartido. Se comprueban límites y proporción en escritorio y móvil, filas redibujadas, tamaños explícitos de detalle y apertura del original en el visor sin limitar su zoom.

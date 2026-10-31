@@ -20,7 +20,9 @@
         options=options||{};row=row||{};
         const userPhoto=options.caption==='name';
         const img=document.createElement('img');img.src=photoUrl(userPhoto?(row.user_foto_url||value):(row.foto_url||value));img.dataset.profilePhoto='1';
-        img.className='img-thumbnail ife-profile-photo';img.height=options.height||50;img.loading='lazy';img.decoding='async';
+        const requestedHeight=Number(options.height),height=Number.isFinite(requestedHeight)&&requestedHeight>0?requestedHeight:50;
+        img.className='img-thumbnail ife-profile-photo';img.height=height;img.loading='lazy';img.decoding='async';
+        img.style.setProperty('--ife-photo-height',height+'px');img.style.setProperty('--ife-photo-width',height*1.6+'px');
         img.alt=options.alt||(userPhoto?row.name:[row.nombre,row.apellidop,row.apellidom].filter(Boolean).join(' '))||row.name||'Fotografía';
         const code=userPhoto?row.foto_user_id:row.id;img.title=img.alt+(code?' · #'+code:'');
         if(!options.caption)return img.outerHTML;
