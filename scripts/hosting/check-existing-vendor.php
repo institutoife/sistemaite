@@ -93,6 +93,7 @@ function ifeGoogleExistingVendorErrors(string $root): array
             \App\Services\TelefonoService::class,
             \App\Services\CrmService::class,
             \App\Services\CrmConversionService::class,
+            \App\Services\CrmEnrollmentOptions::class,
             \App\Services\CrmAnalytics::class,
             \App\Services\CrmUserAnalytics::class,
             \App\Services\CrmHistoryBackfill::class,

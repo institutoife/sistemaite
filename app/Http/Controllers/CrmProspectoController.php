@@ -55,7 +55,27 @@ class CrmProspectoController extends Controller
     public function reassign(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->reassign($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Responsable reasignado; se conserva la atribución histórica.'); }
     public function deactivate(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->deactivate($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Baja registrada; se conserva el historial.'); }
     public function reactivate(CrmActionRequest $request, Prospecto $prospecto, CrmService $crm) { $crm->reactivate($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Oportunidad reactivada.'); }
-    public function convert(CrmActionRequest $request, Prospecto $prospecto, CrmConversionService $service) { $service->convert($prospecto,$request->validated(),$request->user()->id); return back()->with('success','Conversión registrada con su inscripción y contacto vinculados.'); }
+    public function conversionForm(Request $request, Prospecto $prospecto)
+    {
+        $this->authorize('convert',$prospecto);
+        abort_unless($prospecto->crm_status==='activo'&&!$prospecto->convertido_at,422,'La oportunidad ya está convertida o no está activa. Actualice el tablero.');
+        $data=$request->validate(['etapa_id'=>'nullable|integer|exists:crm_etapas,id']);
+        $conversionStage=!empty($data['etapa_id'])?CrmEtapa::whereKey($data['etapa_id'])->where('activa',true)->where('conversion',true)->firstOrFail():null;
+        $prospecto->load(['persona','estudiantePersona']);
+        return response()->view('crm.conversion-form',compact('prospecto','conversionStage'))->header('Cache-Control','private, no-store');
+    }
+    public function enrollmentOptions(Request $request, Prospecto $prospecto, \App\Services\CrmEnrollmentOptions $options)
+    {
+        $this->authorize('convert',$prospecto);
+        $data=$request->validate(['persona_id'=>'nullable|integer|exists:personas,id','estudiante_persona_id'=>'nullable|integer|exists:personas,id']);
+        return response()->json($options->forLead($prospecto,isset($data['persona_id'])?(int)$data['persona_id']:null,isset($data['estudiante_persona_id'])?(int)$data['estudiante_persona_id']:null,$request->user()->can('Listar Pagos')))->header('Cache-Control','private, no-store');
+    }
+    public function convert(CrmActionRequest $request, Prospecto $prospecto, CrmConversionService $service)
+    {
+        $service->convert($prospecto,$request->validated(),$request->user()->id);
+        if ($request->expectsJson()) { $current=$prospecto->fresh(); return response()->json(['converted'=>true,'version'=>(int)$current->crm_version,'etapa_id'=>(int)$current->crm_etapa_id,'message'=>'Conversión registrada. Los indicadores ya incluyen esta inscripción.']); }
+        return redirect()->route('crm.tablero',['status'=>'operativo'])->with('success','Conversión registrada con su inscripción y contacto vinculados.');
+    }
     public function whatsapp(Request $request, Prospecto $prospecto, CrmService $crm)
     {
         $this->authorize('update',$prospecto);

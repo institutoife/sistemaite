@@ -13,7 +13,7 @@ class CrmFilterRequest extends FormRequest
     }
     public function rules()
     {
-        return ['q'=>'nullable|string|max:100','status'=>'sometimes|in:activo,baja,convertido','agenda'=>'nullable|in:hoy,vencidos,sin_seguimiento,sin_respuesta,nuevos',
+        return ['q'=>'nullable|string|max:100','status'=>'sometimes|in:activo,baja,convertido,operativo','agenda'=>'nullable|in:hoy,vencidos,sin_seguimiento,sin_respuesta,nuevos',
             'asignacion'=>'nullable|in:asignados,sin_responsable,todos','usuario_id'=>'nullable|integer|exists:users,id',
             'crm_sede_id'=>'nullable|integer|exists:crm_sedes,id','responsable_id'=>'nullable|integer|exists:users,id',
             'interest_id'=>'nullable|integer|exists:interests,id','como_id'=>'nullable|integer|exists:comos,id','crm_etapa_id'=>'nullable|integer|exists:crm_etapas,id',

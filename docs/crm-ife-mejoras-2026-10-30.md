@@ -20,7 +20,7 @@ La interfaz muestra **Sucursal**. La base conserva `crm_sede_id`, `crm_sedes` y 
 
 ## Históricos sin responsable
 
-El tablero operativo y la lista muestran por defecto fichas activas con responsable asignado. Los históricos sin responsable no se borran ni se asignan automáticamente y quedan fuera de indicadores de tareas y alertas pendientes. Admin puede elegir **Asignación administrativa → Históricos sin responsable**, abrir la ficha y recuperarla mediante **Reasignar responsable comercial**, dejando un motivo. Esto no inventa un creador ni un responsable original desconocidos.
+La lista muestra por defecto fichas activas con responsable asignado. Desde la corrección del 31 de octubre, el tablero incluye también los convertidos para que su columna sea visible. Los históricos sin responsable no se borran ni se asignan automáticamente y quedan fuera de indicadores de tareas y alertas pendientes. Admin puede elegir **Asignación administrativa → Históricos sin responsable**, abrir la ficha y recuperarla mediante **Reasignar responsable comercial**, dejando un motivo. Esto no inventa un creador ni un responsable original desconocidos.
 
 No se deduce la propiedad comercial a partir del usuario que atendió una gestión antigua. Cuando existe una auditoría inequívoca de alta o conversión se recupera su autor; los demás datos anteriores sin evidencia aparecen como **Sin registro histórico**. Las fichas existentes ya asignadas conservan esa asignación.
 
@@ -36,7 +36,7 @@ Admin puede crear, editar y **eliminar del tablero** una etapa. La eliminación 
 
 La tasa por responsable usa una cohorte de fichas distintas recibidas en el período mediante alta o reasignación antes de la conversión. Cuenta conversiones confirmadas a cargo de ese responsable hasta el cierre del período. Recibir nuevamente la misma ficha no duplica esa cohorte. Las conversiones de fichas recibidas antes se muestran en el conteo de conversiones del período y no se fuerzan en la tasa de una cohorte nueva. Una reasignación posterior a la venta no cambia la atribución ni agrega una recepción comercial.
 
-Las actividades históricas se filtran por fecha, usuario, sucursal y servicio guardados en el evento. Las cifras actuales de cartera usan la asignación, sucursal y servicios actuales. Si falta una instantánea histórica antigua no se sustituye con el responsable actual. Las conversiones requieren el proceso existente de inscripción o matrícula confirmada; arrastrar una tarjeta no concreta una venta.
+Las actividades históricas se filtran por fecha, usuario, sucursal y servicio guardados en el evento. Las cifras actuales de cartera usan la asignación, sucursal y servicios actuales. Si falta una instantánea histórica antigua no se sustituye con el responsable actual. Las conversiones requieren el proceso existente de inscripción o matrícula confirmada. Desde la [corrección del 31 de octubre](crm-conversion-desde-tablero.md), arrastrar a una etapa de conversión abre la confirmación de ese vínculo; el arrastre solo no registra la venta.
 
 Las tarjetas, la lista y el detalle muestran días sin seguimiento. Se toma el último contacto registrado —llamada, intento no contestado, WhatsApp confirmado, información, visita o cotización— o el tiempo desde el alta si aún no hubo contacto. Una observación interna, programación o cambio de etapa no reinicia ese contador. Fechas heredadas inválidas se muestran sin atribuir una antigüedad inventada.
 

@@ -24,8 +24,8 @@
 @endif
 @if(!request()->routeIs('crm.dashboard'))
     <div class="col-md-2"><label for="crm-status">Estado comercial</label><select class="form-control" id="crm-status" name="status">
-@foreach(['activo'=>'Activos','baja'=>'Bajas','convertido'=>'Convertidos'] as $value=>$label)<option value="{{ $value }}"
-@if(request('status','activo')===$value) selected
+@foreach(['operativo'=>'En gestión y convertidos','activo'=>'Solo activos en gestión','baja'=>'Bajas','convertido'=>'Convertidos'] as $value=>$label)<option value="{{ $value }}"
+@if(request('status',request()->routeIs('crm.tablero')?'operativo':'activo')===$value) selected
 @endif>{{ $label }}</option>
 @endforeach</select></div>
     <div class="col-md-3"><label for="crm-agenda">Seguimiento</label><select class="form-control" id="crm-agenda" name="agenda"><option value="">Todos</option>

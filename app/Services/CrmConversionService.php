@@ -11,7 +11,10 @@ class CrmConversionService
         // Same lock and lock order as Google: no in-flight contact CREATE can race with this handoff.
         $done=Cache::lock('ife:gcontact:central',180)->get(function () use ($record,$data,$actor) {
             DB::transaction(function () use ($record,$data,$actor) {
-                $crm=app(CrmService::class); $current=$crm->lock($record,(int)$data['version']);
+                $crm=app(CrmService::class); $current=Prospecto::whereKey($record->id)->lockForUpdate()->firstOrFail();
+                $sameEnrollment=$data['tipo']==='inscripcion'?(int)$current->inscripcione_id===(int)$data['inscripcion_id']:(int)$current->matriculacion_id===(int)$data['inscripcion_id'];
+                if ($current->convertido_at&&$sameEnrollment&&(int)$current->persona_id===(int)$data['persona_id']&&(int)$current->estudiante_persona_id===(int)$data['estudiante_persona_id']) { return; }
+                if ((int)$current->crm_version!==(int)$data['version']) { throw new ConflictHttpException('Otro usuario modificó esta ficha. Actualice la página.'); }
                 if ($current->crm_status!=='activo'||$current->convertido_at) { throw ValidationException::withMessages(['conversion'=>'La oportunidad debe estar activa y pendiente de conversión.']); }
                 $contact=Persona::whereKey($data['persona_id'])->lockForUpdate()->firstOrFail();
                 if ($current->persona_id&&(int)$current->persona_id!==$contact->id) { throw ValidationException::withMessages(['persona_id'=>'Conserve la identidad de la Persona ya vinculada.']); }
@@ -32,7 +35,7 @@ class CrmConversionService
                 if ($contact->gcontact_account_id&&$current->gcontact_account_id&&(int)$contact->gcontact_account_id!==(int)$current->gcontact_account_id) {
                     throw ValidationException::withMessages(['conversion'=>'Los contactos pertenecen a cuentas Google diferentes.']);
                 }
-                $stage=CrmEtapa::where('conversion',true)->where('activa',true)->orderBy('orden')->first();
+                $stage=CrmEtapa::where('conversion',true)->where('activa',true)->when(!empty($data['etapa_id']),function ($query) use ($data) { $query->whereKey($data['etapa_id']); })->orderBy('orden')->first();
                 if (!$stage) { throw ValidationException::withMessages(['conversion'=>'Configure una etapa activa de conversión.']); }
                 $current->persona_id=$contact->id; $current->estudiante_persona_id=$student->id;
                 $current->inscripcione_id=$academic?$data['inscripcion_id']:null; $current->matriculacion_id=$academic?null:$data['inscripcion_id'];

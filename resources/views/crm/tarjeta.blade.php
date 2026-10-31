@@ -1,7 +1,9 @@
 <article class="crm-card"
 @can('update',$record) draggable="{{ $record->crm_status==='activo'?'true':'false' }}"
 @endcan
-    data-card="{{ $record->id }}" data-version="{{ $record->crm_version }}" data-move="{{ route('crm.mover',$record) }}">
+    data-card="{{ $record->id }}" data-version="{{ $record->crm_version }}" data-move="{{ route('crm.mover',$record) }}"
+@can('convert',$record) data-conversion-url="{{ route('crm.conversion.form',$record) }}"
+@endcan>
     <a class="crm-card-title" href="{{ route('prospecto.view',$record) }}">{{ $record->identificacion }}</a>
     <p class="mb-1">{{ $record->telefono ?: 'Sin teléfono' }} <span class="crm-code">#{{ $record->id }}</span></p>
     <p class="mb-1">{{ $record->interests->pluck('interest')->implode(', ') ?: 'Servicios por definir' }}</p>
@@ -15,16 +17,22 @@
 
 @if($record->no_contactar)<p class="badge badge-warning">No contactar</p>
 @endif
+@if($record->convertido_at)<p class="badge badge-success">Conversión confirmada · {{ $record->convertido_at->format('d/m/Y') }}</p>
+@endif
 
 @can('update',$record)
 @if($record->crm_status==='activo')
     <label class="sr-only" for="card-stage-{{ $record->id }}">Cambiar etapa de {{ $record->identificacion }}</label>
     <select id="card-stage-{{ $record->id }}" class="form-control form-control-sm" data-change-stage><option value="">Cambiar etapa…</option>
 @foreach($stages as $target)
-@if($target->activa&&!$target->conversion)<option value="{{ $target->id }}">{{ $target->nombre }}</option>
+@if($target->activa&&(!$target->conversion||auth()->user()->can('convert',$record)))<option value="{{ $target->id }}">{{ $target->nombre }}</option>
 @endif
 @endforeach</select>
 
+@endif
+@endcan
+@can('convert',$record)
+@if($record->crm_status==='activo')<button class="btn btn-outline-primary btn-sm mt-2" type="button" data-start-conversion>Convertir en cliente</button>
 @endif
 @endcan
 </article>

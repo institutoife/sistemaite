@@ -26,7 +26,7 @@ class CrmActionRequest extends FormRequest
         if ($this->routeIs('crm.convertir')) {
             return $rules+['persona_id'=>'required|integer|exists:personas,id','estudiante_persona_id'=>'required|integer|exists:personas,id',
                 'parentesco'=>'nullable|string|max:40','tipo'=>'required|in:inscripcion,matriculacion','inscripcion_id'=>'required|integer|min:1',
-                'confirmar_vinculos'=>'accepted'];
+                'confirmar_vinculos'=>'accepted','etapa_id'=>'nullable|integer|exists:crm_etapas,id'];
         }
         return $rules+['tipo'=>['required',Rule::in(array_keys(CrmService::TYPES))],
             'resultado'=>'required|in:respondio,sin_respuesta,interesado,pendiente,enviado_confirmado,otro',

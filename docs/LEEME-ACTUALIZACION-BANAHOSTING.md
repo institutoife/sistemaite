@@ -1,5 +1,7 @@
 # Actualizar Google Contactos y CRM IFE en ife.bo
 
+La [corrección de conversión del 31 de octubre](crm-conversion-desde-tablero.md) permite confirmar una inscripción existente desde el arrastre o selector del tablero y mostrar la ficha convertida. No agrega migraciones ni requiere registrar nuevamente pagos.
+
 La [ampliación del CRM del 30 de octubre](crm-ife-mejoras-2026-10-30.md) incorpora responsabilidades auditadas, servicios múltiples y estadísticas por usuario. Se instala con el mismo `deploy-crm.sh`, que aplica también la migración nueva.
 
 Actualizado el 30 de octubre de 2026 para la instalación existente en BanaHosting. El flujo elegido es **commit y push en local → pull en el servidor → migraciones y configuración**. Esta sesión prepara y publica el código; el usuario ejecuta el despliegue en ife.bo.

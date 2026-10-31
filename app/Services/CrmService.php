@@ -111,7 +111,9 @@ class CrmService
         if (!empty($filters['q'])) { $q=$filters['q']; $query->where(function ($where) use ($q) { $where->where('nombre','like','%'.$q.'%')->orWhere('telefono','like','%'.$q.'%')->orWhere('estudiante_nombre','like','%'.$q.'%'); }); }
         if (($filters['origen_tipo']??'')==='potencial') { $query->whereNotNull('legacy_persona_id'); }
         if (($filters['origen_tipo']??'')==='telefonico') { $query->whereNull('legacy_persona_id'); }
-        if ($active) { $query->where('crm_status',$filters['status']??'activo'); }
+        if ($active) {
+            ($filters['status']??'activo')==='operativo'?$query->whereIn('crm_status',['activo','convertido']):$query->where('crm_status',$filters['status']??'activo');
+        }
         if ($active&&!empty($filters['desde'])) { $query->whereDate('created_at','>=',$filters['desde']); }
         if ($active&&!empty($filters['hasta'])) { $query->whereDate('created_at','<=',$filters['hasta']); }
         switch ($filters['agenda']??'') {
@@ -125,6 +127,7 @@ class CrmService
     }
     public function board(array $filters): array
     {
+        $filters+=['status'=>'operativo'];
         $stages=CrmEtapa::orderBy('orden')->orderBy('id')->get(); $ids=[];
         $counts=$this->query($filters)->selectRaw('crm_etapa_id, COUNT(*) total')->groupBy('crm_etapa_id')->pluck('total','crm_etapa_id');
         foreach ($stages as $stage) {

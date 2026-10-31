@@ -917,6 +917,8 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
         Route::post('/{prospecto}/baja',[$controller,'deactivate'])->name('crm.baja');
         Route::post('/{prospecto}/reactivar',[$controller,'reactivate'])->name('crm.reactivar');
         Route::post('/{prospecto}/convertir',[$controller,'convert'])->name('crm.convertir');
+        Route::get('/{prospecto}/conversion',[$controller,'conversionForm'])->name('crm.conversion.form');
+        Route::get('/{prospecto}/inscripciones',[$controller,'enrollmentOptions'])->name('crm.conversion.inscripciones');
         Route::get('/{prospecto}/whatsapp',[$controller,'whatsapp'])->name('crm.whatsapp');
     });
     Route::get('prospectos',[ProspectoController::class,'index'])->name('prospecto.index');

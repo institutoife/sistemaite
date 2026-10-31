@@ -19,6 +19,7 @@
     }
     async function move(card,stage){
         if(card.dataset.busy||card.parentElement.closest('[data-stage]').dataset.stage===stage.dataset.stage)return;
+        if(stage.dataset.stageConversion==='1'){await openConversion(card,stage);const choice=card.querySelector('[data-change-stage]');if(choice)choice.value='';return;}
         const origin=card.parentElement;const after=card.nextSibling;
         const scroll=board.scrollLeft;
         card.dataset.busy='1';card.setAttribute('aria-busy','true');stage.querySelector('.crm-cards').appendChild(card);board.scrollLeft=scroll;
@@ -32,7 +33,7 @@
     }
     if(board){
         board.addEventListener('dragstart',event=>{const card=event.target.closest('[data-card][draggable=true]');if(!card||card.dataset.busy||event.target.closest('select,input,button')){event.preventDefault();return;}dragging=card;event.dataTransfer.setData('text/plain',card.dataset.card);event.dataTransfer.effectAllowed='move';});
-        board.addEventListener('dragover',event=>{const stage=event.target.closest('[data-stage-active="1"]');if(stage&&dragging){event.preventDefault();event.dataTransfer.dropEffect='move';stage.classList.add('crm-drop-target');}});
+        board.addEventListener('dragover',event=>{const stage=event.target.closest('[data-stage-active="1"]');if(stage&&dragging&&(stage.dataset.stageConversion!=='1'||dragging.dataset.conversionUrl)){event.preventDefault();event.dataTransfer.dropEffect='move';stage.classList.add('crm-drop-target');}});
         board.addEventListener('dragleave',event=>{const stage=event.target.closest('[data-stage]');if(stage&&!stage.contains(event.relatedTarget))stage.classList.remove('crm-drop-target');});
         board.addEventListener('drop',event=>{const stage=event.target.closest('[data-stage-active="1"]');if(stage&&dragging){event.preventDefault();move(dragging,stage);}board.querySelectorAll('.crm-drop-target').forEach(item=>item.classList.remove('crm-drop-target'));dragging=null;});
         board.addEventListener('dragend',()=>{dragging=null;board.querySelectorAll('.crm-drop-target').forEach(item=>item.classList.remove('crm-drop-target'));});
@@ -53,7 +54,8 @@
     if(wa&&open){let request=0;async function prepare(){const seq=++request;const link=wa.querySelector('[data-wa-link]');const error=wa.querySelector('[data-wa-error]');link.hidden=true;error.textContent='';try{const data=await json(open.dataset.url+'?'+new URLSearchParams({plantilla:wa.querySelector('[data-wa-template]').value}));if(seq!==request)return;wa.querySelector('[data-wa-text]').value=data.mensaje;link.href=data.url;link.hidden=false;}catch(e){error.textContent=e.message;}}
         open.addEventListener('click',()=>{wa.showModal();prepare();});wa.querySelector('[data-wa-template]').addEventListener('change',prepare);
     }
-    root.querySelectorAll('[data-person-search]').forEach(container=>{
+    function initializePeople(scope){scope.querySelectorAll('[data-person-search]').forEach(container=>{
+        if(container.dataset.ready)return;container.dataset.ready='1';
         let timer;let request=0;
         const input=container.querySelector('[data-person-query]');const select=container.querySelector('[data-person-select]');
         function links(){const option=select.selectedOptions[0];container.querySelectorAll('[data-person-link]').forEach(link=>{const url=option&&option.dataset[link.dataset.personLink];link.hidden=!url;if(url)link.href=url;});}
@@ -75,5 +77,60 @@
                 }catch(e){status(e.message,true);}
             },350);
         });
-    });
+    });}
+    const conversionDialog=root.querySelector('[data-conversion-dialog]');let conversionRequest=0;
+    async function openConversion(card,stage){
+        if(!conversionDialog||!card.dataset.conversionUrl){status('No tiene permiso para confirmar esta conversión.',true);return;}
+        const sequence=++conversionRequest;const body=conversionDialog.querySelector('[data-conversion-body]');
+        body.replaceChildren();const loading=document.createElement('p');loading.textContent='Cargando la inscripción existente…';body.appendChild(loading);
+        if(!conversionDialog.open)conversionDialog.showModal();
+        try{
+            const url=new URL(card.dataset.conversionUrl,location.href);if(stage)url.searchParams.set('etapa_id',stage.dataset.stage);
+            const response=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'}});
+            if(!response.ok)throw new Error('No se pudo abrir la conversión. Actualice el tablero y revise sus permisos.');
+            const html=await response.text();if(sequence!==conversionRequest||!conversionDialog.open)return;
+            body.innerHTML=html;
+            if(!body.querySelector('[data-crm-conversion-form]'))throw new Error('La sesión pudo terminar. Actualice el sistema y vuelva a ingresar.');
+            initializePeople(body);initializeConversions(body);
+        }catch(error){if(sequence===conversionRequest){body.replaceChildren();const message=document.createElement('p');message.className='alert alert-danger';message.textContent=error.message;body.appendChild(message);}}
+    }
+    if(conversionDialog){
+        conversionDialog.querySelector('[data-close-conversion]').addEventListener('click',()=>{if(!conversionDialog.dataset.busy){conversionRequest++;conversionDialog.close();}});
+        conversionDialog.addEventListener('cancel',event=>{if(conversionDialog.dataset.busy)event.preventDefault();else conversionRequest++;});
+        root.addEventListener('click',event=>{const button=event.target.closest('[data-start-conversion]');if(!button)return;const card=button.closest('[data-card]');const stage=board.querySelector('[data-stage-conversion="1"][data-stage-active="1"]');if(!stage){status('Configure una etapa activa de conversión.',true);return;}if(!card.dataset.busy)openConversion(card,stage);});
+    }
+    function initializeConversions(scope){scope.querySelectorAll('[data-crm-conversion-form]').forEach(form=>{
+        if(form.dataset.ready)return;form.dataset.ready='1';let request=0;
+        const contact=form.querySelector('[name=persona_id]'),student=form.querySelector('[name=estudiante_persona_id]'),picker=form.querySelector('[data-conversion-enrollment]');
+        const type=form.querySelector('[name=tipo]'),id=form.querySelector('[name=inscripcion_id]'),confirmation=form.querySelector('[name=confirmar_vinculos]'),help=form.querySelector('[data-conversion-help]');
+        const error=form.querySelector('[data-conversion-error]');
+        async function enrollments(clear){
+            const sequence=++request;if(clear){id.value='';confirmation.checked=false;}
+            picker.replaceChildren(new Option(contact.value?'Cargando inscripciones…':'Seleccione primero al contacto',''));
+            if(!contact.value)return;
+            try{
+                const data=await json(form.dataset.enrollmentsUrl+'?'+new URLSearchParams({persona_id:contact.value,estudiante_persona_id:student.value}));if(sequence!==request)return;
+                picker.replaceChildren(new Option('Seleccione la inscripción ya registrada',''));
+                data.students.forEach(person=>{if(!Array.from(student.options).some(option=>option.value===String(person.id)))student.add(new Option(person.nombre+' (#'+person.id+')',person.id));});
+                data.enrollments.forEach(item=>{const option=new Option(item.label+(item.tiene_pago===true?' · Pago registrado':''),item.tipo+':'+item.id);option.dataset.type=item.tipo;option.dataset.enrollment=String(item.id);option.dataset.student=String(item.estudiante_persona_id);picker.add(option);});
+                help.textContent=data.enrollments.length?'Seleccione la inscripción correcta para completar el estudiante y el código.':'No hay inscripciones para esta selección. Busque al estudiante correcto o complete su inscripción por el proceso habitual.';
+            }catch(e){picker.replaceChildren(new Option('No se pudieron cargar las inscripciones',''));help.textContent=e.message;}
+        }
+        contact.addEventListener('change',()=>{student.value='';enrollments(true);});student.addEventListener('change',()=>enrollments(true));
+        picker.addEventListener('change',()=>{const option=picker.selectedOptions[0];confirmation.checked=false;if(!option||!option.value){id.value='';return;}type.value=option.dataset.type;id.value=option.dataset.enrollment;student.value=option.dataset.student;});
+        [type,id].forEach(input=>input.addEventListener('input',()=>{confirmation.checked=false;}));enrollments(false);
+        if(!form.closest('[data-conversion-dialog]'))return;
+        form.addEventListener('submit',async event=>{
+            event.preventDefault();if(form.dataset.busy)return;
+            form.dataset.busy='1';conversionDialog.dataset.busy='1';const submit=form.querySelector('[data-confirm-conversion]');submit.disabled=true;error.classList.add('d-none');
+            try{
+                const result=await json(form.action,{method:'POST',headers:{Accept:'application/json','X-CSRF-TOKEN':form.querySelector('[name=_token]').value},body:new FormData(form)});
+                if(!result.converted)throw new Error('No se confirmó la conversión. Actualice el tablero.');
+                const url=new URL(location.href);url.searchParams.set('status','operativo');url.searchParams.delete('crm_etapa_id');url.searchParams.delete('agenda');
+                location.href=url.href;
+            }catch(e){error.textContent=e.message;error.classList.remove('d-none');}
+            finally{delete form.dataset.busy;delete conversionDialog.dataset.busy;submit.disabled=false;}
+        });
+    });}
+    initializePeople(root);initializeConversions(root);
 })();

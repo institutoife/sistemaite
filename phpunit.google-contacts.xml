@@ -17,6 +17,7 @@
             <file>tests/Feature/CrmTest.php</file>
             <file>tests/Feature/CrmImprovementsTest.php</file>
             <file>tests/Feature/CrmGoogleIdentityTest.php</file>
+            <file>tests/Feature/CrmConversionBoardTest.php</file>
             <file>tests/Feature/GoogleContactsDeploymentTest.php</file>
         </testsuite>
     </testsuites>
