@@ -31,6 +31,7 @@
         box.append(img,caption);return box.outerHTML;
     }
     window.IFEPhotos={url:photoUrl,render};
+    const zoomExcluded=img=>!!img.closest('.user-menu,[data-photo-zoom="off"]');
     let dialog,viewport,canvas,large,title,zoomLabel,plus,minus,previousFocus,originalOverflow;
     let width=0,height=0,fit=1,scale=1,request=0,panning=null,pinching=null;
     const pointers=new Map();
@@ -65,7 +66,7 @@
         window.addEventListener('resize',()=>{if(dialog.open)reset();});
     }
     function openPhoto(img){
-        if(img.dataset.photoMissing==='1'||img.src===placeholder)return;
+        if(zoomExcluded(img)||img.dataset.photoMissing==='1'||img.src===placeholder)return;
         ensureDialog();previousFocus=img;originalOverflow=document.body.style.overflow;
         title.textContent=img.title||img.alt||'Fotografía';large.alt=img.alt||'Fotografía ampliada';
         const seq=++request;width=0;height=0;zoomLabel.textContent='…';large.hidden=true;dialog.querySelector('.ife-photo-error').hidden=true;
@@ -81,15 +82,15 @@
         if(img.dataset.photoSource!==img.src&&img.src!==placeholder)delete img.dataset.photoMissing;
         img.dataset.photoSource=img.src;
         img.dataset.profilePhoto='1';img.classList.remove('zoomify','zoomifyuser','materialboxed');
-        const missing=img.src===placeholder||img.dataset.photoMissing==='1';
-        if(missing){img.removeAttribute('role');img.removeAttribute('tabindex');img.alt='Sin fotografía disponible';return;}
-        img.setAttribute('role','button');img.tabIndex=0;img.setAttribute('aria-label','Ampliar fotografía: '+(img.alt||'perfil'));
         if(!img.dataset.photoReady){img.dataset.photoReady='1';img.addEventListener('error',()=>{if(img.src===placeholder)return;img.dataset.photoMissing='1';img.src=placeholder;prepare(img);});}
-        if(img.complete&&img.naturalWidth===0){img.dataset.photoMissing='1';img.src=placeholder;prepare(img);}
+        if(img.complete&&img.naturalWidth===0&&img.src!==placeholder){img.dataset.photoMissing='1';img.src=placeholder;prepare(img);return;}
+        const missing=img.src===placeholder||img.dataset.photoMissing==='1';
+        if(missing||zoomExcluded(img)){img.removeAttribute('role');img.removeAttribute('tabindex');img.removeAttribute('aria-label');if(missing)img.alt='Sin fotografía disponible';return;}
+        img.setAttribute('role','button');img.tabIndex=0;img.setAttribute('aria-label','Ampliar fotografía: '+(img.alt||'perfil'));
     }
     function scan(scope){if(scope.matches?.('img'))prepare(scope);scope.querySelectorAll?.('img').forEach(prepare);}
-    document.addEventListener('click',event=>{const img=event.target.closest?.('img[data-profile-photo]');if(!img||img.dataset.photoMissing==='1'||img.src===placeholder)return;event.preventDefault();event.stopImmediatePropagation();openPhoto(img);},true);
-    document.addEventListener('keydown',event=>{if(!['Enter',' '].includes(event.key)||!event.target.matches('img[data-profile-photo][role=button]'))return;event.preventDefault();event.stopImmediatePropagation();openPhoto(event.target);},true);
+    document.addEventListener('click',event=>{const img=event.target.closest?.('img[data-profile-photo]');if(!img||zoomExcluded(img)||img.dataset.photoMissing==='1'||img.src===placeholder)return;event.preventDefault();event.stopImmediatePropagation();openPhoto(img);},true);
+    document.addEventListener('keydown',event=>{if(!['Enter',' '].includes(event.key)||!event.target.matches('img[data-profile-photo][role=button]')||zoomExcluded(event.target))return;event.preventDefault();event.stopImmediatePropagation();openPhoto(event.target);},true);
     function start(){scan(document);new MutationObserver(changes=>{changes.forEach(change=>{if(change.type==='attributes')prepare(change.target);else change.addedNodes.forEach(node=>{if(node.nodeType===1)scan(node);});});}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});}
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

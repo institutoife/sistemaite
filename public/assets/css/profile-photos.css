@@ -11,3 +11,15 @@ img.ife-profile-photo{
     object-fit:contain;
     vertical-align:middle;
 }
+
+.user-menu .user-header.ife-user-header{background:#375f7a;color:#fff}
+.user-menu .user-footer .btn:hover{background:#26baa5;color:#fff}
+.user-menu .user-footer .btn:focus-visible{outline:3px solid #26baa5;outline-offset:2px}
+img.ife-profile-detail-photo{width:auto;height:auto;max-width:100%;max-height:250px;object-fit:contain}
+.ife-profile-details td{overflow-wrap:anywhere}
+@media(max-width:767.98px){
+    .main-header.navbar>.navbar-nav:first-child{min-width:0;flex:1 1 auto;overflow-x:auto;overflow-y:hidden;white-space:nowrap}
+    .main-header.navbar>.navbar-nav:first-child>.nav-item{flex-shrink:0}
+    .main-header.navbar>.navbar-nav.ml-auto{flex:0 0 auto}
+    .main-header .user-menu>.dropdown-menu{max-width:calc(100vw - 16px)}
+}

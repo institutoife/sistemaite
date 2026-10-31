@@ -283,6 +283,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::get('listar/paises',[PaisController::class,'listar'])->name('paises.listar');
 
     Route::resource('telefonos', "TelefonoController");
+    Route::get('mi-perfil', [UserController::class, 'profile'])->name('profile.show');
     Route::resource('users', 'UserController');
     Route::put('users/{user}/password', [UserController::class, 'updatePassword'])->name('users.password.update');
     

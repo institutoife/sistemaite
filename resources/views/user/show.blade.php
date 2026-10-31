@@ -1,8 +1,9 @@
 @extends('adminlte::page')
+@php($ownProfile = $ownProfile ?? false)
 @section('css')
     <link rel="stylesheet" href="{{asset('bootstrap/css/bootstrap.css')}}">
 @stop
-@section('title', 'Dashboard')
+@section('title', $ownProfile ? 'Mi perfil' : 'Mostrar usuario')
 
 @section('content_header')
     
@@ -15,15 +16,17 @@
                 <div class="card">
                     <div class="card-header bg-secondary">
                         <div class="float-left">
-                            <span class="card-title">Mostrar Usuario</span>
+                            <span class="card-title">{{ $ownProfile ? 'Mi perfil' : 'Mostrar usuario' }}</span>
                         </div>
                         <div class="float-right">
-                            <a class="btn btn-primary" href="{{ route('users.index') }}">Listar usuarios</a>
+                            @can('Listar Usuarios')
+                                <a class="btn btn-primary" href="{{ route('users.index') }}">Listar usuarios</a>
+                            @endcan
                         </div>
                     </div>
 
-                    <div class="card-body">
-                        <table class="table table-bordered table-hover table-striped">
+                    <div class="card-body table-responsive">
+                        <table class="table table-bordered table-hover table-striped ife-profile-details">
                             <thead>
                                 <th>ATRIBUTO</th>
                                 <th>VALOR</th>
@@ -39,12 +42,18 @@
                                     <td>EMAIL</td>
                                     <td>{{$user->email}}</td>
                                 </tr>
+                                @if($ownProfile && $user->persona)
+                                    <tr>
+                                        <td>NOMBRE COMPLETO</td>
+                                        <td>{{ trim($user->persona->nombre.' '.$user->persona->apellidop.' '.$user->persona->apellidom) }}</td>
+                                    </tr>
+                                @endif
                                 <tr>
                                     <td>FOTO</td>
-                                    <td><img data-profile-photo src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="{{$user->name}}" height="250px"></td>
+                                    <td><img data-profile-photo class="ife-profile-detail-photo" src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="{{$user->name}}" height="250"></td>
                                 </tr>
                             </tbody>
-                        </table>    
+                        </table>
                     </div>
                 </div>
             </div>

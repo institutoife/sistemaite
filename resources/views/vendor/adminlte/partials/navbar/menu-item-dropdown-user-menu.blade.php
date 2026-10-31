@@ -13,10 +13,12 @@
     @php( $logout_url = $logout_url ? url($logout_url) : '' )
 @endif
 
-<li class="nav-item dropdown user-menu">
+<li class="nav-item dropdown user-menu" data-photo-zoom="off">
 
     {{-- User menu toggler --}}
-    <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+    <a href="#" id="user-menu-toggle" class="nav-link dropdown-toggle" data-toggle="dropdown"
+       role="button" aria-haspopup="true" aria-expanded="false" aria-controls="user-menu-dropdown"
+       aria-label="Menú de usuario: {{ Auth::user()->name }}">
         @if(config('adminlte.usermenu_image'))
             <img data-profile-photo src="{{ Auth::user()->adminlte_image() }}"
                  class="user-image img-circle elevation-2"
@@ -28,7 +30,7 @@
     </a>
 
     {{-- User menu dropdown --}}
-    <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+    <ul id="user-menu-dropdown" class="dropdown-menu dropdown-menu-lg dropdown-menu-right" aria-labelledby="user-menu-toggle">
 
         {{-- User menu header --}}
         @if(!View::hasSection('usermenu_header') && config('adminlte.usermenu_header'))
@@ -65,13 +67,13 @@
             @if($profile_url)
                 <a href="{{ $profile_url }}" class="btn btn-default btn-flat">
                     <i class="fa fa-fw fa-user"></i>
-                    {{ __('adminlte::menu.profile') }}
+                    {{ __('Mi perfil') }}
                 </a>
             @endif
             <a class="btn btn-default btn-flat float-right @if(!$profile_url) btn-block @endif"
                href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                 <i class="fa fa-fw fa-power-off"></i>
-                {{ __('adminlte::adminlte.log_out') }}
+                {{ __('Cerrar sesión') }}
             </a>
             <form id="logout-form" action="{{ $logout_url }}" method="POST" style="display: none;">
                 @if(config('adminlte.logout_method'))

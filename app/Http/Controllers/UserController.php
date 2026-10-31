@@ -47,6 +47,14 @@ class UserController extends Controller
             ->addColumn('btn','user.action')->rawColumns(['btn'])->toJson();
     }
 
+    public function profile(Request $request)
+    {
+        return response()->view('user.show', [
+            'user' => $request->user()->loadMissing('persona'),
+            'ownProfile' => true,
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
     /**
      * Show the form for creating a new resource.
      *

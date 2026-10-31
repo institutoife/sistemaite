@@ -94,6 +94,67 @@ class ProfilePhotosTest extends CrmTestCase
         $this->getJson(url('listar/docentes'))->assertForbidden();
     }
 
+    public function test_my_profile_is_private_and_does_not_grant_user_administration_permissions(): void
+    {
+        $photo=$this->image(); $person=$this->persona(['nombre'=>'Nombre propio','foto'=>$photo]);
+        $user=$this->actor('Padre'); $user->persona_id=$person->id; $user->save();
+        $this->actingAs($user);
+        $response=$this->get(route('profile.show',['user_id'=>$this->operator->id]))->assertOk()
+            ->assertViewIs('user.show')->assertViewHas('user',fn ($shown)=>$shown->id===$user->id)
+            ->assertSee('Mi perfil')->assertSee('Nombre propio')->assertSee($user->email)
+            ->assertSee(app(ProfilePhotoService::class)->url($photo),false)
+            ->assertDontSee('Listar usuarios');
+        $this->assertStringContainsString('no-store',$response->headers->get('Cache-Control'));
+        $this->assertStringContainsString('private',$response->headers->get('Cache-Control'));
+        $this->get(route('users.show',$this->operator))->assertForbidden();
+        $this->getJson(route('users.data'))->assertForbidden();
+        $this->app['auth']->guard('web')->logout(); $this->app['auth']->forgetGuards();
+        $this->get(route('profile.show'))->assertRedirect(route('login'));
+        $this->getJson(route('profile.show'))->assertUnauthorized();
+        Http::assertNothingSent(); Queue::assertNothingPushed();
+    }
+
+    public function test_user_dropdown_contains_one_profile_link_and_the_existing_csrf_protected_logout_form(): void
+    {
+        $this->operator->foto='usuarios/missing.jpg'; $this->operator->save();
+        $response=$this->get(route('profile.show'))->assertOk();
+        $document=new \DOMDocument(); @$document->loadHTML($response->getContent());
+        $xpath=new \DOMXPath($document);
+        $menu='//*[@id="user-menu-dropdown"]';
+        $this->assertSame(1,$xpath->query($menu)->length);
+        $this->assertSame('off',$xpath->query($menu.'/..')->item(0)->getAttribute('data-photo-zoom'));
+        $toggle=$xpath->query('//*[@id="user-menu-toggle"]')->item(0);
+        $this->assertSame('dropdown',$toggle->getAttribute('data-toggle'));
+        $this->assertSame('false',$toggle->getAttribute('aria-expanded'));
+        $this->assertSame('user-menu-dropdown',$toggle->getAttribute('aria-controls'));
+        $this->assertSame(1,$xpath->query($menu.'//a[@href="'.route('profile.show').'"]')->length);
+        $form=$xpath->query($menu.'//form[@id="logout-form"]')->item(0);
+        $this->assertSame('POST',$form->getAttribute('method'));
+        $this->assertSame(route('logout'),$form->getAttribute('action'));
+        $this->assertSame(csrf_token(),$xpath->query($menu.'//input[@name="_token"]')->item(0)->getAttribute('value'));
+        $this->assertSame(app(ProfilePhotoService::class)->placeholder(),$xpath->query('//*[@id="user-menu-toggle"]/img')->item(0)->getAttribute('src'));
+        $this->assertSame(1,$xpath->query('//img[contains(@class,"ife-profile-detail-photo") and @data-profile-photo]')->length);
+        Http::assertNothingSent(); Queue::assertNothingPushed();
+    }
+
+    public function test_user_menu_logout_requires_csrf_and_invalidates_the_laravel_session(): void
+    {
+        $this->partialMock(\App\Http\Middleware\VerifyCsrfToken::class,function ($mock) {
+            $mock->shouldAllowMockingProtectedMethods()->shouldReceive('runningUnitTests')->andReturn(false);
+        });
+        $token=str_repeat('a',40);
+        $this->withSession(['_token'=>$token,'private_test_data'=>'Own account']);
+        $this->post(route('logout'))->assertStatus(419);
+        $this->assertAuthenticatedAs($this->operator);
+        $sessionId=session()->getId();
+        $this->post(route('logout'),['_token'=>$token])->assertRedirect('/')->assertSessionMissing('private_test_data');
+        $this->assertGuest();
+        $this->assertNotSame($token,session()->token());
+        $this->assertNotSame($sessionId,session()->getId());
+        $this->getJson(route('profile.show'))->assertUnauthorized();
+        Http::assertNothingSent(); Queue::assertNothingPushed();
+    }
+
     public function test_teacher_list_returns_a_resolved_photo_url_without_changing_the_saved_path(): void
     {
         Schema::create('mododocentes',function ($table) { $table->id(); $table->string('mododocente'); });
