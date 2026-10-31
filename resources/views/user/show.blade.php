@@ -41,7 +41,7 @@
                                 </tr>
                                 <tr>
                                     <td>FOTO</td>
-                                    <td><img src="{{URL::to('/').'/storage/'.$user->foto}}" alt="{{$user->name}}" height="250px"></td>
+                                    <td><img data-profile-photo src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="{{$user->name}}" height="250px"></td>
                                 </tr>
                             </tbody>
                         </table>    

@@ -121,7 +121,7 @@
 <div class="row">
         <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 input-group" >
             <div class="input-group mb-3">
-                <input type="file" class="form-control"  data-initial-preview="{{isset($persona->foto) ? URL::to('/').Storage::url("$persona->foto") : URL::to('/').Storage::url("estudiantes/foto.jpeg") }}" accept=".png, .jpg, .jpeg, .gif" name="foto" id="foto" data-classButton="btn btn-success" data-input="false" data-classIcon="icon-plus">                
+                <input type="file" class="form-control"  data-initial-preview="{{isset($user) ? app(\App\Services\ProfilePhotoService::class)->forUser($user) : app(\App\Services\ProfilePhotoService::class)->placeholder() }}" accept=".png, .jpg, .jpeg, .gif, .webp" name="foto" id="foto" data-classButton="btn btn-success" data-input="false" data-classIcon="icon-plus">
                 <div class="input-group-append">
                     <div class="input-group-text">
                         <span class="fas fa-camera"></span>
@@ -139,11 +139,11 @@
         <div class="border-danger input-group text-center">
             @isset ($user)
                 <div class="text-center">
-                    <img class="img-thumbnail" src="{{URL::to('/').'/storage/'.$user->foto}}" alt="">
+                    <img data-profile-photo class="img-thumbnail" src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="">
                 </div>
             @else
                 <div class="text-center">
-                    <img class="img-thumbnail" src="{{URL::to('/').'/storage/usuarios/sinfoto.jpg'}}" alt="">
+                    <img data-profile-photo class="img-thumbnail" src="{{app(\App\Services\ProfilePhotoService::class)->placeholder()}}" alt="">
                 </div>
             @endisset
         </div>

@@ -123,7 +123,7 @@
                             "name": "ESTUDIANTE",
                             "data": "personafoto",
                             "render": function (data, type, full, meta) {
-                                return "<div class='contenedor'><img class='materialboxed zoomify' src=\"{{URL::to('/')}}/storage/" + data + "\" height=\"50\" title='"+full.id+"'/><div class='codigo-encima'>"+full.id+"</div></div>";
+                                return IFEPhotos.render(data,type,full,{height:50,caption:'id'});
                             },
                             "title": "FOTO",
                             "orderable": false,
@@ -136,7 +136,7 @@
                             "name": "foto",
                             "data": "foto",
                             "render": function (data, type, full, meta) {
-                                return "<div class='contenedor'><img class='materialboxed zoomifyuser' src=\"{{URL::to('/')}}/storage/" + data + "\" height=\"50\" title='"+full.name+"'/><div class='texto-encima'>"+full.name+"</div></div>";
+                                return IFEPhotos.render(data,type,full,{height:50,caption:'name'});
                             },
                             "title": "USER",
                             "orderable": false,
@@ -214,7 +214,7 @@
                             "name": "ESTUDIANTE",
                             "data": "personafoto",
                             "render": function (data, type, full, meta) {
-                                return "<div class='contenedor'><img class='materialboxed zoomify' src=\"{{URL::to('/')}}/storage/" + data + "\" height=\"50\" title='"+full.id+"'/><div class='codigo-encima'>"+full.id+"</div></div>";
+                                return IFEPhotos.render(data,type,full,{height:50,caption:'id'});
                             },
                             "title": "FOTO",
                             "orderable": false,
@@ -227,7 +227,7 @@
                             "name": "foto",
                             "data": "foto",
                             "render": function (data, type, full, meta) {
-                                return "<div class='contenedor'><img class='materialboxed zoomifyuser' src=\"{{URL::to('/')}}/storage/" + data + "\" height=\"50\" title='"+full.name+"'/><div class='texto-encima'>"+full.name+"</div></div>";
+                                return IFEPhotos.render(data,type,full,{height:50,caption:'name'});
                             },
                             "title": "USER",
                             "orderable": false,

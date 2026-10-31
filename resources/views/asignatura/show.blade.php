@@ -41,7 +41,7 @@
                         <td>
                             @isset($user)
                                 {{$user->name}}
-                                <img width="150" src="{{URL::to('/').Storage::url("$user->foto")}}" alt="{{$user->name}}"  class="rounded img-thumbnail img-fluid border-primary border-5"> 
+                                <img data-profile-photo width="150" src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="{{$user->name}}"  class="rounded img-thumbnail img-fluid border-primary border-5">
                             @endisset
                         </td>
                     </tr>

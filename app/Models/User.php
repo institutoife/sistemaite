@@ -7,7 +7,6 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Str;
 
 use Spatie\Permission\Traits\HasRoles;
 /**
@@ -60,19 +59,7 @@ class User extends Authenticatable
 
     public function adminlte_image()
     {
-        $foto = $this->foto ?: optional($this->persona)->foto ?: 'estudiantes/sinperfil.png';
-
-        if (filter_var($foto, FILTER_VALIDATE_URL)) {
-            return $foto;
-        }
-
-        $foto = ltrim($foto, '/');
-
-        if (Str::startsWith($foto, 'storage/')) {
-            $foto = Str::after($foto, 'storage/');
-        }
-
-        return route('foto.show', ['filename' => $foto]);
+        return app(\App\Services\ProfilePhotoService::class)->forUser($this);
     }
 
     public function adminlte_desc()

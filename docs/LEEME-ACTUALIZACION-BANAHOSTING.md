@@ -1,5 +1,7 @@
 # Actualizar Google Contactos y CRM IFE en ife.bo
 
+La [corrección de fotografías y zoom](fotografias-perfiles-y-zoom.md) unifica las fotos de listas, fichas y usuarios conectados, admite rutas heredadas y añade ampliación con zoom en escritorio y móvil. No agrega migraciones ni reemplaza los archivos subidos del servidor.
+
 La [corrección de conversión del 31 de octubre](crm-conversion-desde-tablero.md) permite confirmar una inscripción existente desde el arrastre o selector del tablero y mostrar la ficha convertida. Si el prospecto y Persona tienen contactos Google distintos, añade una elección explícita para conservar ambos y continuar con Persona, auditando la decisión. No agrega migraciones ni requiere registrar nuevamente pagos.
 
 La [ampliación del CRM del 30 de octubre](crm-ife-mejoras-2026-10-30.md) incorpora responsabilidades auditadas, servicios múltiples y estadísticas por usuario. Se instala con el mismo `deploy-crm.sh`, que aplica también la migración nueva.

@@ -27,7 +27,7 @@ class UserController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('can:Listar Usuarios')->only("index","show","share");
+        $this->middleware('can:Listar Usuarios')->only("index","show","share","listing");
         $this->middleware('can:Crear Usuarios')->only("create","crear","store","guardar");
         $this->middleware('can:Editar Usuarios')->only("edit","update","updatePassword");
         $this->middleware('can:Eliminar Usuarios')->only("destroy");
@@ -38,6 +38,13 @@ class UserController extends Controller
         $users = User::paginate();
         return view('user.index', compact('users'))
             ->with('i', (request()->input('page', 1) - 1) * $users->perPage());
+    }
+
+    public function listing()
+    {
+        return datatables()->of(User::with('persona:id,foto')->select('id','name','email','foto','persona_id'))
+            ->addColumn('foto_url',function ($user) { return app(\App\Services\ProfilePhotoService::class)->forUser($user); })
+            ->addColumn('btn','user.action')->rawColumns(['btn'])->toJson();
     }
 
     /**
@@ -66,11 +73,13 @@ class UserController extends Controller
      * @param  \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
-    public function store(userStoreRequest $request)
+    public function store(UserStoreRequest $request)
     {
-        //request()->validate(User::$rules);
-        //dd($request->all());
-        $user = User::create($request->all());
+        $data=$request->validated();
+        $data['password']=Hash::make($data['password']);
+        unset($data['foto']);
+        if ($request->hasFile('foto')) { $data['foto']=app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'),'usuarios'); }
+        $user = User::create($data);
 
         return redirect()->route('users.index')
             ->with('success', 'User created successfully.');
@@ -84,17 +93,7 @@ class UserController extends Controller
         $usuario->password= Hash::make($request->password);
 
         if ($request->hasFile('foto')) {
-            $foto = $request->file('foto');
-            $nombreImagen = 'usuarios/' . Str::random(20) . '.jpg';
-            /** las convertimos en jpg y la redimensionamos */
-            $imagen = Image::make($foto)->encode('jpg', 75);
-            $imagen->resize(160, 160, function ($constraint) {
-                $constraint->upsize();
-            });
-            /* las guarda en en la carpeta estudiantes  */
-            $fotillo = Storage::disk('public')->put($nombreImagen, $imagen->stream());
-
-            $usuario->foto = $nombreImagen;
+            $usuario->foto = app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'),'usuarios');
 
         }
         $usuario->save();
@@ -144,17 +143,7 @@ class UserController extends Controller
             $user->password=Hash::make($request->password);
         }
         if ($request->hasFile('foto')) {
-            if (Storage::disk('public')->exists($user->foto)) {
-                Storage::disk('public')->delete($user->foto);
-            }
-            $foto = $request->file('foto');
-            $nombreImagen = 'usuarios/' . Str::random(20) . '.jpg';
-            $imagen = Image::make($foto)->encode('jpg', 75);
-            $imagen->resize(160, 160, function ($constraint) {
-                $constraint->upsize();
-            });
-            $fotillo = Storage::disk('public')->put($nombreImagen, $imagen->stream());
-            $user->foto = $nombreImagen;
+            $user->foto = app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'),'usuarios');
         }
         $user->save();
         return redirect()->route('users.index')

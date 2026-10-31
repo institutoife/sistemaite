@@ -413,9 +413,10 @@ class PagoController extends Controller
             ->where('userable_type','App\\Models\\Pago')
             ->whereDate('pagos.created_at','<=',$request->fechafin)
             ->whereDate('pagos.created_at','>=',$request->fechaini)
-            ->select('personas.id','personas.nombre','apellidop','apellidom','modalidad','monto','users.foto','name','pagocon','cambio','forma_pago','pagos.created_at','personas.foto as personafoto')
+            ->select('personas.id','personas.nombre','apellidop','apellidom','modalidad','monto','users.foto','name','pagocon','cambio','forma_pago','pagos.created_at','personas.foto as personafoto','users.id as foto_user_id')
             ->orderBy('created_at',"asc")
             ->get();
+        app(\App\Services\ProfilePhotoService::class)->fillUserPhotos($pagos);
         return DataTables::of($pagos)
                 ->rawColumns(['foto'])
                 ->toJson();

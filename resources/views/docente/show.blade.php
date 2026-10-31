@@ -56,9 +56,9 @@
 
     <div class="card">
         @if(isset($persona) && $persona->foto)
-            <img class="rounded img-thumbnail img-fluid border-primary border-5" src="{{ route('foto.show', ['filename' => $persona->foto]) }}" alt="{{$persona->nombre.' '.$persona->apellidop}}" width="100"> 
+            <img data-profile-photo class="rounded img-thumbnail img-fluid border-primary border-5" src="{{ app(\App\Services\ProfilePhotoService::class)->url($persona->foto) }}" alt="{{$persona->nombre.' '.$persona->apellidop}}" width="100">
         @else
-            <img class="rounded img-thumbnail img-fluid border-primary border-5" src="{{ asset('imagenes/sinfoto.jpg') }}" alt="Sin foto" width="100"> 
+            <img data-profile-photo class="rounded img-thumbnail img-fluid border-primary border-5" src="{{ app(\App\Services\ProfilePhotoService::class)->placeholder() }}" alt="Sin foto" width="100">
         @endif
             <table class="table table-bordered table-striped"> 
                 <tr class="bg-primary">
@@ -69,9 +69,9 @@
                     <tr>
                         <td>Codigo</td>
                         @if(isset($user) && $user->foto)
-                            <img src="{{ route('foto.show', ['filename' => $user->foto]) }}" alt="{{$user->name}}" class="rounded img-thumbnail img-fluid border-primary border-5" width="100">
+                            <img data-profile-photo src="{{ app(\App\Services\ProfilePhotoService::class)->forUser($user) }}" alt="{{$user->name}}" class="rounded img-thumbnail img-fluid border-primary border-5" width="100">
                         @else
-                            <img src="{{ asset('imagenes/sinfoto.jpg') }}" alt="Sin foto" class="rounded img-thumbnail img-fluid border-primary border-5" width="100">
+                            <img data-profile-photo src="{{ app(\App\Services\ProfilePhotoService::class)->placeholder() }}" alt="Sin foto" class="rounded img-thumbnail img-fluid border-primary border-5" width="100">
                         @endif
                     </tr>
                     <tr>
@@ -80,9 +80,9 @@
                         <td> 
                             <div class="text-center">
                                 @if(isset($persona) && $persona->foto)
-                                    <img class="rounded img-thumbnail img-fluid border-primary border-5" src="{{URL::to('/').Storage::url("$persona->foto")}}" alt="{{$persona->nombre.' '.$persona->apellidop}}" width="100"> 
+                                    <img data-profile-photo class="rounded img-thumbnail img-fluid border-primary border-5" src="{{app(\App\Services\ProfilePhotoService::class)->url($persona->foto)}}" alt="{{$persona->nombre.' '.$persona->apellidop}}" width="100">
                                 @else
-                                    <img class="rounded img-thumbnail img-fluid border-primary border-5" src="{{ asset('imagenes/sinfoto.jpg') }}" alt="Sin foto" width="100"> 
+                                    <img data-profile-photo class="rounded img-thumbnail img-fluid border-primary border-5" src="{{ app(\App\Services\ProfilePhotoService::class)->placeholder() }}" alt="Sin foto" width="100">
                                 @endif
                                 <p>
                                     @isset($observacion)
@@ -154,7 +154,7 @@
                         <td>
                             @isset($user)
                                 {{$user->name}}
-                                <img  src="{{ Storage::url($user->foto) }}" alt="{{$user->name}}" class="rounded img-thumbnail img-fluid border-primary border-5" width="100"> 
+                                <img data-profile-photo  src="{{ app(\App\Services\ProfilePhotoService::class)->forUser($user) }}" alt="{{$user->name}}" class="rounded img-thumbnail img-fluid border-primary border-5" width="100">
                             @endisset
                         </td>
                     </tr>
@@ -266,7 +266,7 @@
                             
                             <div class="text-center">
                                 
-                                {{-- <img class="rounded img-thumbnail img-fluid border-primary border-5" src="{{URL::to('/').Storage::url("$persona->foto")}}" alt="{{$persona->nombre.' '.$persona->apellidop}}">  --}}
+                                {{-- <img data-profile-photo class="rounded img-thumbnail img-fluid border-primary border-5" src="{{app(\App\Services\ProfilePhotoService::class)->url($persona->foto)}}" alt="{{$persona->nombre.' '.$persona->apellidop}}">  --}}
                                 <p>{!!$docente->perfil!!}</p>
                             </div>
                         </td>

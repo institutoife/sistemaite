@@ -28,7 +28,7 @@ class UserUpdateRequest extends FormRequest
             'name'=>'required|max:64|unique:users,name,'.$user->id,
             'email'=>'required|max:64|unique:users,email,'.$user->id,
             'password'=>'nullable',
-            'foto'=>'nullable|max:250', 
+            'foto'=>\App\Services\ProfilePhotoService::RULES,
         ];
     }
 }

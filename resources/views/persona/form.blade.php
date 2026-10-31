@@ -444,7 +444,7 @@
                             <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 " >
                                 <div class="form-floating mb-3 text-gray">
                                     <div class="text-center p-4" >
-                                        <img with="25" height="25" src="{{URL::to('/').Storage::url("$persona->foto")}}" class="rounded img-thumbnail img-fluid border-primary border-5" alt="{{$persona->nombre}}" width="400">        
+                                        <img data-profile-photo width="160" height="160" src="{{app(\App\Services\ProfilePhotoService::class)->url($persona->foto)}}" class="rounded img-thumbnail img-fluid border-primary border-5" alt="{{$persona->nombre}}">
                                     </div>
                                 </div>
                             </div>
@@ -467,7 +467,7 @@
                     </div>
                     <div class="card-body">
                         <div class="border-danger text-center">
-                            <input type="file" data-initial-preview="{{isset($persona->foto) ? URL::to('/').Storage::url("$persona->foto") : URL::to('/').Storage::url("estudiantes/foto.jpeg") }}" accept=".png, .jpg, .jpeg, .gif" name="foto" id="foto" data-classButton="btn btn-success" data-input="false" data-classIcon="icon-plus">                
+                            <input type="file" data-initial-preview="{{isset($persona->foto) ? app(\App\Services\ProfilePhotoService::class)->url($persona->foto) : app(\App\Services\ProfilePhotoService::class)->placeholder() }}" accept=".png, .jpg, .jpeg, .gif, .webp" name="foto" id="foto" data-classButton="btn btn-success" data-input="false" data-classIcon="icon-plus">
                         </div>
                     </div>
                 </div>

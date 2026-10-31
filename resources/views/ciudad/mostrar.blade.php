@@ -46,7 +46,7 @@
                         <td>Usuario</td>
                         <td>
                             {{$user->name}}
-                            <img  src="{{URL::to('/').Storage::url("$user->foto")}}" alt="{{$user->name}}" class="rounded img-thumbnail img-fluid border-primary border-5"> 
+                            <img data-profile-photo  src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="{{$user->name}}" class="rounded img-thumbnail img-fluid border-primary border-5">
                         </td>
                     </tr>
 

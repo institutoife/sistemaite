@@ -40,7 +40,7 @@
                     <div class="course-sidebar">
                         <div class="course-single-thumb">
                             @isset($user)
-                                <img  src="{{URL::to('/').Storage::url("$user->foto")}}" alt="{{$user->name}}" class="img-fluid w-100 rounded img-thumbnail img-fluid border-primary border-5" width="100"> 
+                                <img data-profile-photo  src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="{{$user->name}}" class="img-fluid w-100 rounded img-thumbnail img-fluid border-primary border-5" width="100">
                             @endisset
                         </div>
                         <div class="course-widget course-details-info">

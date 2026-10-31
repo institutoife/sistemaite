@@ -215,7 +215,7 @@ class TelefonoController extends Controller
             $apoderado->fechanacimiento = $request->fechanacimiento;
         }
         if ($request->hasFile('foto')) {
-            $apoderado->foto = $request->file('foto')->store('apoderados', 'public');
+            $apoderado->foto = app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'),'apoderados');
         }
         if ($request->has('telefono')) {
             $apoderado->telefono = $request->telefono;

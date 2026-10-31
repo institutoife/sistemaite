@@ -158,7 +158,7 @@ class GoogleContactProfile
         return ['hash' => hash('sha256', $bytes), 'bytes' => base64_encode($bytes)];
     }
 
-    public function photoFile(Persona $person): ?array
+    public function photoFile(Persona $person, bool $enforceGoogleSize=true): ?array
     {
         $stored = (string) $person->foto;
         if (strpos($stored, "\0") !== false) {
@@ -198,7 +198,7 @@ class GoogleContactProfile
                 if (!is_readable($path)) {
                     throw new GoogleContactsException('invalid_photo', 'La fotografía propia existe, pero PHP no puede leerla. Revise los permisos del archivo.');
                 }
-                if (filesize($path) > 5 * 1024 * 1024) {
+                if ($enforceGoogleSize && filesize($path) > 5 * 1024 * 1024) {
                     throw new GoogleContactsException('invalid_photo', 'La fotografía propia supera el tamaño permitido de 5 MB. Vuelva a subir una imagen más pequeña.');
                 }
                 return ['path' => $path, 'location' => $location];

@@ -361,7 +361,7 @@
                             "name": "foto",
                             "data": "foto",
                             "render": function (data, type, full, meta) {
-                                return "<div><img class='img-thumbnail zoomify' src=\"{{URL::to('/')}}/storage/" + data + "\" width=\"75\"/></div>";
+                                return IFEPhotos.render(data,type,full,{height:75});
                             },
                             "title": "FOTO",
                             "orderable": false,
@@ -401,7 +401,7 @@
                         $html+="<tr><td>TEMA</td>"+"<td>"+json.tema+"</td></tr>";
                         $html+="<tr><td>FOTO ESTUDIANTE</td>"+"<td>"+fila.find('td').eq(8).html()+"</td></tr>";
 
-                        $html+="<tr><td>FOTO DOCENTE</td>"+"<td><img class='zoom'  src="+"{{URL::to('/')}}/storage/"+json.foto+ " height='150'/></td></tr>";
+                        $html+="<tr><td>FOTO DOCENTE</td><td>"+IFEPhotos.render(json.foto,'display',json,{height:150})+"</td></tr>";
                         $html+="<tr><td>CREADO</td>"+"<td>"+moment(json.created_at).format('LLLL')+"</td></tr>";
                         $html+="<tr><td>ACTUALIZADO</td>"+"<td>"+moment(json.updated_at).format('LLLL')+"</td></tr>";
                         $("#tabla-modal").append($html);
@@ -434,7 +434,7 @@
                         $html+="<tr><td>TEMA</td>"+"<td>"+json.tema+"</td></tr>";
                         $html+="<tr><td>FOTO ESTUDIANTE</td>"+"<td>"+fila.find('td').eq(8).html()+"</td></tr>";
 
-                        $html+="<tr><td>FOTO DOCENTE</td>"+"<td><img class='zoom'  src="+"{{URL::to('/')}}/storage/"+json.foto+ " height='150'/></td></tr>";
+                        $html+="<tr><td>FOTO DOCENTE</td><td>"+IFEPhotos.render(json.foto,'display',json,{height:150})+"</td></tr>";
                         $html+="<tr><td>CREADO</td>"+"<td>"+moment(json.created_at).format('LLLL')+"</td></tr>";
                         $html+="<tr><td>ACTUALIZADO</td>"+"<td>"+moment(json.updated_at).format('LLLL')+"</td></tr>";
                         $("#tabla-modal").append($html);
@@ -505,7 +505,7 @@
                             "name": "foto",
                             "data": "foto",
                             "render": function (data, type, full, meta) {
-                                return "<div><img class='img-thumbnail zoomify' src=\"{{URL::to('/')}}/storage/" + data + "\" width=\"75\"/></div>";
+                                return IFEPhotos.render(data,type,full,{height:75});
                             },
                             "title": "FOTO",
                             "orderable": false,

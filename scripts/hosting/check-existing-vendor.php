@@ -87,6 +87,7 @@ function ifeGoogleExistingVendorErrors(string $root): array
             \App\Services\GoogleContactsService::class,
             \App\Services\GoogleContactsMigrationRunner::class,
             \App\Services\GoogleContactProfile::class,
+            \App\Services\ProfilePhotoService::class,
             \App\Services\GoogleContactsRuntime::class,
             \App\Services\GoogleContactsBulkService::class,
             \App\Services\PhoneVerificationService::class,

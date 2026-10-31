@@ -28,7 +28,7 @@ class UserStoreRequest extends FormRequest
 
             'name' => 'required|string|max:64|unique:users',
             'email' => 'required|string|email|max:64|unique:users',
-            'foto' => 'nullable|file',
+            'foto' => \App\Services\ProfilePhotoService::RULES,
             'password' => [
                 'required', 'confirmed', Password::min(8)
                     ->letters()

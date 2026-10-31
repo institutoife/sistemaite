@@ -54,7 +54,7 @@ class PersonaController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('can:Listar Personas')->only("index","tomarfoto","show","verPotencial","contactos");
+        $this->middleware('can:Listar Personas')->only("index","tomarfoto","show","verPotencial","contactos","listar");
         $this->middleware('can:Crear Personas')->only("guardarSoloContacto","create","CrearContacto","guardarNuevoPapel","guardarfotojpg","guardarfoto","store","storeContacto","crearRapido","guardarRapidingo","crearSoloContacto");
         $this->middleware('can:Editar Personas')->only("editarSoloContacto","actualizarSoloContacto","edit","actualizarVolvera","actualizarVuelveFecha","configurar_papeles","update","actualizarRapidingo","editarRapidingo","unsuscribe");
     }
@@ -110,14 +110,7 @@ class PersonaController extends Controller
         $persona->expedido = $request->expedido;
         $persona->genero = $request->genero;
         if ($request->hasFile('foto')){
-            $foto=$request->file('foto');
-            $nombreImagen='estudiantes/'.Str::random(20).'.jpg';
-            $imagen= Image::make($foto)->encode('jpg',75);
-            $imagen->resize(300,300,function($constraint){
-                $constraint->upsize();
-            });
-            $fotillo = Storage::disk('public')->put($nombreImagen, $imagen->stream());
-            $persona->foto = $nombreImagen;
+            $persona->foto = app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'),'estudiantes');
         }else {
             $persona->foto = "estudiantes/sinfoto.jpg";
         }
@@ -289,7 +282,7 @@ class PersonaController extends Controller
         $apoderado->genero=$request->genero;
         $apoderado->fechanacimiento = $request->fechanacimiento;
         if ($request->hasFile('foto')) {
-            $apoderado->foto = $request->file('foto')->store('apoderados', 'public');
+            $apoderado->foto = app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'),'apoderados');
         }
         $apoderado->pais_id = $persona->pais_id;
         $apoderado->ciudad_id = $persona->ciudad_id;
@@ -759,17 +752,7 @@ class PersonaController extends Controller
         $persona->votos=1;
         
         if ($request->hasFile('foto')) {
-            if (Storage::disk('public')->exists($persona->foto)) {
-                Storage::disk('public')->delete($persona->foto);
-            }
-            $foto = $request->file('foto');
-            $nombreImagen = 'estudiantes/' . Str::random(20) . '.jpg';
-            $imagen = Image::make($foto)->encode('jpg', 75);
-            $imagen->resize(300, 300, function ($constraint) {
-                $constraint->upsize();
-            });
-            $fotillo = Storage::disk('public')->put($nombreImagen, $imagen->stream());
-            $persona->foto = $nombreImagen;
+            $persona->foto = app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'),'estudiantes');
         }
         $persona->como_id = $request->como_id;
         $persona->papelinicial = $request->papel;
@@ -814,38 +797,15 @@ class PersonaController extends Controller
     }
 
     public function guardarfoto(Request $request, Persona $persona){
-        $image = $request->imagen;  // your base64 encoded
-        $image = str_replace('data:image/png;base64,', '', $image);
-        $image = str_replace(' ', '+', $image);
-        $imageName = 'estudiantes/'.Str::random(20) . '.' . 'png';
-        Storage::disk('public')->put($imageName, base64_decode($image));
-        //Storage::put(storage_path() . '/public/App/' . $imageName, base64_decode($image));
-        $persona->foto=$imageName;
+        $persona->foto=app(\App\Services\ProfilePhotoService::class)->storeCamera((string)$request->input('imagen'));
         $persona->save();
-        $user=$persona->user;
-        $user->foto=$persona->foto;
-        $user->save();
 
         return redirect()->Route('telefonos.crear',['persona'=>$persona]);
     }
     public function guardarfotojpg(Request $request, Persona $persona){
-        //dd($request->all());
-        
         if ($request->hasFile('foto')) {
-            $foto = $request->file('foto');
-            $nombreImagen = 'estudiantes/' . Str::random(20) . '.jpg';
-            /** las convertimos en jpg y la redimensionamos */
-            $imagen = Image::make($foto)->encode('jpg', 100);
-            $imagen->resize(800, 800, function ($constraint) {
-                $constraint->upsize();
-            });
-            /* las guarda en en la carpeta estudiantes  */
-            $fotillo = Storage::disk('public')->put($nombreImagen, $imagen->stream());
-            
-            $persona->foto = $nombreImagen;
+            $persona->foto=app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'));
             $persona->save();
-        }else{
-            $persona->foto = "estudiantes/sinfoto.jpg";
         }
 
         return redirect()->Route('telefonos.crear',['persona'=>$persona]);
@@ -1586,6 +1546,7 @@ class PersonaController extends Controller
 
         $persona=Persona::select('id','nombre','apellidop','apellidom','foto');
             return datatables()->of($persona)
+                ->addColumn('foto_url',function ($row) { return app(\App\Services\ProfilePhotoService::class)->url($row->foto); })
                 ->addColumn('btn', 'persona.actiontodos')
                 ->rawColumns(['btn'])
                 ->toJson();

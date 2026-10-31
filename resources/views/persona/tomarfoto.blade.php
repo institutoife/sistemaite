@@ -20,7 +20,7 @@
             </div>
             <div class="col-2"></div>
             <div class="col-4 p-lg-4">
-                <canvas id='canvas' style='border-radius:3px; border: 1px solid rgb(38, 186, 165);'>
+                <canvas id='canvas' style='max-width:100%;height:auto;border-radius:3px; border: 1px solid rgb(38, 186, 165);'>
                     
                 </canvas>
             </div>
@@ -34,11 +34,12 @@
                 <form id='formCanvas' method='post' action='{{route('guardarfoto',$persona)}}' ENCTYPE='multipart/form-data'>
                     {{ @method_field('PUT') }}
                     @csrf
-                    <button id="button"  type='button' class="btn btn-primary d-none" id="boton-guardar" onclick='GuardarTrazado()'>Guardar Foto tomada</button>
+                    <button type="submit" class="btn btn-primary d-none" id="boton-guardar">Guardar Foto tomada</button>
                     <input type='hidden' name='imagen' id='imagen' />
                 </form>
             </div>
         </div>
+        <p class="text-danger" data-camera-error role="alert"></p>
         <a class="btn btn-warning" href="{{route('telefonos.crear',$persona)}}">Omitir<i class="fas fa-arrow-circle-right fa-2x"></i></a>
     </div>
     <div id="sincamera" class="d-none">
@@ -60,7 +61,7 @@
                         </div>
                         <div class="col-xs-12 col-sm-12 col-md-6 col-lg-4 input-group text-sm" >
                             <div class="border-danger input-group">
-                                <input  type="file" accept=".png, .jpg, .jpeg, .gif" name="foto" id="foto" style="text-align:center; margin: auto" data-classButton="btn btn-success"  data-input="false" data-classIcon="icon-plus">                
+                                <input  type="file" accept=".png, .jpg, .jpeg, .gif, .webp" name="foto" id="foto" style="text-align:center; margin: auto" data-classButton="btn btn-success"  data-input="false" data-classIcon="icon-plus">
                             </div>
                         </div>
                         <div class="col-xs-12 col-sm-12 col-md-6 col-lg-4 input-group text-sm" >
@@ -114,68 +115,10 @@
             ); 
         });
 
-        'use strict';
-        const video = document.querySelector('video');
-        const canvas = window.canvas = document.querySelector('canvas');
-        canvas.width = 250;
-        canvas.height = 200;
-        
-        const button = document.querySelector('button');
-            
-            button.onclick = function() {
-                canvas.width = 500;//video.videoWidth;
-                canvas.height = 400;//video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                console.log("click");
-                $('#button').removeClass('d-none');
-                $('#button').on('click',function(){
-
-                });
-            };
-
-        const constraints = {
-            audio: false,
-            video: true
-        };
-
-        function handleSuccess(stream) {
-            window.stream = stream; // make stream available to browser console
-            video.srcObject = stream;
-        }
-    
-
-        function handleError(error) {
-            //console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
-            $("#contenedor").addClass("d-none");
-
-            $("#sincamera").removeClass("d-none");
-            
-        }
-
-        navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
-    
-        $(document).ready(function() {
-            
-            $('#button').on('click',function (e) {
-                console.log("clickeaste");
-                canvas.width =250 ;//video.videoWidth;
-                canvas.height =200 ;//video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                imagen.src = canvas.toDataURL("image/png");
-                $('#boton-guardar').removeClass('d-none');
-            });
-            /* Enviar el trazado */
-            
-            
-        });
-        function GuardarTrazado(){
-            document.getElementById('imagen').value=document.getElementById('canvas').toDataURL('image/png');
-            document.forms['formCanvas'].submit();
-        }
     </script>
    
-    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>    
+    <script src="{{ asset('assets/js/profile-camera.js') }}?v=20261031" defer></script>
 @stop
 
 
-    
+

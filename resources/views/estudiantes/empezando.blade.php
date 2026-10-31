@@ -111,7 +111,7 @@
                                 "name": "foto",
                                 "data": "foto",
                                 "render": function (data, type, full, meta) {
-                                    return "<img class='materialboxed zoomify' src=\"{{URL::to('/')}}/storage/" + data + "\" height=\"50\"/>";
+                                    return IFEPhotos.render(data,type,full,{height:50});
                                 },
                                 "title": "FOTO",
                                 "orderable": false,
@@ -152,7 +152,7 @@
                                 "name": "foto",
                                 "data": "foto",
                                 "render": function (data, type, full, meta) {
-                                    return "<img class='materialboxed zoomify' src=\"{{URL::to('/')}}/storage/" + data + "\" height=\"50\"/>";
+                                    return IFEPhotos.render(data,type,full,{height:50});
                                 },
                                 "title": "FOTO",
                                 "orderable": false,

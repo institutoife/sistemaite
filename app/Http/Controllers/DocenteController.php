@@ -53,7 +53,7 @@ class DocenteController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:Listar Docentes')->only('index','show');
+        $this->middleware('can:Listar Docentes')->only('index','show','listarDocentes');
         $this->middleware('can:Crear Docentes')->only('create','store','GuardarConfigurarNiveles','configurar_niveles');
         $this->middleware('can:Editar Docentes')->only('edit','update');
         $this->middleware('can:Editar Docentes')->only('turnos','guardarTurnos');
@@ -112,14 +112,7 @@ class DocenteController extends Controller
         $persona->expedido = $request->expedido;
         $persona->genero = $request->genero;
         if ($request->hasFile('foto')){
-            $foto=$request->file('foto');
-            $nombreImagen='estudiantes/'.Str::random(20).'.jpg';
-            $imagen= Image::make($foto)->encode('jpg',75);
-            $imagen->resize(300,300,function($constraint){
-                $constraint->upsize();
-            });
-            $fotillo = Storage::disk('public')->put($nombreImagen, $imagen->stream());
-            $persona->foto = $nombreImagen;
+            $persona->foto = app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'),'estudiantes');
         }
         $persona->como_id = $request->como_id;
         $persona->habilitado = 1;
@@ -304,14 +297,7 @@ class DocenteController extends Controller
         $persona->expedido = $request->expedido;
         $persona->genero = $request->genero;
         if ($request->hasFile('foto')){
-            $foto=$request->file('foto');
-            $nombreImagen='estudiantes/'.Str::random(20).'.jpg';
-            $imagen= Image::make($foto)->encode('jpg',75);
-            $imagen->resize(300,300,function($constraint){
-                $constraint->upsize();
-            });
-            $fotillo = Storage::disk('public')->put($nombreImagen, $imagen->stream());
-            $persona->foto = $nombreImagen;
+            $persona->foto = app(\App\Services\ProfilePhotoService::class)->store($request->file('foto'),'estudiantes');
         }
         $persona->como_id = $request->como_id;
         $persona->habilitado = 1;
@@ -590,6 +576,7 @@ class DocenteController extends Controller
         )->get();
 
         return datatables()->of($docentes)
+            ->addColumn('foto_url',function ($row) { return app(\App\Services\ProfilePhotoService::class)->url($row->foto); })
             ->addColumn('btn','docente.action')
             ->rawColumns(['btn','perfil'])
             ->toJson();    

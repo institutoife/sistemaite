@@ -14,6 +14,7 @@
             <file>tests/Feature/GoogleContactsBulkTest.php</file>
             <file>tests/Feature/GoogleContactsProfileTest.php</file>
             <file>tests/Feature/GoogleContactsPhotoRecoveryTest.php</file>
+            <file>tests/Feature/ProfilePhotosTest.php</file>
             <file>tests/Feature/CrmTest.php</file>
             <file>tests/Feature/CrmImprovementsTest.php</file>
             <file>tests/Feature/CrmGoogleIdentityTest.php</file>

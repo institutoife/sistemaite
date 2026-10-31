@@ -92,7 +92,7 @@
                         </td>
                         <td> 
                             <div class="text-center">
-                                <img class="rounded img-thumbnail img-fluid border-primary border-5" src="{{URL::to('/').Storage::url("$persona->foto")}}" alt="{{$persona->nombre.' '.$persona->apellidop}}" width="100"> 
+                                <img data-profile-photo class="rounded img-thumbnail img-fluid border-primary border-5" src="{{app(\App\Services\ProfilePhotoService::class)->url($persona->foto)}}" alt="{{$persona->nombre.' '.$persona->apellidop}}" width="100">
                                 <p>
                                     @isset($observacion)
                                         {!!$observacion->observacion!!}</p>
@@ -163,7 +163,7 @@
                         <td>
                         @isset($user)
                             {{$user->name}}
-                            <img  src="{{URL::to('/').Storage::url("$user->foto")}}" alt="{{$user->name}}" class="rounded img-thumbnail img-fluid border-primary border-5" width="100"> 
+                            <img data-profile-photo  src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="{{$user->name}}" class="rounded img-thumbnail img-fluid border-primary border-5" width="100">
                            
                         @endisset
                         </td>

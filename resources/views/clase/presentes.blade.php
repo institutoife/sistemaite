@@ -98,7 +98,7 @@
                             "name": "foto",
                             "data": "foto",
                             "render": function (data, type, full, meta) {
-                                return "<div><img class='img-thumbnail zoomify' src=\"{{URL::to('/')}}/storage/" + data + "\" width=\"75\"/></div>";
+                                return IFEPhotos.render(data,type,full,{height:75});
                             },
                             "title": "FOTO",
                             "orderable": false,
@@ -394,7 +394,7 @@
                         $html+="<tr><td>MATERIA</td>"+"<td>"+json.clase.materia+"</td></tr>";
                         $html+="<tr><td>TEMA</td>"+"<td>"+json.clase.tema+"</td></tr>";
                         $html+="<tr><td>FOTO ESTUDIANTE</td>"+"<td>"+fila.find('td').eq(6).html()+"</td></tr>";
-                        $html+="<tr><td>FOTO DOCENTE</td>"+"<td><img class='zoom'  src="+"{{URL::to('/')}}/storage/"+json.clase.foto+ " height='150'/></td></tr>";
+                        $html+="<tr><td>FOTO DOCENTE</td><td>"+IFEPhotos.render(json.clase.foto,'display',json.clase,{height:150})+"</td></tr>";
                         $html+="<tr><td>CREADO</td>"+"<td>"+moment(json.clase.created_at).format('LLLL')+"</td></tr>";
                         $html+="<tr><td>ACTUALIZADO</td>"+"<td>"+moment(json.clase.updated_at).format('LLLL')+"</td></tr>";
                         $html+="<tr><td>USUARIO</td>"+"<td>"+json.user.name+"</td></tr>";
@@ -428,7 +428,7 @@
                         $html+="<tr><td>ESTUDIANTE</td>"+"<td>"+fila.find('td').eq(1).html()+"</td></tr>";
                         $html+="<tr><td>AULA</td>"+"<td>"+json.clase.aula+"</td></tr>";
                         $html+="<tr><td>FOTO ESTUDIANTE</td>"+"<td>"+fila.find('td').eq(6).html()+"</td></tr>";
-                        $html+="<tr><td>FOTO DOCENTE</td>"+"<td><img class='zoom'  src="+"{{URL::to('/')}}/storage/"+json.clase.foto+ " height='75'/></td></tr>";
+                        $html+="<tr><td>FOTO DOCENTE</td><td>"+IFEPhotos.render(json.clase.foto,'display',json.clase,{height:75})+"</td></tr>";
                         $html+="<tr><td>CREADO</td>"+"<td>"+moment(json.clase.created_at).format('LLLL')+"</td></tr>";
                         $html+="<tr><td>ACTUALIZADO</td>"+"<td>"+moment(json.clase.updated_at).format('LLLL')+"</td></tr>";
                         $html+="<tr><td>USUARIO</td>"+"<td>"+json.user.name+"</td></tr>";
@@ -493,7 +493,7 @@
                             "name": "foto",
                             "data": "foto",
                             "render": function (data, type, full, meta) {
-                                return "<div><img class='img-thumbnail zoomify' src=\"{{URL::to('/')}}/storage/" + data + "\" width=\"75\"/></div>";
+                                return IFEPhotos.render(data,type,full,{height:75});
                             },
                             "title": "FOTO",
                             "orderable": false,

@@ -69,7 +69,7 @@
                                         <td>{{$estudent->materia}}</td>
                                         <td>{{$estudent->horainicio.'-'.$estudent->horafin}}</td>
                                         <td>
-                                            <img class="rounded img-thumbnail img-fluid zoomify" src="{{URL::to('/').Storage::url("$estudent->foto")}}" width="80"> 
+                                            <img class="rounded img-thumbnail img-fluid zoomify" data-profile-photo src="{{ app(\App\Services\ProfilePhotoService::class)->url($estudent->foto) }}" width="80">
                                         </td>
                                         <td>{{$estudent->tema}}</td>
                                         <td>

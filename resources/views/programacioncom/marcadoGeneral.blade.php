@@ -179,7 +179,7 @@
                                         <div class="row">
                                             <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
                                                 <div class="">
-                                                    <img class="img-thumbnail zoomify" src="{{URL::to('/').Storage::url("$persona->foto")}}" alt="" width="150px">
+                                                    <img data-profile-photo class="img-thumbnail zoomify" src="{{app(\App\Services\ProfilePhotoService::class)->url($persona->foto)}}" alt="" width="150px">
                                                 </div>
                                             </div>
                                             <div class="col-xs-12 col-sm-12 col-md-12 col-lg-6">

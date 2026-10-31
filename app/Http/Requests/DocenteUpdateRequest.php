@@ -33,6 +33,7 @@ class DocenteUpdateRequest extends FormRequest
             
             "interests"=>"required",
             "telefono" => 'nullable|max:10',
+            'foto'=>\App\Services\ProfilePhotoService::RULES,
         ];
     }
 }

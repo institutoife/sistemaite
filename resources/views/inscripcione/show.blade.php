@@ -85,7 +85,7 @@
                                 <div class="insc-card">
                                     <div class="insc-card-label">Usuario</div>
                                     <div class="d-flex align-items-center">
-                                        <img  src="{{URL::to('/').Storage::url("$user->foto")}}" alt="{{$user->name}}" class="rounded img-thumbnail border-primary" style="width: 44px; height: 44px; object-fit: cover;">
+                                        <img data-profile-photo  src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="{{$user->name}}" class="rounded img-thumbnail border-primary" style="width: 44px; height: 44px; object-fit: cover;">
                                         <div class="ml-2 insc-card-value">{{$user->name}}</div>
                                     </div>
                                 </div>
@@ -158,7 +158,7 @@
                                         <td>
                                             @isset($user)
                                                 <div class="d-flex align-items-center">
-                                                    <img  src="{{URL::to('/').Storage::url("$user->foto")}}" alt="{{$user->name}}" class="rounded img-thumbnail border-primary" style="width: 48px; height: 48px; object-fit: cover;">
+                                                    <img data-profile-photo  src="{{app(\App\Services\ProfilePhotoService::class)->forUser($user)}}" alt="{{$user->name}}" class="rounded img-thumbnail border-primary" style="width: 48px; height: 48px; object-fit: cover;">
                                                     <div class="ml-2">{{$user->name}}</div>
                                                 </div>
                                             @endisset

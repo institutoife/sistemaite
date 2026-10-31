@@ -194,7 +194,7 @@
                         $horaFin = optional($clase->horafin)->format('H:i');
                         $requerimiento = strip_tags(optional($observacionesPrograma->first())->observacion ?? '');
                         $objetivoGeneral = strip_tags(optional(optional($programa)->inscripcione)->objetivo ?? '');
-                        $foto = $persona && $persona->foto ? route('foto.show', ['filename' => $persona->foto]) : asset('dist/img/user2-160x160.jpg');
+                        $foto = $persona && $persona->foto ? app(\App\Services\ProfilePhotoService::class)->url($persona->foto) : app(\App\Services\ProfilePhotoService::class)->placeholder();
                     @endphp
                     <div class="card schedule-item"
                          id="clase-{{ $clase->id }}"
@@ -208,7 +208,7 @@
                                     aria-controls="collapse-clase-{{ $clase->id }}">
                                 <div class="d-flex align-items-center">
                                     <div class="mr-3">
-                                        <img src="{{ $foto }}" alt="Foto de {{ $persona->nombre ?? 'estudiante' }}" class="student-photo">
+                                        <img data-profile-photo src="{{ $foto }}" alt="Foto de {{ $persona->nombre ?? 'estudiante' }}" class="student-photo">
                                     </div>
                                     <div>
                                         <div class="font-weight-bold">
@@ -319,7 +319,7 @@
                             $requerimientoCom = strip_tags(optional($observacionesProgramaCom->first())->observacion ?? '');
                             $detalleCom = optional(optional(optional($programaCom)->matriculacion)->asignatura)->asignatura ?? 'Computaci&oacute;n';
                             
-                            $fotoCom = $personaCom && $personaCom->foto ? route('foto.show', ['filename' => $personaCom->foto]) : asset('dist/img/user2-160x160.jpg');
+                            $fotoCom = $personaCom && $personaCom->foto ? app(\App\Services\ProfilePhotoService::class)->url($personaCom->foto) : app(\App\Services\ProfilePhotoService::class)->placeholder();
                         @endphp
                         <div class="card schedule-item"
                              id="clasecom-{{ $claseCom->id }}"
@@ -333,7 +333,7 @@
                                         aria-controls="collapse-com-{{ $claseCom->id }}">
                                     <div class="d-flex align-items-center">
                                         <div class="mr-3">
-                                            <img src="{{ $fotoCom }}" alt="Foto de {{ $personaCom->nombre ?? 'estudiante' }}" class="student-photo">
+                                            <img data-profile-photo src="{{ $fotoCom }}" alt="Foto de {{ $personaCom->nombre ?? 'estudiante' }}" class="student-photo">
                                         </div>
                                         <div>
                                             <div class="font-weight-bold">

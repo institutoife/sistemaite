@@ -39,7 +39,7 @@ class PersonaUpdateRequest extends FormRequest
             "genero" => 'required|string',
             "observacion" =>'required|string|max:250',
             "como_id" =>'required',
-            "foto" => 'nullable|file',
+            "foto" => \App\Services\ProfilePhotoService::RULES,
             "papel" =>'required|string',
             "telefono" => 'nullable|max:8',
             'interests'=>'required',

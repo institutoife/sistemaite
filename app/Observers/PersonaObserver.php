@@ -14,6 +14,9 @@ class PersonaObserver
     }
     public function saved(Persona $persona): void
     {
+        if ($persona->wasChanged('foto')) {
+            \App\Models\User::where('persona_id',$persona->id)->update(['foto'=>$persona->foto]);
+        }
         $commercialChange=($persona->wasRecentlyCreated||$persona->wasChanged('habilitado'))&&app(\App\Services\CrmService::class)->ready();
         if ($commercialChange) {
             $id=$persona->id; $actor=auth()->id();

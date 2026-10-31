@@ -9,6 +9,7 @@
 @endif
 
 @section('adminlte_css')
+    @include('photos.assets')
     @stack('css')
     @yield('css')
 @stop
