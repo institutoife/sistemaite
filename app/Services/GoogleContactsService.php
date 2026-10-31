@@ -400,10 +400,14 @@ class GoogleContactsService
         $linked=Comentario::where('persona_id',$record->id)->get();
         if (Schema::hasColumn('prospectos','persona_id')) { $linked=$linked->concat(Prospecto::where('persona_id',$record->id)->get()); }
         foreach ($linked as $enquiry) {
-            $markers[] = ['key' => $enquiry instanceof Prospecto?'IFE_PROSPECTO':'IFE_COMENTARIO', 'value' => $account->installation_id.':'.$enquiry->id];
             if ($enquiry->gcontact_account_id && (int) $enquiry->gcontact_account_id !== (int) $account->id) {
                 throw new GoogleContactsException('account_mismatch', 'La consulta vinculada pertenece a otra conexión de Google. Requiere revisión.');
             }
+            if ($enquiry instanceof Prospecto&&app(CrmGoogleContactPolicy::class)->retainsSeparateContact($enquiry,$record,$account)) {
+                // Keep the archived prospect link and its marker on the old contact, never on Persona.
+                continue;
+            }
+            $markers[] = ['key' => $enquiry instanceof Prospecto?'IFE_PROSPECTO':'IFE_COMENTARIO', 'value' => $account->installation_id.':'.$enquiry->id];
             if ($enquiry->resourseName) {
                 if ($resource && $resource !== $enquiry->resourseName) {
                     throw new GoogleContactsException('contact_link_conflict', 'La persona y su consulta tienen contactos Google distintos. Revise los enlaces antes de continuar.');

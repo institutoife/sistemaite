@@ -17,6 +17,16 @@ No vuelva a registrar al cliente, la inscripción ni el pago. El sistema comprue
 
 La operación guarda fecha, autor y responsable comercial del momento, cancela el seguimiento pendiente, conserva el historial y utiliza la etapa de conversión elegida. Reenviar la misma confirmación no duplica el evento ni el trabajo de Google. Una ficha ya convertida no puede registrarse otra vez con una inscripción diferente.
 
+## Cuando ya existen dos contactos Google
+
+El prospecto puede haberse sincronizado antes de crear la Persona y esta puede tener otro contacto Google propio. Esa diferencia no demuestra que sean la misma identidad y no debe resolverse mediante el teléfono.
+
+Al seleccionar el contacto en la conversión se comprueba si existen dos enlaces distintos. Tras revisar que la Persona elegida corresponde a esta oportunidad, marque **Conservar ambos contactos Google y usar el de la Persona seleccionada** y confirme la inscripción real. Si falta esa elección, el servidor conserva la ficha activa y explica cómo continuar.
+
+La conversión mantiene ambos enlaces y registra en su auditoría la decisión, los identificadores implicados y la cuenta central del momento. El contacto anterior del prospecto queda sin cambios; sus trabajos pendientes dejan de procesarlo como identidad independiente. Las siguientes sincronizaciones utilizan el contacto de Persona, sin trasladarle el marcador del contacto anterior ni crear, borrar o fusionar contactos.
+
+Si los contactos pertenecen a cuentas distintas, existe otro vínculo no resuelto o se cambia/pierde alguno de los enlaces después de confirmar, la sincronización sigue requiriendo revisión. La decisión no permite adoptar otro contacto ni reemplazar el vínculo perdido automáticamente. Los casos con un único contacto conservan su transferencia habitual al convertir.
+
 El tablero abre por defecto **En gestión y convertidos**, con responsable asignado. La lista mantiene su predeterminado de activos. Los filtros **Solo activos en gestión**, **Convertidos** y **Bajas** siguen disponibles. Después de confirmar se conservan los filtros de catálogo y se retiran los de etapa y agenda que podrían ocultar la ficha convertida.
 
 Los indicadores cuentan la conversión por su fecha de confirmación en el CRM. **Conversiones registradas** corresponde al usuario que la confirmó; la atribución comercial corresponde al responsable en ese momento. Revise período, usuario, sucursal y servicio si consulta un informe filtrado. Pagar por el circuito habitual sin confirmar el vínculo CRM no agrega una conversión al indicador.
@@ -35,4 +45,4 @@ Las migraciones anteriores ya aplicadas se omiten. Se conserva el Cron de Google
 
 ## Verificación
 
-Suite completa: **195 pruebas y 1377 aserciones**, todas correctas. Incluye pruebas aisladas de la vinculación de una inscripción pagada, lectura sin escrituras, parentescos, permisos, separación de pagos por tipo de inscripción, historial, indicadores, doble envío, versiones y rechazo de inscripciones incorrectas. La revisión en Chrome comprueba arrastre, cancelación, selector móvil, selección de inscripción, error sin mover la ficha y conservación de filtros tras confirmar. No se usan datos ni pagos de producción.
+Suite completa: **203 pruebas y 1439 aserciones**, todas correctas. Incluye pruebas aisladas de la vinculación de una inscripción pagada, lectura sin escrituras, parentescos, permisos, separación de pagos por tipo de inscripción, historial, indicadores, doble envío, versiones y rechazo de inscripciones incorrectas. También comprueba la conservación explícita de dos contactos Google, actualización exclusiva de Persona, protección de contactos antiguos y conflictos posteriores. La revisión en Chrome comprueba arrastre, cancelación, selector móvil, selección de inscripción, elección obligatoria ante enlaces Google distintos, error sin mover la ficha y conservación de filtros tras confirmar. No se usan datos ni pagos de producción.

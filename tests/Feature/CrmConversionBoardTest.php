@@ -62,7 +62,7 @@ class CrmConversionBoardTest extends CrmTestCase
         $this->getJson(route('crm.conversion.inscripciones',[$lead,'persona_id'=>$unrelated->id]))
             ->assertUnprocessable()->assertJsonValidationErrors('persona_id');
         $unlinked=$this->lead();
-        $this->getJson(route('crm.conversion.inscripciones',$unlinked))->assertOk()->assertExactJson(['enrollments'=>[],'students'=>[]]);
+        $this->getJson(route('crm.conversion.inscripciones',$unlinked))->assertOk()->assertExactJson(['enrollments'=>[],'students'=>[],'google_conflict'=>false]);
         $this->assertNull($unlinked->fresh()->persona_id); Http::assertNothingSent();
     }
 

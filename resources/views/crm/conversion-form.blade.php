@@ -32,6 +32,10 @@
 <div class="row"><div class="col-md-6 form-group"><label for="convert-type">Proceso *</label><select id="convert-type" class="form-control" name="tipo"><option value="inscripcion">Inscripción académica</option><option value="matriculacion">Matrícula de computación</option></select></div>
 <div class="col-md-6 form-group"><label for="convert-enrollment">Código de inscripción o matrícula *</label><input class="form-control" type="number" min="1" id="convert-enrollment" name="inscripcion_id" required><small>Se completa al elegir la inscripción; también puede ingresar el código conocido.</small></div></div>
 <label for="convert-relation">Parentesco si el contacto es apoderado</label><input id="convert-relation" class="form-control mb-2" name="parentesco" maxlength="40" placeholder="Por ejemplo: Mamá">
+<div class="alert alert-info small" data-google-link-choice>
+<p>Si el prospecto y la Persona seleccionada ya tienen contactos Google distintos, puede conservar ambos. Las próximas sincronizaciones actualizarán el contacto de la Persona; el contacto anterior del prospecto permanecerá sin cambios.</p>
+<label><input type="checkbox" name="conservar_contactos_google" value="1"> Conservar ambos contactos Google y usar el de la Persona seleccionada.</label>
+</div>
 <label class="d-block"><input type="checkbox" name="confirmar_vinculos" value="1" required> Revisé el contacto, el estudiante y la inscripción y confirmo la conversión.</label>
 <button class="btn btn-primary" data-confirm-conversion>Confirmar conversión</button>
 </form>

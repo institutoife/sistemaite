@@ -29,11 +29,15 @@ class CrmConversionService
                     if (empty($data['parentesco'])) { throw ValidationException::withMessages(['parentesco'=>'Indique el parentesco del contacto para vincularlo como apoderado del estudiante.']); }
                     $student->apoderados()->attach($contact->id,['parentesco'=>$data['parentesco'],'telefono'=>$contact->telefono]);
                 }
-                if ($contact->resourseName&&$current->resourseName&&$contact->resourseName!==$current->resourseName) {
-                    throw ValidationException::withMessages(['conversion'=>'Hay dos enlaces Google distintos. Requiere revisión; se conservan ambos sin fusionarlos.']);
-                }
                 if ($contact->gcontact_account_id&&$current->gcontact_account_id&&(int)$contact->gcontact_account_id!==(int)$current->gcontact_account_id) {
                     throw ValidationException::withMessages(['conversion'=>'Los contactos pertenecen a cuentas Google diferentes.']);
+                }
+                $googlePolicy=app(CrmGoogleContactPolicy::class); $googleDecision=null;
+                if ($googlePolicy->differentLinks($current,$contact)) {
+                    if (empty($data['conservar_contactos_google'])) {
+                        throw ValidationException::withMessages(['conservar_contactos_google'=>'El prospecto y la Persona tienen contactos Google distintos. Revise la identidad y marque «Conservar ambos contactos Google» para continuar usando el de la Persona seleccionada.']);
+                    }
+                    $googleDecision=$googlePolicy->snapshot($current,$contact,app(GoogleContactsService::class)->account());
                 }
                 $stage=CrmEtapa::where('conversion',true)->where('activa',true)->when(!empty($data['etapa_id']),function ($query) use ($data) { $query->whereKey($data['etapa_id']); })->orderBy('orden')->first();
                 if (!$stage) { throw ValidationException::withMessages(['conversion'=>'Configure una etapa activa de conversión.']); }
@@ -46,8 +50,10 @@ class CrmConversionService
                 $current->gcontact_sync_pending=false;
                 Prospecto::withoutEvents(function () use ($current) { $current->save(); });
                 if ($current->no_contactar) { DB::table('personas')->where('id',$contact->id)->update(['votos'=>0]); }
-                $crm->log($current,$actor,'conversion','Conversión vinculada a '.$data['tipo'].' #'.$data['inscripcion_id'],
-                    ['datos'=>['persona_id'=>$contact->id,'estudiante_persona_id'=>$student->id,'tipo'=>$data['tipo'],'inscripcion_id'=>(int)$data['inscripcion_id']]]);
+                $details=['persona_id'=>$contact->id,'estudiante_persona_id'=>$student->id,'tipo'=>$data['tipo'],'inscripcion_id'=>(int)$data['inscripcion_id']];
+                if ($googleDecision) { $details['google_contactos']=$googleDecision; }
+                $crm->log($current,$actor,'conversion','Conversión vinculada a '.$data['tipo'].' #'.$data['inscripcion_id'].($googleDecision?'. Se conservaron ambos contactos Google; las próximas sincronizaciones usarán el de la Persona #'.$contact->id.'.':''),
+                    ['datos'=>$details]);
                 app(GoogleContactsService::class)->markPending($contact,$actor);
             });
             return true;

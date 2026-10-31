@@ -103,18 +103,20 @@
         if(form.dataset.ready)return;form.dataset.ready='1';let request=0;
         const contact=form.querySelector('[name=persona_id]'),student=form.querySelector('[name=estudiante_persona_id]'),picker=form.querySelector('[data-conversion-enrollment]');
         const type=form.querySelector('[name=tipo]'),id=form.querySelector('[name=inscripcion_id]'),confirmation=form.querySelector('[name=confirmar_vinculos]'),help=form.querySelector('[data-conversion-help]');
-        const error=form.querySelector('[data-conversion-error]');
+        const error=form.querySelector('[data-conversion-error]'),googleChoice=form.querySelector('[data-google-link-choice]'),keepGoogle=form.querySelector('[name=conservar_contactos_google]');
+        function googleConflict(conflict){if(!googleChoice)return;googleChoice.hidden=!conflict;keepGoogle.required=conflict;if(!conflict)keepGoogle.checked=false;}
         async function enrollments(clear){
-            const sequence=++request;if(clear){id.value='';confirmation.checked=false;}
+            const sequence=++request;if(clear){id.value='';confirmation.checked=false;googleConflict(false);}
             picker.replaceChildren(new Option(contact.value?'Cargando inscripciones…':'Seleccione primero al contacto',''));
-            if(!contact.value)return;
+            if(!contact.value){googleConflict(false);return;}
             try{
                 const data=await json(form.dataset.enrollmentsUrl+'?'+new URLSearchParams({persona_id:contact.value,estudiante_persona_id:student.value}));if(sequence!==request)return;
+                googleConflict(data.google_conflict===true);
                 picker.replaceChildren(new Option('Seleccione la inscripción ya registrada',''));
                 data.students.forEach(person=>{if(!Array.from(student.options).some(option=>option.value===String(person.id)))student.add(new Option(person.nombre+' (#'+person.id+')',person.id));});
                 data.enrollments.forEach(item=>{const option=new Option(item.label+(item.tiene_pago===true?' · Pago registrado':''),item.tipo+':'+item.id);option.dataset.type=item.tipo;option.dataset.enrollment=String(item.id);option.dataset.student=String(item.estudiante_persona_id);picker.add(option);});
                 help.textContent=data.enrollments.length?'Seleccione la inscripción correcta para completar el estudiante y el código.':'No hay inscripciones para esta selección. Busque al estudiante correcto o complete su inscripción por el proceso habitual.';
-            }catch(e){picker.replaceChildren(new Option('No se pudieron cargar las inscripciones',''));help.textContent=e.message;}
+            }catch(e){picker.replaceChildren(new Option('No se pudieron cargar las inscripciones',''));help.textContent=e.message;if(googleChoice)googleChoice.hidden=false;}
         }
         contact.addEventListener('change',()=>{student.value='';enrollments(true);});student.addEventListener('change',()=>enrollments(true));
         picker.addEventListener('change',()=>{const option=picker.selectedOptions[0];confirmation.checked=false;if(!option||!option.value){id.value='';return;}type.value=option.dataset.type;id.value=option.dataset.enrollment;student.value=option.dataset.student;});
@@ -128,7 +130,7 @@
                 if(!result.converted)throw new Error('No se confirmó la conversión. Actualice el tablero.');
                 const url=new URL(location.href);url.searchParams.set('status','operativo');url.searchParams.delete('crm_etapa_id');url.searchParams.delete('agenda');
                 location.href=url.href;
-            }catch(e){error.textContent=e.message;error.classList.remove('d-none');}
+            }catch(e){error.textContent=e.message;error.classList.remove('d-none');if(googleChoice)googleChoice.hidden=false;}
             finally{delete form.dataset.busy;delete conversionDialog.dataset.busy;submit.disabled=false;}
         });
     });}

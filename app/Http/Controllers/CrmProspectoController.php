@@ -68,7 +68,10 @@ class CrmProspectoController extends Controller
     {
         $this->authorize('convert',$prospecto);
         $data=$request->validate(['persona_id'=>'nullable|integer|exists:personas,id','estudiante_persona_id'=>'nullable|integer|exists:personas,id']);
-        return response()->json($options->forLead($prospecto,isset($data['persona_id'])?(int)$data['persona_id']:null,isset($data['estudiante_persona_id'])?(int)$data['estudiante_persona_id']:null,$request->user()->can('Listar Pagos')))->header('Cache-Control','private, no-store');
+        $result=$options->forLead($prospecto,isset($data['persona_id'])?(int)$data['persona_id']:null,isset($data['estudiante_persona_id'])?(int)$data['estudiante_persona_id']:null,$request->user()->can('Listar Pagos'));
+        $contact=Persona::find($data['persona_id']??$prospecto->persona_id);
+        $result['google_conflict']=$contact?app(\App\Services\CrmGoogleContactPolicy::class)->differentLinks($prospecto,$contact):false;
+        return response()->json($result)->header('Cache-Control','private, no-store');
     }
     public function convert(CrmActionRequest $request, Prospecto $prospecto, CrmConversionService $service)
     {
