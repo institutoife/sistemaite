@@ -23,6 +23,9 @@ class UserUpdateRequest extends FormRequest
      */
     public function rules()
     {
+        if (app(\App\Services\AccountSecurity::class)->ready()) {
+            return ['name'=>'required|string|max:64','email'=>'required|email|max:64','password'=>'prohibited','foto'=>\App\Services\ProfilePhotoService::RULES];
+        }
         $user=$this->route('user');
         return [
             'name'=>'required|max:64|unique:users,name,'.$user->id,

@@ -45,7 +45,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token',
+        'password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes', 'api_token',
     ];
 
     /**
@@ -55,6 +55,10 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'suspended_until'=>'datetime','temporary_password_expires_at'=>'datetime','password_changed_at'=>'datetime',
+        'last_login_at'=>'datetime','force_password_change'=>'boolean','access_schedule_enabled'=>'boolean',
+        'two_factor_required'=>'boolean','two_factor_confirmed_at'=>'datetime',
+        'two_factor_secret'=>'encrypted','two_factor_recovery_codes'=>'encrypted:array',
     ];
 
     public function adminlte_image()
@@ -75,6 +79,28 @@ class User extends Authenticatable
     public function persona()
     {
         return $this->belongsTo(Persona::class);
+    }
+    public function sede() { return $this->belongsTo(CrmSede::class,'sede_id'); }
+    public function sedes() { return $this->belongsToMany(CrmSede::class,'sede_user','user_id','sede_id')->withTimestamps(); }
+    public function accessAudits() { return $this->hasMany(UserAccessAudit::class,'subject_user_id')->latest('id'); }
+    public function getEffectiveAccessStatusAttribute(): string
+    {
+        return $this->access_status==='suspended'&&$this->suspended_until&&now()->gte($this->suspended_until)?'active':($this->access_status?:'active');
+    }
+    public function scopeCurrentlyActive($query)
+    {
+        return $query->where(fn($q)=>$q->where('access_status','active')->orWhere(fn($s)=>$s->where('access_status','suspended')->whereNotNull('suspended_until')->where('suspended_until','<=',now())));
+    }
+    protected function newBaseQueryBuilder() { return \App\Services\SedeAccess::query(parent::newBaseQueryBuilder()); }
+    protected function performInsert(\Illuminate\Database\Eloquent\Builder $query)
+    {
+        return $this->getConnection()->transaction(function()use($query){
+            if ($this->persona_id&&app(\App\Services\AccountSecurity::class)->ready()) {
+                \Illuminate\Support\Facades\DB::table('personas')->where('id',$this->persona_id)->lockForUpdate()->first();
+                if (static::where('persona_id',$this->persona_id)->exists()) { throw \Illuminate\Validation\ValidationException::withMessages(['persona_id'=>'La Persona ya tiene una cuenta de usuario.']); }
+            }
+            return parent::performInsert($query);
+        });
     }
     
     public function administrativos(){

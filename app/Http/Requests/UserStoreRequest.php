@@ -24,6 +24,9 @@ class UserStoreRequest extends FormRequest
      */
     public function rules()
     {
+        if (app(\App\Services\AccountSecurity::class)->ready()) {
+            return ['name'=>'required|string|max:64','email'=>'required|email|max:64','foto'=>\App\Services\ProfilePhotoService::RULES];
+        }
         return [
 
             'name' => 'required|string|max:64|unique:users',

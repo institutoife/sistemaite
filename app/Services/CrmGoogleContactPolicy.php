@@ -3,7 +3,8 @@ namespace App\Services;
 
 use App\Exceptions\GoogleContactsException;
 use App\Models\{Prospecto,Persona,GoogleContactAccount};
-use Illuminate\Support\Facades\{DB,Schema};
+use Illuminate\Support\Facades\{Schema};
+use App\Support\SedeDB as DB;
 
 class CrmGoogleContactPolicy
 {

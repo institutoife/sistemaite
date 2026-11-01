@@ -1,7 +1,8 @@
 <?php
 namespace App\Services;
 use App\Models\{Prospecto,Persona,CrmEtapa};
-use Illuminate\Support\Facades\{DB,Cache};
+use Illuminate\Support\Facades\{Cache};
+use App\Support\SedeDB as DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 class CrmConversionService

@@ -27,4 +27,16 @@ class ResetPasswordController extends Controller
      * @var string
      */
     protected $redirectTo = RouteServiceProvider::HOME;
+    protected function rules()
+    {
+        return ['token'=>'required','email'=>'required|email','password'=>['required','confirmed','max:64',\Illuminate\Validation\Rules\Password::min(12)->mixedCase()->numbers()->symbols()]];
+    }
+    protected function resetPassword($user,$password)
+    {
+        if (app(\App\Services\AccountSecurity::class)->ready()) {
+            $user=app(\App\Services\AccountSecurity::class)->password($user,$password,false,'Restablecimiento mediante token de Laravel');
+        } else { $user->password=\Illuminate\Support\Facades\Hash::make($password); $user->setRememberToken(\Illuminate\Support\Str::random(60)); $user->save(); }
+        event(new \Illuminate\Auth\Events\PasswordReset($user));
+        $this->guard()->login($user);
+    }
 }

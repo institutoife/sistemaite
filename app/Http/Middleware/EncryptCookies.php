@@ -14,4 +14,12 @@ class EncryptCookies extends Middleware
     protected $except = [
         //
     ];
+
+    protected function decrypt(\Symfony\Component\HttpFoundation\Request $request)
+    {
+        $request=parent::decrypt($request);
+        // A persistent 2FA cookie may skip the code, never the password login.
+        $request->cookies->remove(app('auth')->guard('web')->getRecallerName());
+        return $request;
+    }
 }

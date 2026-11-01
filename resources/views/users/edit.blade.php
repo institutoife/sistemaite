@@ -33,6 +33,10 @@
                 
                 @endforeach
 
+                @if(app(\App\Services\AccountSecurity::class)->ready())
+                    <label class="mt-3">Motivo del cambio</label><input name="reason" class="form-control" minlength="5" maxlength="500" required>
+                    @include('user.access.errors')
+                @endif
                 {!! Form::submit('Actualizar Rol', ['class' => 'btn btn-primary mt-2']) !!}
 
             {!! Form::close() !!}

@@ -6,7 +6,7 @@ use App\Models\Telefono;
 use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 use App\Http\Requests\GuardarApoderadoExistenteRequest;
 use App\Http\Requests\TelefonoUpdateRequest;
 use Illuminate\Support\Facades\Hash;

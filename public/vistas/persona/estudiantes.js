@@ -174,12 +174,15 @@ function hideModalCompat(selector){
             if (!persona_id) {
                 return;
             }
+            Swal.fire({icon:'warning',title:'Generar credenciales temporales',text:'Se restablecerán las contraseñas del estudiante y su apoderado, y se cerrarán sus sesiones anteriores.',showCancelButton:true,confirmButtonText:'Generar temporales',cancelButtonText:'Cancelar'}).then(function(result){
+            if(!result.isConfirmed)return;
             $.ajax({
                 url: "/persona/credenciales/whatsapp/" + persona_id,
-                type: "GET",
+                type: "POST",
+                headers:{'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content'),'Accept':'application/json'},
                 success: function(response) {
                     if (response && response.whatsapp_url) {
-                        window.open(response.whatsapp_url, "_blank");
+                        window.open(response.whatsapp_url, "_blank", "noopener,noreferrer");
                     } else {
                         Swal.fire({
                             icon: "error",
@@ -194,6 +197,7 @@ function hideModalCompat(selector){
                         title: mensaje,
                     });
                 }
+            });
             });
         });
 

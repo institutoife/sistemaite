@@ -166,8 +166,8 @@ class MensajeController extends Controller
         $EstudiantesCalificacionDesc=Persona::join('estudiantes','personas.id','estudiantes.persona_id')
         ->join('calificacions','personas.id','calificacions.persona_id')
         ->whereNotIn('personas.id',$yaMensajeados)
-        ->select('personas.id','personas.nombre','personas.apellidom','personas.apellidop','vuelvefecha','foto',
-                DB::raw("(select AVG(calificacion) from calificacions where personas.id=calificacions.persona_id) as promedio"))
+        ->select(['personas.id','personas.nombre','personas.apellidom','personas.apellidop','vuelvefecha','foto',
+                'promedio'=>\App\Services\SedeAccess::aggregate('calificacions','AVG(calificacion)','calificacions.persona_id','personas.id')])
         ->groupBy('id','nombre','apellidom','apellidop','vuelvefecha','promedio','personas.foto')
         ->orderBy('promedio','desc')
         ->get();

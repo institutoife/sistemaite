@@ -51,9 +51,11 @@
 <a class="btn-accion-tabla tooltipsC mr-1 enviarmensaje" title="Cobrar por mensaje">
     &nbsp;<i class="fab fa-whatsapp"></i>
 </a>
-<a class="btn-accion-tabla tooltipsC mr-1 enviarcredenciales" title="Enviar credenciales por WhatsApp">
+@if(!app(\App\Services\AccountSecurity::class)->ready() || auth()->user()->hasRole('Admin'))
+<a class="btn-accion-tabla tooltipsC mr-1 enviarcredenciales" title="Preparar credenciales temporales por WhatsApp">
     <i class="fas fa-key"></i>
 </a>
+@endif
 <a href="{{route('tus.inscripciones',App\Models\Persona::findOrFail($id)->estudiante)}}" class="btn-accion-tabla tooltipsC mr-1" title="Ir a Inscripciones">
     &nbsp;<i class="fas fa-table"></i>
 </a>

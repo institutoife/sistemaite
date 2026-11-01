@@ -55,7 +55,7 @@ class RoleController extends Controller
             'name' => $request->name
         ]);
 
-        $role->permissions()->attach($request->permissions);
+        $role->syncPermissions($request->permissions);
 
         //dd($role);
         return redirect()->route('role.index');
@@ -93,16 +93,24 @@ class RoleController extends Controller
      */
     public function update(Request $request, Role $role)
     {
+        if (app(\App\Services\AccountSecurity::class)->ready()) {
+            $this->authorize('administer',\App\Models\User::class);
+            abort_if($role->name==='Admin'&&$request->name!=='Admin',422,'El rol Admin debe conservarse.');
+        }
         $request->validate([
             'name' => 'required',
             'permissions' => 'required'
         ]);
 
-        $role->update([
-            'name' => $request->name
-        ]);
-
-        $role->permissions()->sync($request->permissions);
+        \Illuminate\Support\Facades\DB::transaction(function()use($request,$role){
+            $users=$role->users()->lockForUpdate()->get();
+            $before=['role'=>$role->name,'permissions'=>$role->permissions()->pluck('name')->all()];
+            $role->update(['name'=>$request->name]);$role->syncPermissions($request->permissions);
+            if(app(\App\Services\AccountSecurity::class)->ready()){
+                $security=app(\App\Services\AccountSecurity::class);
+                foreach($users as $user){$security->revoke($user);$security->audit($user,'role_permissions_changed',$before,['role'=>$role->name,'permissions'=>$role->permissions()->pluck('name')->all()],'Actualización administrativa del rol');}
+            }
+        });
 
         return redirect()->route('role.index');
     }
@@ -115,7 +123,14 @@ class RoleController extends Controller
      */
     public function destroy(Role $role)
     {
-        $role->delete();
+        if (app(\App\Services\AccountSecurity::class)->ready()) {
+            $this->authorize('administer',\App\Models\User::class);
+            abort_if($role->name==='Admin',422,'El rol Admin no puede eliminarse.');
+        }
+        \Illuminate\Support\Facades\DB::transaction(function()use($role){
+            $users=$role->users()->lockForUpdate()->get();$name=$role->name;$role->delete();
+            if(app(\App\Services\AccountSecurity::class)->ready())foreach($users as $user){$security=app(\App\Services\AccountSecurity::class);$security->revoke($user);$security->audit($user,'role_removed',['role'=>$name],[],'Eliminación administrativa del rol');}
+        });
         return redirect()->route('role.index');
     }
 }

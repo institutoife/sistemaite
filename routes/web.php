@@ -107,6 +107,23 @@ Route::get('interes/mostrar/{interest}',[InterestController::class,'show'])->nam
 Route::get('prueba',[ProspectoController::class,'listar'])->name('prueba');
 Route::get('colegios/ajax', [App\Http\Controllers\ColegioController::class, 'ajaxSearch'])->name('colegios.ajax');
 Route::middleware(['auth'])->group(function () {
+    Route::prefix('mi-seguridad')->name('security.')->group(function () {
+        $security=\App\Http\Controllers\AccountSecurityController::class;
+        Route::get('password',[$security,'passwordForm'])->name('password.show');
+        Route::put('password',[$security,'password'])->middleware('throttle:6,1')->name('password.update');
+        Route::get('segundo-factor',[$security,'twoFactorForm'])->name('two-factor.show');
+        Route::post('segundo-factor/iniciar',[$security,'beginTwoFactor'])->middleware('throttle:6,1')->name('two-factor.begin');
+        Route::post('segundo-factor/confirmar',[$security,'confirmTwoFactor'])->middleware('throttle:6,1')->name('two-factor.confirm');
+        Route::get('segundo-factor/verificar',[$security,'challenge'])->name('two-factor.challenge');
+        Route::post('segundo-factor/verificar',[$security,'verify'])->middleware('throttle:6,1')->name('two-factor.verify');
+        Route::delete('segundo-factor',[$security,'disable'])->middleware('throttle:6,1')->name('two-factor.disable');
+        Route::get('dispositivos',[$security,'devices'])->name('devices.index');
+        Route::get('confiar-dispositivo',[$security,'trustOffer'])->name('devices.offer');
+        Route::post('confiar-dispositivo',[$security,'trustDevice'])->middleware('throttle:6,1')->name('devices.trust');
+        Route::delete('dispositivos',[$security,'revokeAllDevices'])->middleware('throttle:6,1')->name('devices.revoke-all');
+        Route::delete('dispositivos/{device}',[$security,'revokeDevice'])->whereNumber('device')->middleware('throttle:6,1')->name('devices.revoke');
+        Route::post('cerrar-otras-sesiones',[$security,'otherSessions'])->middleware('throttle:6,1')->name('sessions.others');
+    });
     
 Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::post('home/alertas/gestionar', [EstudianteController::class,'gestionarAlertaHome'])->name('home.alertas.gestionar');
@@ -163,7 +180,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::get('persona/enviar/mensaje/cumpleaneros', [PersonaController::class,'enviarMensajeCumpleanero'])->name('persona.enviar.mensaje.cumpleaneros');
     Route::get('persona/enviar/mensaje/faltones', [PersonaController::class,'enviarMensajeFaltones'])->name('persona.enviar.mensaje.faltones');
     Route::get('persona/enviar/mensaje/faltonescom', [PersonaController::class,'enviarMensajeFaltonesComputacion'])->name('persona.enviar.mensaje.faltonescom');
-    Route::get('persona/credenciales/whatsapp/{persona}', [PersonaController::class,'enviarCredencialesWhatsapp'])->name('persona.enviar.credenciales.whatsapp');
+    Route::post('persona/credenciales/whatsapp/{persona}', [PersonaController::class,'enviarCredencialesWhatsapp'])->middleware('throttle:6,1')->name('persona.enviar.credenciales.whatsapp');
     Route::get('persona/descargar/contacto/{persona}', [VcardController::class,'actualizarTarjeta'])->name('descargar.contacto');
     
     Route::post('desgargar/contactos', [VcardController::class,'crearContactos'])->name('crear.archivos.vcard');
@@ -284,6 +301,17 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
 
     Route::resource('telefonos', "TelefonoController");
     Route::get('mi-perfil', [UserController::class, 'profile'])->name('profile.show');
+    Route::prefix('gestion-usuarios')->group(function () {
+        $access=\App\Http\Controllers\UserAccessController::class;
+        Route::get('personas',[$access,'people'])->name('users.people');
+        Route::post('sucursal-activa',[$access,'switchSede'])->name('users.sede.switch');
+        Route::get('{user}/accesos',[$access,'edit'])->name('users.access.edit');
+        Route::put('{user}/estado',[$access,'state'])->name('users.access.state');
+        Route::put('{user}/horario',[$access,'schedule'])->name('users.access.schedule');
+        Route::post('{user}/password',[$access,'resetPassword'])->middleware('throttle:6,1')->name('users.access.password');
+        Route::delete('{user}/segundo-factor',[$access,'resetTwoFactor'])->middleware('throttle:6,1')->name('users.access.two-factor');
+        Route::post('{user}/reasignar',[$access,'reassign'])->name('users.access.reassign');
+    });
     Route::resource('users', 'UserController');
     Route::put('users/{user}/password', [UserController::class, 'updatePassword'])->name('users.password.update');
     
@@ -1252,6 +1280,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     })->name("itenautas.itecoins");
 
     Route::get('foto/{filename}', [FotoController::class, 'show'])->where('filename', '.*')->name('foto.show');
+    Route::get('storage/{filename}', [FotoController::class, 'show'])->where('filename','(?:estudiantes|usuarios|apoderados|docentes|personas)/.*')->name('foto.legacy');
 
 
     // Reporte PDF de turnos de docentes habilitados

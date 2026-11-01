@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Models\Sesion;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Models\BranchModel as Model;
 
 /**
  * Class Inscripcione

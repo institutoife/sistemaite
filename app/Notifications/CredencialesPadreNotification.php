@@ -10,14 +10,12 @@ class CredencialesPadreNotification extends Notification
     use Queueable;
 
     protected $user;
-    protected $plainPassword;
     protected $persona;
     protected $url;
 
     public function __construct($user, $plainPassword, $persona, $url = null)
     {
         $this->user = $user;
-        $this->plainPassword = $plainPassword;
         $this->persona = $persona;
         $this->url = $url;
     }
@@ -35,7 +33,7 @@ class CredencialesPadreNotification extends Notification
             'message' => 'Credenciales generadas para padre (ver detalles).',
             'estudiante' => trim($this->persona->nombre.' '.$this->persona->apellidop.' '.$this->persona->apellidom),
             'correo' => $this->user->email,
-            'password' => $this->plainPassword,
+            'requiere_entrega_segura' => true,
             'url' => $this->url ?: route('tomar.foto.persona', ['persona' => $this->persona->id]),
             'persona_id' => $this->persona->id,
             'usuario_id' => $this->user->id,

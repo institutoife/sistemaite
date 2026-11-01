@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Persona;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 use PDF;
 
 class PadreController extends Controller
@@ -24,6 +24,7 @@ class PadreController extends Controller
 
         if ($persona) {
             $hijos = $persona->hijos()
+                ->when(!Auth::user()->hasRole('Padre'),fn($q)=>$q->whereRaw('1=0'))
                 ->with(['estudiante.inscripciones', 'computacion.matriculaciones'])
                 ->get();
 
@@ -68,7 +69,7 @@ class PadreController extends Controller
 
     private function ensurePadreRole()
     {
-        if (!Auth::check() || !Auth::user()->hasRole(['Padre'])) {
+        if (!Auth::check() || !Auth::user()->hasRole(['Padre','Estudiante'])) {
             abort(403);
         }
     }
@@ -88,6 +89,7 @@ class PadreController extends Controller
     private function resolveAuthorizedChild(Persona $padrePersona, $hijoId)
     {
         $hijo = $padrePersona->hijos()
+            ->when(!Auth::user()->hasRole('Padre'),fn($q)=>$q->whereRaw('1=0'))
             ->where('personas.id', $hijoId)
             ->first();
 
@@ -120,13 +122,13 @@ class PadreController extends Controller
             'estudiante.inscripciones.modalidad',
             'estudiante.inscripciones.programaciones.estado',
             'estudiante.inscripciones.programaciones.materia',
-            'estudiante.inscripciones.programaciones.docente.persona',
+            'estudiante.inscripciones.programaciones.docente.persona:id,nombre,apellidop,apellidom,foto',
             'estudiante.inscripciones.programaciones.aula',
             'estudiante.inscripciones.pagos',
             'computacion.matriculaciones.estado',
             'computacion.matriculaciones.asignatura',
             'computacion.matriculaciones.programacionescom.estado',
-            'computacion.matriculaciones.programacionescom.docente.persona',
+            'computacion.matriculaciones.programacionescom.docente.persona:id,nombre,apellidop,apellidom,foto',
             'computacion.matriculaciones.programacionescom.aula',
             'computacion.matriculaciones.pagos',
         ]);

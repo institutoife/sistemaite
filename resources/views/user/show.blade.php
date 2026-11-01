@@ -10,6 +10,11 @@
 @stop
 
 @section('content')
+    @if($ownProfile && app(\App\Services\AccountSecurity::class)->ready())
+        @include('user.access.errors')
+        <p><a href="{{ route('security.password.show') }}" class="btn btn-outline-primary">Cambiar mi contraseña</a> <a href="{{ route('security.two-factor.show') }}" class="btn btn-outline-secondary">Autenticación de dos factores</a></p>
+        @if(app(\App\Services\TrustedDevices::class)->ready())<p><a href="{{ route('security.devices.index') }}" class="btn btn-outline-secondary">Seguridad · Dispositivos y sesiones</a></p>@endif
+    @endif
     <section class="content container-fluid">
         <div class="row">
             <div class="col-md-12">

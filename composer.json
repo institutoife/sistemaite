@@ -32,6 +32,7 @@
         "maatwebsite/excel": "^3.1",
         "mediconesystems/livewire-datatables": "^0.6.4",
         "mpdf/mpdf": "^8.1",
+        "pragmarx/google2fa": "8.0",
         "pusher/pusher-php-server": "^7.0",
         "rappasoft/laravel-livewire-tables": "^1.20",
         "realrashid/sweet-alert": "^4.0",

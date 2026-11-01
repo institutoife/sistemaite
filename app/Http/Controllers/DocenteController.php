@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\Config;
 use Intervention\Image\Facades\Image;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 use App\Http\Controllers\PersonaController;
 use Barryvdh\DomPDF\Facade as PDF;
 use Spatie\Permission\Models\Role;
@@ -132,10 +132,13 @@ class DocenteController extends Controller
         $user->name = ucfirst(strtolower($persona->nombre).$persona->id);
         $user->persona_id = $persona->id;
         // $user->password = Crypt::encryptString($user->name."*");
-        $user->password = Hash::make($user->name."*");
+        $user->password = Hash::make(app(\App\Services\AccountSecurity::class)->temporaryPassword());
         $user->foto = "estudiantes/sinperfil.png";
         $user->save();
-        $user->assignRole('Estudiante');
+        $user->assignRole('Docente');
+        if (app(\App\Services\AccountSecurity::class)->ready()&&app(\App\Services\SedeAccess::class)->active()) {
+            $user->sede_id=app(\App\Services\SedeAccess::class)->active();$user->save();$user->sedes()->sync([$user->sede_id]);
+        }
         //**%%%%%%%%%%%%%%%%%%%%  B  I  T  A  C  O  R  A    P E R S O N A   %%%%%%%%%%%%%%%%*/
         $persona->usuarios()->attach(Auth::user()->id);
         $docente = new Docente();
@@ -584,6 +587,11 @@ class DocenteController extends Controller
 
     public function crearUsuarioDesdeDocente(Docente $docente)
     {
+        if (app(\App\Services\AccountSecurity::class)->ready()) {
+            $this->authorize('administer',User::class);
+            if ($existing=User::where('persona_id',$docente->persona_id)->first()) { return redirect()->route('users.edit',$existing); }
+            return redirect()->route('users.create',['persona_id'=>$docente->persona_id,'role'=>'Docente']);
+        }
         $persona = $docente->persona;
         if (!$persona) {
             return redirect()->route('docentes.index')

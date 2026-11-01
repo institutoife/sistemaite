@@ -97,7 +97,7 @@ class GestionController extends Controller
      */
     public function editar(Request $request)
     {
-        $gestion = DB::select('select * from estudiante_grado where id = ?', [$request->id_gestion]);
+        $gestion = Gestion::where('id',$request->id_gestion)->get();
         $colegios = Colegio::all();
         $grados = Grado::all();
         $data=['gestion'=>$gestion,'grados'=>$grados,'colegios'=>$colegios];

@@ -31,7 +31,7 @@ use App\Models\Clase;
 use App\Models\Programacioncom;
 use App\Models\Clasecom;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 use Yajra\DataTables\Contracts\DataTable as DataTable; 
 use Yajra\DataTables\DataTables;
 use App\Http\Controllers\PDFController;

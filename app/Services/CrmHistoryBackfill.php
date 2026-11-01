@@ -2,7 +2,7 @@
 namespace App\Services;
 
 use App\Models\Prospecto;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 
 class CrmHistoryBackfill
 {

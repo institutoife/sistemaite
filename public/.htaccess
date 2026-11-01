@@ -9,6 +9,9 @@
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # Personal photos must pass through Laravel even when the physical file exists.
+    RewriteRule ^(?:foto/|storage/(?:estudiantes|usuarios|apoderados|docentes|personas)/) index.php [NC,L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$

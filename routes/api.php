@@ -25,7 +25,7 @@ use App\Models\Estado;
 use App\Models\Feriado;
 use App\Http\Controllers\ComentarioController;
 use App\Models\Tipomotivo;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 use App\Http\Controllers\DocenteController;
 
 /*
@@ -39,7 +39,7 @@ use App\Http\Controllers\DocenteController;
 |
 */
 
-Route::middleware('auth:api')->get('/user', function (Request $request) {
+Route::middleware('auth')->get('/user', function (Request $request) {
     return $request->user();
 });
 

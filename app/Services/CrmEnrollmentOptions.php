@@ -2,7 +2,8 @@
 namespace App\Services;
 
 use App\Models\{Persona,Prospecto,Inscripcione,Matriculacion};
-use Illuminate\Support\Facades\{DB,Schema};
+use Illuminate\Support\Facades\{Schema};
+use App\Support\SedeDB as DB;
 use Illuminate\Validation\ValidationException;
 
 class CrmEnrollmentOptions

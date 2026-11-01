@@ -1114,6 +1114,8 @@ class PersonaController extends Controller
 
     public function enviarCredencialesWhatsapp(Persona $persona)
     {
+        $security=app(\App\Services\AccountSecurity::class);
+        if($security->ready()){$this->authorize('administer',User::class);}
         if (!Auth::user()->hasRole(['Admin','Secretaria'])) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
@@ -1151,13 +1153,21 @@ class PersonaController extends Controller
             $telefonoWa = $telefono;
         }
 
-        $plainPasswordEstudiante = Str::random(10);
-        $userEstudiante->password = Hash::make($plainPasswordEstudiante);
-        $userEstudiante->save();
-
-        $plainPasswordPadre = Str::random(10);
-        $userPadre->password = Hash::make($plainPasswordPadre);
-        $userPadre->save();
+        if($security->ready()){
+            abort_unless($security->family($userEstudiante)&&$userEstudiante->hasRole('Estudiante')&&$security->family($userPadre)&&$userPadre->hasRole('Padre')&&$userEstudiante->id!==$userPadre->id,403,'Use Administración de usuarios para restablecer estas cuentas.');
+            $plainPasswordEstudiante=$security->temporaryPassword();$plainPasswordPadre=$security->temporaryPassword();
+            DB::transaction(function()use($security,$userEstudiante,$userPadre,$plainPasswordEstudiante,$plainPasswordPadre){
+                $security->password($userEstudiante,$plainPasswordEstudiante,true,'Entrega administrativa de credenciales temporales al estudiante');
+                $security->password($userPadre,$plainPasswordPadre,true,'Entrega administrativa de credenciales temporales al apoderado');
+            });
+        }else{
+            $plainPasswordEstudiante = Str::random(10);
+            $userEstudiante->password = Hash::make($plainPasswordEstudiante);
+            $userEstudiante->save();
+            $plainPasswordPadre = Str::random(10);
+            $userPadre->password = Hash::make($plainPasswordPadre);
+            $userPadre->save();
+        }
 
         $appUrl = URL::to('/');
         $mensaje = "Hola, se generaron las credenciales para el Portal IFE.%0A%0A".
@@ -1172,7 +1182,8 @@ class PersonaController extends Controller
 
         $whatsappUrl = "https://wa.me/{$telefonoWa}?text={$mensaje}";
 
-        return response()->json(['whatsapp_url' => $whatsappUrl]);
+        if($security->ready()){$whatsappUrl.='%0A%0ALas contraseñas son temporales, vencen en 24 horas y deben cambiarse al ingresar.';}
+        return response()->json(['whatsapp_url' => $whatsappUrl])->header('Cache-Control','private, no-store')->header('Referrer-Policy','no-referrer');
     }
     
     public function enviarMensajeCumpleanero(Request $request){

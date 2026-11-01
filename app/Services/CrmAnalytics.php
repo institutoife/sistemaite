@@ -29,7 +29,7 @@ class CrmAnalytics
                 return ['nombre'=>$names[$row->$field]??'Sin definir','total'=>(int)$row->total];
             })->sortByDesc('total')->values();
         }
-        $groups['interest_id']=\Illuminate\Support\Facades\DB::table('interest_prospecto as pi')->join('interests as i','i.id','=','pi.interest_id')
+        $groups['interest_id']=\App\Support\SedeDB::table('interest_prospecto as pi')->join('interests as i','i.id','=','pi.interest_id')
             ->whereIn('pi.prospecto_id',(clone $cohort)->select('prospectos.id'))->groupBy('i.id','i.interest')
             ->selectRaw('i.interest as nombre, COUNT(DISTINCT pi.prospecto_id) as total')->orderByDesc('total')->get()
             ->map(function ($row) { return ['nombre'=>$row->nombre,'total'=>(int)$row->total]; });

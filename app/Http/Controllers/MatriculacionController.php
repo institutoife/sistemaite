@@ -414,7 +414,7 @@ class MatriculacionController extends Controller
         ->join('programacioncoms', 'matriculacions.id', '=', 'programacioncoms.matriculacion_id')
         ->where('vigente',1)
         ->select('matriculacions.id','personas.id as persona_id','comos.como','personas.nombre','personas.apellidop','personas.apellidom')
-        ->whereRaw('NOW() < (SELECT MAX(fecha) FROM programacioncoms WHERE programacioncoms.matriculacion_id = matriculacions.id)')
+            ->where(DB::raw('NOW()'),'<',\App\Services\SedeAccess::aggregate('programacioncoms','MAX(fecha)','programacioncoms.matriculacion_id','matriculacions.id'))
         ->distinct()
         ->get();
 

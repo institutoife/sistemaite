@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Requests\MensajeableStoreRequest;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 use Carbon\Carbon;
 use App\Models\Inscripcione;
 use App\Models\Matriculacion;
@@ -19,6 +19,7 @@ class MensajeableController extends Controller
     }
     
     public function storeMensajeable(MensajeableStoreRequest $request){
+        app(\App\Services\SedeAccess::class)->authorizeReference('App\\Models\\'.$request->mensajeable_type,$request->mensajeable_id);
         DB::table('mensajeables')->insert(
             array(
                 'mensaje_id' => $request->mensaje_id,

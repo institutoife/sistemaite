@@ -2,7 +2,8 @@
 namespace App\Services;
 
 use App\Models\{Prospecto,Persona,Estado,CrmEtapa,CrmActividadDetalle,Observacion,Interest,Como,CrmSede,Grado,User};
-use Illuminate\Support\Facades\{DB,Schema};
+use Illuminate\Support\Facades\{Schema};
+use App\Support\SedeDB as DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
@@ -215,6 +216,11 @@ class CrmService
     }
     public function reassign(Prospecto $record, array $data, int $actor): void
     {
+        if (app(AccountSecurity::class)->ready()) {
+            $target=User::findOrFail($data['responsable_id']);
+            if($target->effective_access_status!=='active'||app(AccountSecurity::class)->family($target))throw \Illuminate\Validation\ValidationException::withMessages(['responsable_id'=>'Seleccione un responsable del personal con cuenta activa.']);
+            if($record->crm_sede_id&&!$target->hasRole('Admin')&&!in_array((int)$record->crm_sede_id,app(SedeAccess::class)->allowedIds($target),true))throw \Illuminate\Validation\ValidationException::withMessages(['responsable_id'=>'El responsable no tiene acceso a esa Sucursal.']);
+        }
         DB::transaction(function () use ($record,$data,$actor) {
             $current=$this->lock($record,(int)$data['version']); $owner=(int)$data['responsable_id'];
             if ((int)$current->responsable_id===$owner) { return; }

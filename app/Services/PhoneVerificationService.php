@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Persona;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;

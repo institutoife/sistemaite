@@ -15,6 +15,9 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->singleton(\App\Services\GoogleContactsService::class);
+        $this->app->singleton(\App\Services\AccountSecurity::class);
+        $this->app->singleton(\App\Services\TrustedDevices::class);
+        $this->app->singleton(\App\Services\SedeAccess::class);
     }
 
     /**
@@ -26,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
     {
         //Schema::defaultStringLength(191);
         date_default_timezone_set('America/La_Paz');
+        \App\Models\User::observe(\App\Observers\UserSecurityObserver::class);
         Paginator::useBootstrap();
         \App\Models\Persona::observe(\App\Observers\PersonaObserver::class);
         \App\Models\Prospecto::observe(\App\Observers\GoogleLeadObserver::class);

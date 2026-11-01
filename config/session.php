@@ -2,6 +2,11 @@
 
 use Illuminate\Support\Str;
 
+$sessionEnvironment = preg_replace('/[^a-zA-Z0-9_-]/', '_', env('APP_ENV', 'production'));
+$sessionDevelopment = in_array($sessionEnvironment, ['local', 'testing'], true);
+$sessionOrigin = substr(hash('sha256', rtrim(strtolower(env('APP_URL', 'http://localhost')), '/')), 0, 10);
+$sessionBase = preg_replace('/[^a-zA-Z0-9_-]/', '_', env('SESSION_COOKIE', Str::slug(env('APP_NAME', 'laravel'), '_').'_session'));
+
 return [
 
     /*
@@ -33,7 +38,7 @@ return [
 
     'lifetime' => env('SESSION_LIFETIME', 120),
 
-    'expire_on_close' => false,
+    'expire_on_close' => true,
 
     /*
     |--------------------------------------------------------------------------
@@ -126,10 +131,7 @@ return [
     |
     */
 
-    'cookie' => env(
-        'SESSION_COOKIE',
-        Str::slug(env('APP_NAME', 'laravel'), '_').'_session'
-    ),
+    'cookie' => ($sessionDevelopment?'':'__Host-').$sessionBase.'_'.$sessionEnvironment.'_'.$sessionOrigin,
 
     /*
     |--------------------------------------------------------------------------
@@ -155,7 +157,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN', null),
+    'domain' => null,
 
     /*
     |--------------------------------------------------------------------------
@@ -168,7 +170,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE', false),
+    'secure' => $sessionDevelopment ? env('SESSION_SECURE_COOKIE', false) : true,
 
     /*
     |--------------------------------------------------------------------------

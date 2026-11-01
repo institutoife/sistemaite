@@ -18,7 +18,7 @@ use App\Models\Nivel;
 use App\Models\Observacion;
 use App\Models\Licencia;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 use Yajra\DataTables\Contracts\DataTable as DataTable; 
 use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Config;

@@ -160,7 +160,7 @@ class AdministrativoController extends Controller
         $inscripcionesVigentes = Inscripcione::join('pagos','pagos.pagable_id','=','inscripciones.id')
                                         ->where('estudiante_id', '=', $persona->estudiante->id)
                                         ->where('vigente',1)
-                                        ->select('inscripciones.id','objetivo','costo',DB::raw("(SELECT sum(monto) FROM pagos WHERE pagos.pagable_id= inscripciones.id) as acuenta"))
+                                        ->select(['inscripciones.id','objetivo','costo','acuenta'=>\App\Services\SedeAccess::aggregate('pagos','SUM(monto)','pagos.pagable_id','inscripciones.id')])
                                         ->groupBy('inscripciones.id','objetivo','acuenta','costo')
                                         ->get();
         $inscripcionesOtras = Inscripcione::where('estudiante_id', '=', $persona->estudiante->id)

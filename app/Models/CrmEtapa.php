@@ -1,6 +1,6 @@
 <?php
 namespace App\Models;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\BranchModel as Model;
 class CrmEtapa extends Model
 {
     use \Illuminate\Database\Eloquent\SoftDeletes;

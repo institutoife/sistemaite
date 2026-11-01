@@ -15,7 +15,7 @@ use App\Models\Nivel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Support\SedeDB as DB;
 use Yajra\DataTables\Contracts\DataTable as DataTable; 
 use Yajra\DataTables\DataTables;
 use App\Http\Controllers\ProgramacionController;
@@ -237,8 +237,8 @@ class PagoController extends Controller
             ->join('pagos','pagos.pagable_id','inscripciones.id')
             ->where('pagos.pagable_type',Inscripcione::class)
             ->where('inscripciones.condonado',0)
-            ->where('inscripciones.costo','>',DB::raw("(SELECT sum(monto) FROM pagos WHERE pagos.pagable_id= inscripciones.id)"))
-            ->select('personas.id','inscripciones.id as inscripcione_id','personas.nombre','personas.apellidop','costo','foto','telefono','fecha_proximo_pago',DB::raw("(SELECT sum(monto) FROM pagos WHERE pagos.pagable_id= inscripciones.id) as acuenta"))
+            ->where('inscripciones.costo','>',\App\Services\SedeAccess::aggregate('pagos','SUM(monto)','pagos.pagable_id','inscripciones.id'))
+            ->select(['personas.id','inscripciones.id as inscripcione_id','personas.nombre','personas.apellidop','costo','foto','telefono','fecha_proximo_pago','acuenta'=>\App\Services\SedeAccess::aggregate('pagos','SUM(monto)','pagos.pagable_id','inscripciones.id')])
             ->groupBy('personas.id','inscripcione_id','personas.nombre','personas.apellidop','acuenta','foto','telefono','fecha_proximo_pago','costo')
             ->get();
         return DataTables::of($deudores)
@@ -255,8 +255,8 @@ class PagoController extends Controller
         ->join('pagos','pagos.pagable_id','matriculacions.id')
         ->where('pagos.pagable_type',Matriculacion::class)
         ->where('matriculacions.condonado',0)
-        ->where('matriculacions.costo','>',DB::raw("(SELECT sum(monto) FROM pagos WHERE pagos.pagable_id= matriculacions.id)"))
-        ->select('personas.id','matriculacions.id as matriculacion_id','asignatura','personas.nombre','personas.apellidop','costo','foto','telefono','fecha_proximo_pago',DB::raw("(SELECT sum(monto) FROM pagos WHERE pagos.pagable_id= matriculacions.id) as acuenta"))
+        ->where('matriculacions.costo','>',\App\Services\SedeAccess::aggregate('pagos','SUM(monto)','pagos.pagable_id','matriculacions.id'))
+        ->select(['personas.id','matriculacions.id as matriculacion_id','asignatura','personas.nombre','personas.apellidop','costo','foto','telefono','fecha_proximo_pago','acuenta'=>\App\Services\SedeAccess::aggregate('pagos','SUM(monto)','pagos.pagable_id','matriculacions.id')])
         ->groupBy('personas.id','matriculacion_id','asignatura','personas.nombre','personas.apellidop','foto','telefono','fecha_proximo_pago','costo','acuenta')
         ->get();
         return DataTables::of($deudorescomputacion)

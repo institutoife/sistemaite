@@ -358,7 +358,7 @@ class InscripcioneController extends Controller
         $inscripcionesVigentes = Inscripcione::join('pagos','pagos.pagable_id','=','inscripciones.id')
                                         ->where('estudiante_id', '=', $persona->estudiante->id)
                                         ->where('vigente',1)
-                                        ->select('inscripciones.id','objetivo','costo',DB::raw("(SELECT sum(monto) FROM pagos WHERE pagos.pagable_id= inscripciones.id) as acuenta"))
+                                        ->select(['inscripciones.id','objetivo','costo','acuenta'=>\App\Services\SedeAccess::aggregate('pagos','SUM(monto)','pagos.pagable_id','inscripciones.id')])
                                         ->groupBy('inscripciones.id','objetivo','acuenta','costo')
                                         ->get();
         $inscripcionesOtras = Inscripcione::where('estudiante_id', '=', $persona->estudiante->id)
@@ -404,7 +404,7 @@ class InscripcioneController extends Controller
             ->where('vigente', 1)
             ->where('pagos.pagable_id', '=', 'inscripciones.id')
             ->where('pagos.pagable_type', '=', 'App\Models\Inscripcione')
-            ->select('inscripciones.id','vigente', 'objetivo', 'costo', DB::raw("(SELECT avg(monto) FROM pagos where pagos.id = inscripciones.id and inscripciones.id=1) as acuenta"))
+                    ->select(['inscripciones.id','vigente','objetivo','costo','acuenta'=>\App\Services\SedeAccess::aggregate('pagos','AVG(monto)','pagos.id','inscripciones.id')->where('inscripciones.id',1)])
             ->groupBy('inscripciones.id', 'vigente','objetivo', 'acuenta', 'costo')
             ->get();
         // $inscripcionesOtras = Inscripcione::where('estudiante_id', '=', $persona->estudiante->id)
@@ -421,7 +421,7 @@ class InscripcioneController extends Controller
                 $matriculacionesVigentes=Matriculacion::join('pagos','pagos.pagable_id','=','matriculacions.id')
                         ->join('asignaturas','asignaturas.id','=','matriculacions.asignatura_id')        
                 ->where('computacion_id','=',$persona->computacion->id)->where('vigente',1)
-                ->select('matriculacions.id','vigente','asignaturas.costo','asignatura',DB::raw("(SELECT sum(monto) FROM pagos WHERE pagos.pagable_type='App\\Models\\Inscripcione' and pagos.pagable_id=1) as acuenta"))
+                ->select(['matriculacions.id','vigente','asignaturas.costo','asignatura','acuenta'=>\App\Support\SedeDB::table('pagos')->selectRaw('SUM(monto)')->where('pagable_type',Inscripcione::class)->where('pagable_id',1)])
                 ->groupBy('matriculacions.id', 'vigente', 'costo','asignatura','acuenta')->get();
                 //dd($matriculacionesVigentes);
                 $matriculacionesOtras=Matriculacion::where('computacion_id','=',$persona->computacion->id)->where('vigente',0)->get();
@@ -546,7 +546,7 @@ class InscripcioneController extends Controller
             ->join('programacions', 'inscripciones.id', '=', 'programacions.inscripcione_id')
             ->where('vigente', 1)
             ->select('inscripciones.id', 'personas.id as persona_id', 'comos.como', 'personas.nombre', 'personas.apellidop', 'personas.apellidom')
-            ->whereRaw('NOW() < (SELECT MAX(fecha) FROM programacions WHERE programacions.inscripcione_id = inscripciones.id)')
+            ->where(DB::raw('NOW()'),'<',\App\Services\SedeAccess::aggregate('programacions','MAX(fecha)','programacions.inscripcione_id','inscripciones.id'))
             ->distinct()
             ->get();
 

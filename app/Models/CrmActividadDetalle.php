@@ -1,6 +1,6 @@
 <?php
 namespace App\Models;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\BranchModel as Model;
 class CrmActividadDetalle extends Model
 {
     protected $table='crm_actividad_detalles';

@@ -11,7 +11,7 @@ use App\Aula;
 
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\BranchModel as Model;
 
 class Sesion extends Model
 {

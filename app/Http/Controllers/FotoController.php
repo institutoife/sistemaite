@@ -14,6 +14,7 @@ class FotoController extends Controller
         try { $file=$photos->file($filename); }
         catch (GoogleContactsException $exception) { abort(404); }
         abort_unless($file,404);
+        abort_unless(app(\App\Services\SedeAccess::class)->canReadPhoto($file,$photos),403);
         $response=response()->file($file['path'],['Content-Type'=>$file['mime'],
             'Cache-Control'=>'private, no-cache','X-Content-Type-Options'=>'nosniff']);
         $response->setAutoEtag(); $response->setAutoLastModified(); $response->isNotModified($request);
