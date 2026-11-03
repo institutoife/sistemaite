@@ -30,6 +30,7 @@ use App\Models\BranchModel as Model;
  */
 class Programacion extends Model
 {
+    use \App\Models\Concerns\HasAdditionalClasses;
     
     static $rules = [
 		'fecha' => 'required',

@@ -59,6 +59,7 @@ class ProgramacioncomController extends Controller
             //$request->estado_id=1;
             // return response()->json($request->all());
             $programacioncom=Programacioncom::findOrFail($request->programacioncom_id);
+        app(\App\Services\ClassAttendanceService::class)->protectHistory($programacioncom);
             $arrayObservable= [
             'observacion' => 'Se editó los valores anteriores son' .
             'Hora Inicio: ' . $programacioncom->horaini . ' ' .
@@ -99,12 +100,14 @@ class ProgramacioncomController extends Controller
 
     public function destroy(Programacioncom $programacioncom)
     {
+        app(\App\Services\ClassAttendanceService::class)->protectHistory($programacioncom);
         $programacioncom->delete();
         return response()->json(['mensaje'=>"El registro se eliminó correctamente"]);
     }
 
 
     public function generarProgramacom($matriculacion_id){
+        app(\App\Services\ClassAttendanceService::class)->protectRegeneration('computacion',$matriculacion_id);
         $matriculacion=Matriculacion::findOrFail($matriculacion_id);
         $costo_total=$matriculacion->costo;
         $total_horas=$matriculacion->totalhoras;
@@ -163,6 +166,7 @@ class ProgramacioncomController extends Controller
     }
 
     public function EliminarTodosLosProgramascom($matriculacion_id){
+        app(\App\Services\ClassAttendanceService::class)->protectRegeneration('computacion',$matriculacion_id);
         try {
             Programacioncom::where('matriculacion_id', '=', $matriculacion_id)->delete();
         } catch (\Illuminate\Database\QueryException $e) {
@@ -171,6 +175,7 @@ class ProgramacioncomController extends Controller
     }
 
     public function regenerarProgramacom($matriculacion_id,$unaFecha,$unModo = 'desde'){
+        app(\App\Services\ClassAttendanceService::class)->protectRegeneration('computacion',$matriculacion_id);
         if($unModo=='todo'){
             $this->EliminarTodosLosProgramascom($matriculacion_id);
             $this->generarProgramacom($matriculacion_id);
@@ -286,7 +291,7 @@ class ProgramacioncomController extends Controller
     }
 
     public function mostrarProgramacom(Matriculacion $matriculacion){
-        $programacioncom = Programacioncom::join('aulas', 'programacioncoms.aula_id', '=', 'aulas.id')
+        $programacioncom = Programacioncom::with(['adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom'])->join('aulas', 'programacioncoms.aula_id', '=', 'aulas.id')
         ->join('docentes', 'programacioncoms.docente_id', '=', 'docentes.id')
         ->join('personas', 'personas.id', '=', 'docentes.persona_id')
         ->select('programacioncoms.id','programacioncoms.fecha', 'horaini', 'horafin','horas_por_clase', 'personas.nombre', 'aulas.aula', 'programacioncoms.habilitado', 'programacioncoms.matriculacion_id')
@@ -300,10 +305,10 @@ class ProgramacioncomController extends Controller
 
     public function imprimirProgramacom($matriculacion_id){
         $matriculacion=Matriculacion::findOrFail($matriculacion_id);
-        $programacion = Programacioncom::join('aulas', 'programacioncoms.aula_id', '=', 'aulas.id')
+        $programacion = Programacioncom::with(['adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom'])->join('aulas', 'programacioncoms.aula_id', '=', 'aulas.id')
             ->join('docentes', 'programacioncoms.docente_id', '=', 'docentes.id')
             ->join('personas', 'personas.id', '=', 'docentes.persona_id')
-            ->select('programacioncoms.fecha', 'horaini','programacioncoms.habilitado', 'horafin', 'horas_por_clase', 'personas.nombre', 'aulas.aula', 'programacioncoms.habilitado')
+            ->select('programacioncoms.id','programacioncoms.fecha', 'horaini','programacioncoms.habilitado', 'horafin', 'horas_por_clase', 'personas.nombre', 'aulas.aula', 'programacioncoms.habilitado')
             ->orderBy('fecha', 'asc')
             ->where('matriculacion_id', '=', $matriculacion_id)->get();
 
@@ -407,7 +412,7 @@ class ProgramacioncomController extends Controller
             ->join('asignaturas','matriculacions.asignatura_id','asignaturas.id')
             ->join('estados','programacioncoms.estado_id','estados.id')
 
-            ->where('programacioncoms.fecha',Carbon::now()->format('Y-m-d'))
+            ->sinCompensar()->where('programacioncoms.fecha',Carbon::now()->format('Y-m-d'))
             ->select('matriculacions.id','personas.nombre as estudiante','estados.estado','personas.apellidop','foto','docentes.nombrecorto as docente','programacioncoms.horaini','programacioncoms.horafin','asignaturas.asignatura')  
             ->get();
 
@@ -419,7 +424,7 @@ class ProgramacioncomController extends Controller
 
     public function programacionescomHoy(Request $request){
 
-        $programacion=Programacioncom::join('docentes','docentes.id','=','programacioncoms.docente_id')
+        $programacion=Programacioncom::with(['adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom'])->join('docentes','docentes.id','=','programacioncoms.docente_id')
                     ->join('aulas','aulas.id','=','programacioncoms.aula_id')
                     ->join('estados','estados.id','=','programacioncoms.estado_id')
                     ->where('matriculacion_id',$request->matriculacion)
@@ -427,12 +432,12 @@ class ProgramacioncomController extends Controller
                     ->select('programacioncoms.id','fecha','horaini','horafin','estados.estado','docentes.nombrecorto','aulas.aula');
         
         return DataTables::of($programacion)
-                ->addColumn('btn','programacioncom.actions')
+                ->addColumn('btn',fn($program)=>view('programacioncom.actions',array_merge($program->toArray(),['program'=>$program]))->render())
                 ->rawColumns(['btn'])
                 ->toJson();
     }
     public function programacionescomFuturo(Request $request){
-        $programacion=Programacioncom::join('docentes','docentes.id','=','programacioncoms.docente_id')
+        $programacion=Programacioncom::with(['adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom'])->join('docentes','docentes.id','=','programacioncoms.docente_id')
                     ->join('aulas','aulas.id','=','programacioncoms.aula_id')
                     ->join('estados','estados.id','=','programacioncoms.estado_id')
 
@@ -440,7 +445,7 @@ class ProgramacioncomController extends Controller
                     // ->where('fecha','>', Carbon::now()->isoFormat('Y-M-D'))
                     ->select('programacioncoms.id','fecha','estados.estado','docentes.nombrecorto as docente','horaini','horafin','aulas.aula','programacioncoms.habilitado');
         return DataTables::of($programacion)
-                ->addColumn('btn','programacioncom.actionsfuturo')
+                ->addColumn('btn',fn($program)=>view('programacioncom.actionsfuturo',array_merge($program->toArray(),['program'=>$program]))->render())
                 ->rawColumns(['btn'])
                 ->toJson();
     }
@@ -461,7 +466,7 @@ class ProgramacioncomController extends Controller
         $total_horas=$matriculacion->totalhoras;
         $costo_por_hora=$total_costo/$total_horas;
         $this->deshabilitarTodoProgramascom($matriculacion_id);
-        $programascom = Programacioncom::where('matriculacion_id', '=', $matriculacion_id)
+        $programascom = Programacioncom::where('matriculacion_id', '=', $matriculacion_id)->horasContratadas()->orderBy('id')
                                         ->get();
         $acuentaTotal=$matriculacion->pagos->sum->monto;
         $TotalPagado=$acuentaTotal;
@@ -476,9 +481,10 @@ class ProgramacioncomController extends Controller
                 $TotalPagado=$TotalPagado-$costo_programa;
             }
         }
-        $programascom = Programacioncom::where('matriculacion_id', '=', $matriculacion_id)
+        $programascom = Programacioncom::where('matriculacion_id', '=', $matriculacion_id)->horasContratadas()->orderBy('id')
                                         ->get();
 
+        app(\App\Services\ClassAttendanceService::class)->syncCompensationPayments('computacion',$matriculacion_id);
         if ($TotalPagado <= $matriculacion->costo) {
             return redirect()->route('mostrar.programacioncom', $matriculacion);
         } else {
@@ -563,7 +569,7 @@ class ProgramacioncomController extends Controller
     }
     public function asignarFaltasFechasPasadas(){
         Programacioncom::where('fecha','<',Carbon::now())
-                    ->where('estado_id',estado('INDEFINIDO'))->update(['estado_id'=>estado('FALTA')]);
+                    ->sinCompensar()->where('estado_id',estado('INDEFINIDO'))->update(['estado_id'=>estado('FALTA')]);
         return response()->json(['id'=>"Todo Bien"]);
     }
     public function programacioncomMostrarAjax(Request $request){
@@ -573,7 +579,7 @@ class ProgramacioncomController extends Controller
             ->join('docentes', 'programacioncoms.docente_id', '=', 'docentes.id')
             ->join('personas', 'personas.id', '=', 'docentes.persona_id')
             ->join('estados','estados.id','programacioncoms.estado_id')
-            ->select('programacioncoms.fecha', 'horaini','estados.estado','programacioncoms.habilitado', 'horafin', 'horas_por_clase', 'nombrecorto', 'asignaturas.asignatura', 'aulas.aula')
+            ->select('programacioncoms.id','programacioncoms.fecha', 'horaini','estados.estado','programacioncoms.habilitado', 'horafin', 'horas_por_clase', 'nombrecorto', 'asignaturas.asignatura', 'aulas.aula')
             ->orderBy('fecha', 'asc')
             // ->where('matriculacion_id', '=', 1)->get();
             ->where('matriculacion_id', '=', $request->matriculacion_id)->get();

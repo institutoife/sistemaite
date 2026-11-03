@@ -1,3 +1,7 @@
+@if(isset($program) && ($program->adicional || $program->compensacion))
+    @include('clase.asistencia.relation')
+    <a class="btn btn-sm btn-outline-primary" href="{{ route('clases.marcadocom.general',$program->matriculacion_id ) }}">Asistencia e historial</a>
+@else
 
 {{--  route('licencias.create',$id) --}}
 <a href="" class="text-danger licencia" data-toggle="tooltip" data-placement="top" title="Licencia"><i class="fas fa-ambulance"></i> </a>
@@ -12,3 +16,5 @@
         <i class="fa fa-fw fa-trash text-danger"></i>   
     </button>
 </form> 
+
+@endif

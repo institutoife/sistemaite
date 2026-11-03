@@ -1,3 +1,8 @@
+@if(isset($program) && $program->adicional)
+    @include('clase.asistencia.relation')
+    <a href="{{ route('asistencia.historial',['apoyo',$program->inscripcione_id ]) }}" class="btn-accion-tabla mr-1" title="Historial y correcciones"><i class="fas fa-history"></i></a>
+    <a href="#" class="mr-1 finalizar" title="Marcar salida"><i class="fas fa-clock"></i></a>
+@else
 @php
     $hora_inicio=new Carbon\Carbon($horafin);
     $hora_fin=Carbon\Carbon::now();
@@ -62,5 +67,7 @@
     <a href="" class="mr-1 finalizar" title="Finalizar esta clase">
         <i class="fas fa-clock text-success"></i>
     </a>
+
+@endif
 
 @endif

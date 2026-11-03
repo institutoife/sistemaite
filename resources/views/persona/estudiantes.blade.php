@@ -1,5 +1,7 @@
 @extends('adminlte::page')
 @section('css')
+    <link rel="stylesheet" href="{{ asset('vendor/select2/css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/select2-bootstrap4-theme/select2-bootstrap4.min.css') }}">
     <link rel="stylesheet" href="{{asset('dist/css/bootstrap/bootstrap.css')}}">
     <link rel="stylesheet" href="{{asset('custom/css/custom.css')}}">
     <link rel="stylesheet" href="{{asset('dist/css/starrr.css')}}">
@@ -196,7 +198,7 @@
         </div>
 
         <div class="modal fade" id="modal-marcado-normal" tabindex="-1" aria-labelledby="modalMarcadoNormalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="modalMarcadoNormalLabel">Marcar asistencia</h5>
@@ -756,4 +758,6 @@
     <script type="text/javascript" src="{{asset('dist/js/jquery.leanModal.min.js')}}"></script>
     <script src="{{asset('assets/js/enviarmensaje/mostrarcontactos.js')}}"></script>
     <script src="{{asset('vistas/persona/estudiantes.js')}}"></script>
+    <script src="{{ asset('vendor/select2/js/select2.full.min.js') }}"></script>
+    <script src="{{asset('vistas/clase/asistencia.js')}}"></script>
 @stop

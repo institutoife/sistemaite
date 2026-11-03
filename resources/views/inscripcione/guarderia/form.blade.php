@@ -1,3 +1,4 @@
+@include('inscripcione.sucursal')
 <input  type="date" hidden readonly name="fechanacimiento" id="fechanacimiento" class="form-control @error('fechanacimiento') is-invalid @enderror" value="{{$persona->fechanacimiento->isoFormat('YYYY-MM-DD')}}">    
 
 

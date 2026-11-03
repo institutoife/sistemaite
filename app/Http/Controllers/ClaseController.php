@@ -75,50 +75,11 @@ class ClaseController extends Controller
     
     
 
-    public function guardar(Request $request,$programacion_id){
-        //dd($request->all());
-        $clase=new Clase();
-        $clase->fecha=$request->fecha;
-        $clase->horainicio=$request->horainicio;
-        $clase->horafin=$request->horafin;
-        $clase->docente_id=$request->docente_id;
-        $clase->materia_id=$request->materia_id;
-        $clase->aula_id=$request->aula_id;
-        if($request->tema_id==null){
-            $clase->tema_id=1;
-        }else{
-            $clase->tema_id =$request->tema_id;
-        }
-
-        $clase->programacion_id=$programacion_id;
-
-        $observacion=new Observacion();
-        $observacion->activo=1;
-        $observacion->observable_type= Programacion::class;
+    public function guardar(Request $request,$programacion_id)
+    {
         $programa=Programacion::findOrFail($programacion_id);
-        
-        $programa->docente_id=$request->docente_id;
-        $programa->materia_id=$request->materia_id;
-        $programa->aula_id=$request->aula_id;
-        
-        if($request->fecha < Carbon::now()->format('Y-m-d')){
-           
-            $programa->estado_id = estado('FINALIZADO');
-            $clase->estado_id= estado('FINALIZADO');
-            $observacion->observacion="Esta programacion se marco fuera de fecha: ".Carbon::now()->isoFormat('LLLL');
-            
-        }else{
-            $programa->estado_id = estado('PRESENTE');
-            $clase->estado_id= estado('PRESENTE');
-            $observacion->observacion="Esta programacion se marcó en fecha adecuada: ".Carbon::now()->isoFormat('LLLL');
-        }
-
-        $clase->save();
-        $programa->save();
-        $observacion->observable_id=$programacion_id;
-        $observacion->save();
-        $clase->usuarios()->attach(Auth::user()->id);
-        return redirect()->route('clase.presentes');
+        $clase=app(\App\Services\ClassAttendanceService::class)->record($programa,$request->all(),$request->user());
+        return $request->expectsJson() ? response()->json(['message'=>'Asistencia registrada.','id'=>$clase->id]) : redirect()->route('clase.presentes');
     }
     
     /**
@@ -137,7 +98,7 @@ class ClaseController extends Controller
         
         $clase = Clase::join('materias','clases.materia_id','materias.id')
                         ->join('aulas', 'clases.aula_id', 'aulas.id')
-                        ->join('temas', 'clases.tema_id', 'temas.id')
+                        ->leftJoin('temas', 'clases.tema_id', 'temas.id')
                         ->join('docentes', 'clases.docente_id', 'docentes.id')
                         ->join('personas', 'docentes.persona_id', 'personas.id')
                         ->join('estados', 'clases.estado_id', 'estados.id')
@@ -213,12 +174,17 @@ class ClaseController extends Controller
      */
     public function update(Request $request, Clase $clase)
     {
+        app(\App\Services\ClassAttendanceService::class)->protectHistory($clase->programacion);
+        if($request->filled('programacion_id') && (int)$request->programacion_id !== (int)$clase->programacion_id) {
+            app(\App\Services\ClassAttendanceService::class)->protectHistory(Programacion::findOrFail($request->programacion_id));
+        }
         $clase->update($request->all());
         return redirect()->route('clases.index')
             ->with('success', 'Clase updated successfully');
     }
     public function actualizar(Request $request, Clase $clase)
     {
+        app(\App\Services\ClassAttendanceService::class)->protectHistory($clase->programacion);
         //return response()->json($clase);
 
         $clase->aula_id=$request->aula_id;
@@ -240,7 +206,9 @@ class ClaseController extends Controller
      */
     public function destroy($id)
     {
-        $clase = Clase::find($id)->delete();
+        $clase = Clase::findOrFail($id);
+        app(\App\Services\ClassAttendanceService::class)->protectHistory($clase->programacion);
+        $clase->delete();
         return redirect()->route('clases.index')
             ->with('success', 'Clase deleted successfully');
     }
@@ -266,7 +234,7 @@ class ClaseController extends Controller
         ->get();
         
         //dd($inscripcion);
-        $dias_que_faltan_para_pagar= $inscripcion->fecha_proximo_pago->diffInDays(now());
+        $dias_que_faltan_para_pagar= $inscripcion->fecha_proximo_pago ? $inscripcion->fecha_proximo_pago->diffInDays(now()) : 0;
         
         $pago=$inscripcion->pagos->sum('monto');
         $indefinido=$inscripcion->programaciones->where('estado_id',estado('INDEFINIDO'))->count();
@@ -276,46 +244,41 @@ class ClaseController extends Controller
         $licencias = $inscripcion->programaciones->where('estado_id',estado('LICENCIA'))->count();
         $persona = $inscripcion->estudiante->persona;
     
-        return view('programacion.marcadoGeneral',compact('programaciones','persona','faltas', 'presentes', 'licencias', 'pago', 'inscripcion', 'dias_que_faltan_para_pagar'));
+        $attendanceTab=app(\App\Services\ClassAttendanceView::class)->tab('apoyo',$inscripcion);
+        $presentes=$attendanceTab['stats']['Asistidas']; $faltas=$attendanceTab['stats']['Faltas']; $licencias=$attendanceTab['stats']['Licencias'];
+        return view('programacion.marcadoGeneral',compact('attendanceTab','programaciones','persona','faltas', 'presentes', 'licencias', 'pago', 'inscripcion', 'dias_que_faltan_para_pagar'));
         //return redirect()->route('clases.marcado.general',$inscripcion_id)->with('programaciones', 'programacionesHoy', 'faltas', 'presentes', 'licencias', 'pago', 'inscripcion','dias_que_faltan_para_pagar');
     }
     
-    public function marcadoRapido($programacion_id){
-        $programa = Programacion::findOrFail($programacion_id);
-        $clase=new Clase();
-        $clase->fecha           =$programa->fecha;
-        $clase->estado_id       =estado('PRESENTE');
-        $clase->horainicio      =Carbon::now()->isoFormat('HH:mm:ss');
-        $clase->horafin         =Carbon::now()->addHours($programa->hora_ini->floatDiffInHours($programa->hora_fin));
-        $clase->docente_id      =$programa->docente_id;
-        $clase->materia_id      =$programa->materia_id;
-        $clase->aula_id         =$programa->aula_id;
-        $clase->tema_id         =1; // tema por 
-        $clase->programacion_id =$programa->id;
-        $programa->estado_id=estado('PRESENTE');
-        $programa->save();
-        $clase->save();
-        return redirect()->route('clase.presentes')->with('mensaje', 'MarcadoCorrectamente');
+    public function marcadoRapido($programacion_id)
+    {
+        $programa=Programacion::findOrFail($programacion_id);
+        $data=['fecha'=>$programa->fecha->format('Y-m-d'), 'horainicio'=>now()->format('H:i'),
+            'horafin'=>now()->addMinutes($programa->hora_ini->diffInMinutes($programa->hora_fin))->format('H:i'),
+            'docente_id'=>$programa->docente_id,'aula_id'=>$programa->aula_id];
+        $data['materia_id']=$programa->materia_id;
+        app(\App\Services\ClassAttendanceService::class)->record($programa,$data,auth()->user());
+        return redirect()->route('clase.presentes');
     }
     public function clasesPresentes(Request $request){
         //return response()->json(estado('tes.ESTADO_PRESENTE'));
         if($request->ajax()){
-            $clases =  Clase::join('programacions', 'clases.programacion_id', '=', 'programacions.id')
+            $clases =  Clase::with('programacion.adicional.originalProgramacion','programacion.adicional.originalProgramacioncom')->join('programacions', 'clases.programacion_id', '=', 'programacions.id')
                 ->join('inscripciones', 'programacions.inscripcione_id', '=', 'inscripciones.id')
                 ->join('estudiantes', 'inscripciones.estudiante_id', '=', 'estudiantes.id')
                 ->join('personas', 'estudiantes.persona_id', '=', 'personas.id')
                 ->join('docentes', 'clases.docente_id', '=', 'docentes.id')
                 ->join('materias', 'clases.materia_id', '=', 'materias.id')
                 ->join('aulas', 'clases.aula_id', '=', 'aulas.id')
-                ->join('temas', 'clases.tema_id', '=', 'temas.id')
+                ->leftJoin('temas', 'clases.tema_id', '=', 'temas.id')
                 ->join('userables','userables.userable_id','clases.id')
                 ->join('users','userables.user_id','users.id')
                 ->where('userables.userable_type',Clase::class)
                 ->where('clases.estado_id',estado('PRESENTE'))
-                ->where('clases.fecha',Carbon::now()->isoFormat('Y-M-D'))
-                ->select('clases.id','personas.id as codigo', DB::raw('concat_ws("",personas.nombre) as name'),'clases.horainicio', 'clases.horafin', 'docentes.nombrecorto', 'materias.materia', 'aulas.aula', 'temas.tema', 'personas.foto','users.name as user')->get();
+                ->whereDate('clases.fecha',now()->toDateString())
+                ->select('clases.programacion_id','clases.id','personas.id as codigo', DB::raw('concat_ws("",personas.nombre) as name'),'clases.horainicio', 'clases.horafin', 'docentes.nombrecorto', 'materias.materia', 'aulas.aula', 'temas.tema', 'personas.foto','users.name as user')->get();
             return datatables()->of($clases)
-                ->addColumn('btn', 'clase.action_marcar')
+                ->addColumn('btn',fn($attendance)=>view('clase.action_marcar',array_merge($attendance->toArray(),['program'=>$attendance->programacion]))->render())
                 ->rawColumns(['btn', 'foto'])
                 ->toJson();
         }
@@ -323,38 +286,9 @@ class ClaseController extends Controller
 
     public function finalizarClase(Request $request)
     {
-        $request->validate([
-            'id' => 'required|integer',
-        ]);
-
-        $clase = Clase::findOrFail($request->id);
-        $user = Auth::user();
-        abort_unless($user, 401);
-
-        $docenteUsuarioId = optional(optional($user->persona)->docente)->id;
-        $puedeFinalizar = $user->hasRole(['Admin', 'Secretaria'])
-            || ($user->hasRole(['Docente']) && (int) $docenteUsuarioId === (int) $clase->docente_id);
-
-        abort_unless($puedeFinalizar, 403);
-
-        if ((int) $clase->estado_id !== (int) estado('PRESENTE')) {
-            return response()->json([
-                'message' => 'La clase ya no esta en estado PRESENTE.',
-                'status' => 409,
-            ], 409);
-        }
-
-        $programa = $clase->programacion;
-        if ($programa && (int) $programa->estado_id === (int) estado('PRESENTE')) {
-            $programa->estado_id = estado('FINALIZADO');
-            $programa->save();
-        }
-
-        $clase->estado_id = estado('FINALIZADO');
-        $clase->horafin = Carbon::now()->format('H:i:s');
-        $clase->save();
-
-        return response()->json(['message' => 'Despidete deseale el bien', 'status' => 200]);
+        $request->validate(['id'=>'required|integer']);
+        app(\App\Services\ClassAttendanceService::class)->finish(Clase::findOrFail($request->id),$request->user());
+        return response()->json(['message'=>'Salida registrada.','status'=>200]);
     }
     
 }

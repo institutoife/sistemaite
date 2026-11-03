@@ -46,7 +46,7 @@
                         @foreach ($historiaclases as $clase)
                             <tr>
                                 <td>{{$clase->estado}}</td>
-                                <td>{{$clase->fecha->isoFormat("L")}}</td>
+                                <td>{{$clase->fecha->isoFormat("L")}} @include('clase.asistencia.relation',['program'=>$clase->programacion])</td>
                                 <td>{{$clase->horainicio->isoFormat('HH:mm:ss').'-'.$clase->horafin->isoFormat('HH:mm:ss')}}</td>
                                 <td>{{$clase->nombrecorto}}</td>
                                 <td>{{$clase->materia}}</td>
@@ -86,7 +86,7 @@
                         @foreach ($historiaprogramas as $programa)
                             <tr>
                                 <td>{{$programa->estado}}</td>
-                                <td>{{$programa->fecha->isoFormat("L")}}</td>
+                                <td>{{$programa->fecha->isoFormat("L")}} @include('clase.asistencia.relation',['program'=>$programa])</td>
                                 <td>{{$programa->hora_ini->isoFormat('HH:mm:ss').'-'.$programa->hora_fin->isoFormat('HH:mm:ss')}}</td>
                                 <td>{{$programa->nombrecorto}}</td>
                                 <td>{{$programa->materia}}</td>

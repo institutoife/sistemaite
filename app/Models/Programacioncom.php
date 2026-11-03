@@ -7,6 +7,7 @@ use App\Models\BranchModel as Model;
 
 class Programacioncom extends Model
 {
+    use \App\Models\Concerns\HasAdditionalClasses;
     use HasFactory;
     protected $dates = ['fecha','horaini','horafin'];
 

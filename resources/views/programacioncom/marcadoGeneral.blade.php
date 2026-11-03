@@ -1,5 +1,7 @@
 @extends('adminlte::page')
 @section('css')
+    <link rel="stylesheet" href="{{ asset('vendor/select2/css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/select2-bootstrap4-theme/select2-bootstrap4.min.css') }}">
     <link rel="stylesheet" href="{{asset('dist/css/bootstrap/bootstrap.css')}}">
     <link rel="stylesheet" href="{{asset('custom/css/custom.css')}}">
     <link href="{{asset('dist/css/zoomify.css')}}" rel="stylesheet" type="text/css">
@@ -203,6 +205,7 @@
                     
                    
                 
+                        <div class="card"><div class="card-body">@include('clase.asistencia.panel',['tab'=>$attendanceTab])</div></div>
                         @include('programacioncom.hoy')
                         @include('programacioncom.futuro')
                         @include('programacioncom.modales')
@@ -210,6 +213,8 @@
 @endsection
 
 @section('js')
+    <script src="{{ asset('vendor/select2/js/select2.full.min.js') }}"></script>
+    <script src="{{asset('vistas/clase/asistencia.js')}}"></script>
     <script src="{{asset('dist/js/moment.js')}}"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.17.1/locale/es.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>

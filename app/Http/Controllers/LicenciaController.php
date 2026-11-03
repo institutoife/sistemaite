@@ -73,6 +73,7 @@ class LicenciaController extends Controller
      */
     public function storecom(Request $request)
     {
+        app(\App\Services\ClassAttendanceService::class)->protectHistory(Programacioncom::findOrFail($request->programacioncom_id));
         $validator = Validator::make($request->all(), [
             'motivo_id' => 'required',
             'solicitante' => 'required',
@@ -108,6 +109,7 @@ class LicenciaController extends Controller
 
     public function storeprogramacion(Request $request)
     {
+        app(\App\Services\ClassAttendanceService::class)->protectHistory(Programacion::findOrFail($request->programacion_id));
         //return response()->json(['d'=>2]);
         $validator = Validator::make($request->all(), [
             'motivo_id' => 'required',
@@ -204,6 +206,7 @@ class LicenciaController extends Controller
     public function update(Request $request, Licencia $licencia)
     {
         request()->validate(Licencia::$rules);
+        if(in_array($licencia->licenciable_type,[Programacion::class,Programacioncom::class],true)) { app(\App\Services\ClassAttendanceService::class)->protectHistory($licencia->licenciable_type::findOrFail($licencia->licenciable_id)); }
 
         $licencia->update($request->all());
 
@@ -218,6 +221,7 @@ class LicenciaController extends Controller
             'parentesco' => 'required',
         ]);
         $licencia= Licencia::find($request->licencia_id);
+        if(in_array($licencia->licenciable_type,[Programacion::class,Programacioncom::class],true)) { app(\App\Services\ClassAttendanceService::class)->protectHistory($licencia->licenciable_type::findOrFail($licencia->licenciable_id)); }
         $licencia->motivo_id=$request->motivo_id;
         $cadena=$request->solicitante;
         $pos=stripos($cadena,'(');
@@ -245,6 +249,7 @@ class LicenciaController extends Controller
     {
         //=8;
         $licencia = Licencia::findOrFail($licencia_id);
+        if(in_array($licencia->licenciable_type,[Programacion::class,Programacioncom::class],true)) { app(\App\Services\ClassAttendanceService::class)->protectHistory($licencia->licenciable_type::findOrFail($licencia->licenciable_id)); }
         $licencia->delete();
         //return response()->json($licencia);
         return response()->json(['mensaje'=>"Registro eliminado correctamente"]);

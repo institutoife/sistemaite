@@ -463,6 +463,7 @@ function inicializarMarcadoModal($modal){
                 $modal.find('.modal-content').html(html);
                 showModalCompat($modal[0]);
                 inicializarMarcadoModal($modal);
+                if (window.IFEAttendance) window.IFEAttendance.mount($modal);
             }).fail(function(){
                 $modal.find('.modal-content').html('<div class="modal-body">No se pudo cargar el marcado.</div>');
                 showModalCompat($modal[0]);

@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\{User,CrmSede};
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB,Schema};
 use Illuminate\Validation\ValidationException;
 
@@ -50,6 +51,19 @@ class SedeAccess
         $request->session()->put('sede_activa',$this->active);
     }
     public function active(): ?int { return $this->active; }
+    public function selectForCreation(Request $request): void
+    {
+        if (!$this->enabled) { return; }
+        abort_if($this->family,403);
+        $data=$request->validate(['sede_id'=>'nullable|integer|min:1']);
+        $sede=isset($data['sede_id'])?(int)$data['sede_id']:$this->active;
+        if (!$sede) {
+            throw ValidationException::withMessages(['sede_id'=>'Seleccione la Sucursal de la inscripción. «Todas · Admin» permite consultar; para registrar debe elegir una Sucursal.']);
+        }
+        abort_unless(in_array($sede,$this->allowedIds($this->user),true),403,'Sucursal no autorizada.');
+        $request->session()->put('sede_activa',$sede);
+        $this->start($this->user,$request);
+    }
     public function canReadPhoto(array $file,ProfilePhotoService $photos): bool
     {
         if (!$this->enabled||$this->user->hasRole('Admin')) { return true; }

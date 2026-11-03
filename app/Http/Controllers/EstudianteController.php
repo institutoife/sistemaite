@@ -308,6 +308,7 @@ class EstudianteController extends Controller
             ->whereDate('programacions.fecha', '>=', $faltasStartDate)
             ->whereDate('programacions.fecha', '<=', $today)
             ->whereIn('programacions.estado_id', $estadoFaltaIds)
+            ->whereNotIn('programacions.id',app(\App\Services\ClassAttendanceService::class)->resolvedAbsenceIds('programacions'))
             ->select(
                 'personas.id',
                 'personas.nombre',
@@ -336,6 +337,7 @@ class EstudianteController extends Controller
             ->whereDate('programacioncoms.fecha', '>=', $faltasStartDate)
             ->whereDate('programacioncoms.fecha', '<=', $today)
             ->whereIn('programacioncoms.estado_id', $estadoFaltaIds)
+            ->whereNotIn('programacioncoms.id',app(\App\Services\ClassAttendanceService::class)->resolvedAbsenceIds('programacioncoms'))
             ->select(
                 'personas.id',
                 'personas.nombre',
@@ -604,7 +606,7 @@ class EstudianteController extends Controller
                 ->join('userables','userables.userable_id','inscripciones.id')
                 ->join('users','users.id','userables.user_id')
                 ->where('userables.userable_type',Inscripcione::class)
-                ->where('estados.estado','FALTA')
+                ->where('estados.estado','FALTA')->whereNotIn('programacions.id',app(\App\Services\ClassAttendanceService::class)->resolvedAbsenceIds('programacions'))
                 ->where('inscripciones.vigente',1)
                 ->select('personas.id','programacions.id as programacion_id','nombre','apellidop','apellidom','telefono','users.name','personas.foto')
                 ->get();
@@ -782,7 +784,7 @@ class EstudianteController extends Controller
                 $programacionesHoy = $inscripcionIds->isNotEmpty()
                     ? Programacion::whereIn('inscripcione_id', $inscripcionIds)
                         ->where('fecha', Carbon::now()->toDateString())
-                        ->get()
+                        ->sinCompensar()->get()
                     : collect();
 
                 $matriculaciones = Matriculacion::join('computacions', 'computacions.id', '=', 'matriculacions.computacion_id')
@@ -796,7 +798,7 @@ class EstudianteController extends Controller
                 $programacionesComHoy = $matriculacionIds->isNotEmpty()
                     ? Programacioncom::whereIn('matriculacion_id', $matriculacionIds)
                         ->where('fecha', Carbon::now()->toDateString())
-                        ->get()
+                        ->sinCompensar()->get()
                     : collect();
 
                 $hayProgramacion = $programacionesHoy->isNotEmpty() || $programacionesComHoy->isNotEmpty();
@@ -805,17 +807,12 @@ class EstudianteController extends Controller
                 $hayPresente = $programacionesHoy->contains('estado_id', estado('PRESENTE'))
                     || $programacionesComHoy->contains('estado_id', estado('PRESENTE'));
 
-                if ($hayProgramacion && ($hayIndefinido || $hayPresente)) {
-                    $asistenciaDisponible = true;
-                    $asistenciaProgramacionId = null;
-                    $asistenciaTipo = 'tabs';
-                    $asistenciaUrl = route('marcado.presente.tabs', $row->id);
-                    $asistenciaMensaje = $hayPresente ? 'Marcar salida' : 'Marcar asistencia';
-                } elseif (!$hayProgramacion) {
-                    $asistenciaMensaje = 'Sin clase hoy';
-                } else {
-                    $asistenciaMensaje = 'Asistencia ya marcada';
-                }
+                $asistenciaDisponible = auth()->user()->can('Crear Clases') || auth()->user()->can('Listar Clases')
+                    || auth()->user()->can('Crear Clasescom') || auth()->user()->can('Listar Clasescom');
+                $asistenciaTipo = 'tabs';
+                $asistenciaUrl = route('marcado.presente.tabs', $row->id);
+                $asistenciaMensaje = !$hayProgramacion ? 'Sin clase hoy: ver clases y agregar'
+                    : ($hayPresente ? 'Marcar salida o agregar clase' : 'Ver y marcar asistencia');
 
                 return view('persona.action', [
                     'id' => $row->id,
@@ -824,6 +821,7 @@ class EstudianteController extends Controller
                     'asistencia_mensaje' => $asistenciaMensaje,
                     'asistencia_url' => $asistenciaUrl,
                     'asistencia_tipo' => $asistenciaTipo,
+                    'asistencia_hoy' => $hayProgramacion,
                 ])->render();
             })
             ->rawColumns(['btn','foto'])

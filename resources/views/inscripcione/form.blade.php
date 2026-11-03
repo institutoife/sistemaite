@@ -1,7 +1,11 @@
     
     @php
         $currentInscripcion = $inscripcione ?? $ultima_inscripcion ?? null;
+        $selectedModalidad = old('modalidad_id', $currentInscripcion->modalidad_id ?? '');
+        $selectedMotivo = old('motivo_id', $currentInscripcion->motivo_id ?? '');
     @endphp
+
+    @include('inscripcione.sucursal')
 
     <input  type="text" name="estudiante_id"  value="{{ $persona->estudiante->id }}" hidden>    
 
@@ -27,11 +31,7 @@
                 <select class="form-control @error('modalidad_id') is-invalid @enderror" data-old="{{ old('modalidad_id') }}" name="modalidad_id" id="modalidad_id">
                     <option value="" > Seleccione Modalidad </option>
                     @foreach ($modalidades as $modalidad)
-                        @if($currentInscripcion)
-                            <option  value="{{$modalidad->id}}" {{$modalidad->id==$currentInscripcion->modalidad_id ? 'selected':''}}>{{$modalidad->modalidad}}</option>     
-                        @else
-                            <option value="{{ $modalidad->id }}" {{ old('modalidad_id') == $modalidad->id ? 'selected':'' }} >{{ $modalidad->modalidad }}</option>
-                        @endif 
+                        <option value="{{ $modalidad->id }}" data-costo="{{ $modalidad->costo }}" data-horas="{{ $modalidad->cargahoraria }}" {{ (string)$selectedModalidad === (string)$modalidad->id ? 'selected' : '' }}>{{ $modalidad->modalidad }}</option>
                     @endforeach
                 </select>
                 <label for="modalidad_id">Elija modalidad</label>
@@ -40,7 +40,7 @@
         {{-- %%%%%%%%%%%%%%% CAMPO HORA FIN --}}
         <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6" >
             <div class="form-floating mb-3 text-gray">
-                <input type="numeric" class="form-control @error('costo') is-invalid @enderror" name="costo" id="costo" value="{{old('costo',$currentInscripcion->costo ?? '')}}">
+                <input type="number" step="0.01" min="0" class="form-control @error('costo') is-invalid @enderror" name="costo" id="costo" value="{{old('costo',$currentInscripcion->costo ?? '')}}">
                 <label for="costo">Ingrese Costo</label>    
             </div>
             
@@ -102,11 +102,7 @@
                 <select class="form-control @error('motivo_id') is-invalid @enderror" data-old="{{ old('motivo_id') }}" name="motivo_id" id="motivo">
                     <option value="" > Seleccione Motivo </option>
                     @foreach ($motivos as $motivo)
-                        @if($currentInscripcion)
-                            <option  value="{{$motivo->id}}" {{$motivo->id==$currentInscripcion->motivo_id ? 'selected':''}}>{{$motivo->motivo}}</option>     
-                        @else
-                            <option value="{{ $motivo->id }}" {{ old('motivo_id') == $motivo->id ? 'selected':'' }} >{{ $motivo->motivo }}</option>
-                        @endif 
+                        <option value="{{ $motivo->id }}" {{ (string)$selectedMotivo === (string)$motivo->id ? 'selected' : '' }}>{{ $motivo->motivo }}</option>
                     @endforeach
                 </select>
                  <label for="motivo">Elija el motivo de las clases</label>  

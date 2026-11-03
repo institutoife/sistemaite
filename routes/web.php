@@ -608,6 +608,10 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::post('/clase/guardar/normal/{progrmacion_id}', 'ClaseController@guardar')->name('clases.guardar');
     Route::get('clase/marcar/normal/modal/{programacion_id}', 'ProgramacionController@marcadoNormalModal')->name('marcado.presente.normal.modal');
     Route::get('clase/marcar/tabs/{persona_id}', 'ProgramacionController@marcadoTabs')->name('marcado.presente.tabs');
+    Route::post('asistencia/adicional/{canal}/{inscripcion}', [\App\Http\Controllers\ClaseAdicionalController::class,'store'])->name('asistencia.adicional.store');
+    Route::patch('asistencia/adicional/{canal}/{programacion}', [\App\Http\Controllers\ClaseAdicionalController::class,'correct'])->name('asistencia.adicional.correct');
+    Route::get('asistencia/historial/{canal}/{inscripcion}', [\App\Http\Controllers\ClaseAdicionalController::class,'report'])->name('asistencia.historial');
+    Route::get('asistencia/temas/{inscripcion}', [\App\Http\Controllers\ClaseAdicionalController::class,'topics'])->name('asistencia.temas');
     Route::get('clasecom/marcar/normal/modal/{programacioncom_id}', 'ProgramacioncomController@marcadoNormalModal')->name('marcado.presente.normal.modal.com');
     Route::post('programa/estado/general/', 'ClaseController@marcadoGeneral')->name('programa.estado.general');
 

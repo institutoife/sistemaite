@@ -352,7 +352,7 @@
                 @endphp
                 <tr class="{{$clase}}">
                     <td>{{$loop->iteration}}</td>
-                    <td>{{$programa->fecha->isoFormat('DD/MM/YYYY')}}</td>
+                    <td>{{$programa->fecha->isoFormat('DD/MM/YYYY')}} @include('clase.asistencia.relation',['program'=>$programa])</td>
                     <td>{{$programa->fecha->isoFormat('dddd')}}</td>
                     <td>{{$programa->hora_ini->isoFormat('HH:mm').'-'.$programa->hora_fin->isoFormat('HH:mm')}}</td>
                     <td>{{$programa->horas_por_clase}}</td>

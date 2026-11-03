@@ -101,7 +101,7 @@ class ProgramacionController extends Controller
                     ->join('docentes','docentes.id','programacions.docente_id')
                     ->join('materias','materias.id','programacions.materia_id')
                     ->join('aulas','aulas.id','programacions.aula_id')
-                    ->join('temas','temas.id','clases.tema_id')
+                    ->leftJoin('temas','temas.id','clases.tema_id')
                     ->join('estados','estados.id','clases.estado_id')
                     
                     ->join('userables','userables.userable_id','clases.id')
@@ -119,7 +119,7 @@ class ProgramacionController extends Controller
     }
 
     public function programacionesHoy(Request $request){
-        $programacion=Programacion::join('docentes','docentes.id','=','programacions.docente_id')
+        $programacion=Programacion::with(['adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom'])->join('docentes','docentes.id','=','programacions.docente_id')
                     ->join('materias','materias.id','=','programacions.materia_id')
                     ->join('aulas','aulas.id','=','programacions.aula_id')
                     ->join('estados','estados.id','=','programacions.estado_id')
@@ -127,7 +127,7 @@ class ProgramacionController extends Controller
                     ->where('fecha','=', Carbon::now()->isoFormat('Y-M-D'))
                     ->select('programacions.id','fecha','hora_ini','hora_fin','estados.estado','docentes.nombrecorto','materias.materia','aulas.aula');
         return DataTables::of($programacion)
-                ->addColumn('btn','programacion.actions')
+                ->addColumn('btn',fn($program)=>view('programacion.actions',array_merge($program->toArray(),['program'=>$program]))->render())
                 ->rawColumns(['btn'])
                 ->toJson();
     }
@@ -164,6 +164,7 @@ class ProgramacionController extends Controller
      */
     public function update(Request $request, Programacion $programacion)
     {
+        app(\App\Services\ClassAttendanceService::class)->protectHistory($programacion);
         //dd($request->activo);
         $arrayObservable= [
             'observacion' => 'Se editó los valores anteriores son' .
@@ -203,6 +204,7 @@ class ProgramacionController extends Controller
     {
         //return response()->json($request->all());
         $programacion=Programacion::findOrFail($request->programacion_id);
+        app(\App\Services\ClassAttendanceService::class)->protectHistory($programacion);
         $arrayObservable= [
             'observacion' => 'Se editó los valores anteriores son' .
                 'Hora Inicio: ' . $programacion->hora_ini . ' ' .
@@ -252,6 +254,7 @@ class ProgramacionController extends Controller
      */
     public function destroy(Programacion $programacion)
     {
+        app(\App\Services\ClassAttendanceService::class)->protectHistory($programacion);
         $programacion->delete();
         return response()->json(['mensaje'=>'El registro fue eliminado correctamente']);
     }
@@ -262,6 +265,7 @@ class ProgramacionController extends Controller
      * 
      ***********************************************************************************************/
     public function generarPrograma($inscripcione_id){
+        app(\App\Services\ClassAttendanceService::class)->protectRegeneration('apoyo',$inscripcione_id);
         $inscripcion=Inscripcione::findOrFail($inscripcione_id);
         
         $costo_total=$inscripcion->costo;
@@ -444,10 +448,12 @@ class ProgramacionController extends Controller
     }
 
     public function EliminarTodosLosProgramas($inscripcione_id){
+        app(\App\Services\ClassAttendanceService::class)->protectRegeneration('apoyo',$inscripcione_id);
         Programacion::where('inscripcione_id', '=', $inscripcione_id)->delete();
     }
 
     public function regenerarPrograma($inscripcione_id,$unaFecha,$unModo = 'desde'){
+        app(\App\Services\ClassAttendanceService::class)->protectRegeneration('apoyo',$inscripcione_id);
         if($unModo=='todo'){
             $this->EliminarTodosLosProgramas($inscripcione_id);
             $this->generarPrograma($inscripcione_id);
@@ -542,7 +548,7 @@ class ProgramacionController extends Controller
         $total_horas=$inscripcion->totalhoras;
         $costo_por_hora=$total_costo/$total_horas;
         
-        $programas = Programacion::where('inscripcione_id', '=', $inscripcione_id)
+        $programas = Programacion::where('inscripcione_id', '=', $inscripcione_id)->horasContratadas()->orderBy('id')
         ->get();
         
         $acuentaTotal=$inscripcion->pagos->sum->monto;
@@ -559,6 +565,7 @@ class ProgramacionController extends Controller
             }
         }
 
+        app(\App\Services\ClassAttendanceService::class)->syncCompensationPayments('apoyo',$inscripcione_id);
         if ($TotalPagado <= $inscripcion->costo) {
             return redirect()->route('mostrar.programa', $inscripcion);
         } else {
@@ -572,7 +579,7 @@ class ProgramacionController extends Controller
     // public function mostrarPrograma(Inscripcione $inscripcion){
     public function mostrarPrograma($inscripcion_id){ //llegaba un id de inscripcion
         $inscripcion=Inscripcione::findOrFail($inscripcion_id);
-        $programacion = Programacion::join('materias', 'programacions.materia_id', '=', 'materias.id')
+        $programacion = Programacion::with(['adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom'])->join('materias', 'programacions.materia_id', '=', 'materias.id')
         ->join('aulas', 'programacions.aula_id', '=', 'aulas.id')
         ->join('docentes', 'programacions.docente_id', '=', 'docentes.id')
         ->join('personas', 'personas.id', '=', 'docentes.persona_id')
@@ -587,11 +594,11 @@ class ProgramacionController extends Controller
 
     public function imprimirPrograma($inscripcione_id){
         $inscripcion=Inscripcione::findOrFail($inscripcione_id);
-        $programacion = Programacion::join('materias', 'programacions.materia_id', '=', 'materias.id')
+        $programacion = Programacion::with(['adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom'])->join('materias', 'programacions.materia_id', '=', 'materias.id')
             ->join('aulas', 'programacions.aula_id', '=', 'aulas.id')
             ->join('docentes', 'programacions.docente_id', '=', 'docentes.id')
             ->join('personas', 'personas.id', '=', 'docentes.persona_id')
-            ->select('programacions.fecha', 'hora_ini','programacions.habilitado', 'hora_fin', 'horas_por_clase', 'personas.nombre', 'materias.materia', 'aulas.aula', 'programacions.habilitado')
+            ->select('programacions.id','programacions.fecha', 'hora_ini','programacions.habilitado', 'hora_fin', 'horas_por_clase', 'personas.nombre', 'materias.materia', 'aulas.aula', 'programacions.habilitado')
             ->orderBy('fecha', 'asc')
             ->where('inscripcione_id', '=', $inscripcione_id)->get();
         $estudiante = Estudiante::findOrFail($inscripcion->estudiante_id);
@@ -639,26 +646,26 @@ class ProgramacionController extends Controller
         $hora_fin = Carbon::now()->addMinutes($programa->hora_ini->floatDiffInMinutes($programa->hora_fin))->isoFormat('HH:mm:ss');
 
         
-        $historiaclases=Clase::join('programacions','clases.programacion_id','programacions.id')
+        $historiaclases=Clase::with('programacion.adicional.originalProgramacion','programacion.compensacion.programacion')->join('programacions','clases.programacion_id','programacions.id')
             ->join('inscripciones','programacions.inscripcione_id','inscripciones.id')
             ->join('docentes','docentes.id','clases.docente_id')
             ->join('materias','materias.id','clases.materia_id')
-            ->join('temas','temas.id','clases.tema_id')
+            ->leftJoin('temas','temas.id','clases.tema_id')
             ->join('estados','estados.id','clases.estado_id')
             ->join('aulas','aulas.id','clases.aula_id')
             ->where('inscripciones.id',$inscripcion->id)
-            ->select('clases.estado_id','clases.fecha','estados.estado','clases.horainicio','clases.horafin','docentes.nombrecorto','materias.materia','temas.tema','aulas.aula')
+            ->select('clases.programacion_id','clases.estado_id','clases.fecha','estados.estado','clases.horainicio','clases.horafin','docentes.nombrecorto','materias.materia','temas.tema','aulas.aula')
             ->orderBy('fecha','asc')
             ->get();
 
-        $historiaprogramas=Programacion::join('inscripciones','programacions.inscripcione_id','inscripciones.id')
+        $historiaprogramas=Programacion::with('adicional.originalProgramacion','compensacion.programacion')->join('inscripciones','programacions.inscripcione_id','inscripciones.id')
             ->join('docentes','docentes.id','programacions.docente_id')
             ->join('materias','materias.id','programacions.materia_id')
             ->join('aulas','aulas.id','programacions.aula_id')
             ->join('estados','estados.id','programacions.estado_id')
             ->where('inscripciones.id',$inscripcion->id)
             ->where('programacions.fecha','<',Carbon::now()->isoFormat('Y-M-D'))
-            ->select('estados.estado','programacions.fecha','programacions.hora_ini','programacions.hora_fin','docentes.nombrecorto','materias.materia','aulas.aula')
+            ->select('programacions.id','estados.estado','programacions.fecha','programacions.hora_ini','programacions.hora_fin','docentes.nombrecorto','materias.materia','aulas.aula')
             ->orderBy('fecha','asc')
             ->get();
         $docenteshabilitados=Docente::where('docentes.estado_id',estado('HABILITADO'))->select('id','nombrecorto')->get();
@@ -687,7 +694,7 @@ class ProgramacionController extends Controller
             ->get()->first();
             $indefinidos=Programacion::join('docentes','docentes.id','programacions.docente_id')
             ->where('docente_id',$docente->id)
-            ->where('programacions.estado_id',estado('INDEFINIDO'))
+            ->sinCompensar()->where('programacions.estado_id',estado('INDEFINIDO'))
             ->where('programacions.fecha','=',Carbon::now()->isoFormat('Y-M-D'))
             ->select('nombrecorto',DB::raw('count(*) as cantidad'))
             ->groupBy('nombrecorto')
@@ -777,142 +784,13 @@ class ProgramacionController extends Controller
         ));
     }
 
-    public function marcadoTabs($persona_id){
+    public function marcadoTabs($persona_id)
+    {
+        abort_unless(auth()->user()->can('Crear Clases') || auth()->user()->can('Listar Clases')
+            || auth()->user()->can('Crear Clasescom') || auth()->user()->can('Listar Clasescom'), 403);
         $persona = Persona::findOrFail($persona_id);
-        $estudiante = $persona->estudiante;
-
-        $inscripciones = Inscripcione::where('estudiante_id', $estudiante->id)
-            ->where('estado_id', estado('CORRIENDO'))
-            ->where('vigente', 1)
-            ->get();
-
-        $inscripcionTabs = [];
-        foreach ($inscripciones as $inscripcion) {
-            $programa = Programacion::where('inscripcione_id', $inscripcion->id)
-                ->where('fecha', Carbon::now()->toDateString())
-                ->orderBy('hora_ini', 'asc')
-                ->first();
-
-            $totalPagado = $inscripcion->pagos->sum('monto');
-            $saldo = max($inscripcion->costo - $totalPagado, 0);
-            $ultimaProgramacionPagada = Programacion::where('inscripcione_id', $inscripcion->id)
-                ->where('habilitado', 1)
-                ->orderBy('fecha', 'desc')
-                ->first();
-            $programaciones = Programacion::with(['materia','docente','aula','estado'])
-                ->where('inscripcione_id', $inscripcion->id)
-                ->orderBy('fecha', 'asc')
-                ->get();
-
-            $nivel = Nivel::findOrFail(Modalidad::findOrFail($inscripcion->modalidad_id)->nivel_id);
-            $materias = $nivel->materias;
-            $docentes = Docente::join('personas', 'personas.id', '=', 'docentes.persona_id')
-                ->join('estados', 'estados.id', '=', 'docentes.estado_id')
-                ->where('docentes.estado_id', '=', estado('HABILITADO'))
-                ->select('docentes.id', 'personas.nombre', 'personas.apellidop')
-                ->orderBy('personas.nombre', 'asc')
-                ->get();
-            $aulas = Aula::all();
-            $temas = Tema::all();
-
-            $hora_inicio = $programa
-                ? Carbon::now()->format('H:i')
-                : null;
-            $hora_fin = $programa
-                ? Carbon::now()->addMinutes($programa->hora_ini->floatDiffInMinutes($programa->hora_fin))->format('H:i')
-                : null;
-
-            $clasePresente = $programa
-                ? Clase::where('programacion_id', $programa->id)
-                    ->where('estado_id', estado('PRESENTE'))
-                    ->where('fecha', Carbon::now()->toDateString())
-                    ->first()
-                : null;
-
-            $inscripcionTabs[] = [
-                'inscripcion' => $inscripcion,
-                'programa' => $programa,
-                'docentes' => $docentes,
-                'materias' => $materias,
-                'aulas' => $aulas,
-                'temas' => $temas,
-                'hora_inicio' => $hora_inicio,
-                'hora_fin' => $hora_fin,
-                'clasePresente' => $clasePresente,
-                'totalPagado' => $totalPagado,
-                'saldo' => $saldo,
-                'ultimaProgramacionPagada' => $ultimaProgramacionPagada,
-                'programaciones' => $programaciones,
-            ];
-        }
-
-        $matriculacionTabs = [];
-        if ($persona->computacion) {
-            $matriculaciones = \App\Models\Matriculacion::where('computacion_id', $persona->computacion->id)
-                ->where('estado_id', estado('CORRIENDO'))
-                ->where('vigente', 1)
-                ->get();
-
-            foreach ($matriculaciones as $matriculacion) {
-                $programacioncom = Programacioncom::where('matriculacion_id', $matriculacion->id)
-                    ->where('fecha', Carbon::now()->toDateString())
-                    ->orderBy('horaini', 'asc')
-                    ->first();
-
-                $totalPagado = $matriculacion->pagos->sum('monto');
-                $saldo = max($matriculacion->costo - $totalPagado, 0);
-                $ultimaProgramacionPagada = Programacioncom::where('matriculacion_id', $matriculacion->id)
-                    ->where('habilitado', 1)
-                    ->orderBy('fecha', 'desc')
-                    ->first();
-                $programaciones = Programacioncom::with(['docente','aula','estado'])
-                    ->where('matriculacion_id', $matriculacion->id)
-                    ->orderBy('fecha', 'asc')
-                    ->get();
-
-                $docentes = Docente::join('personas', 'personas.id', '=', 'docentes.persona_id')
-                    ->join('estados', 'estados.id', '=', 'docentes.estado_id')
-                    ->where('docentes.estado_id', '=', estado('HABILITADO'))
-                    ->select('docentes.id', 'personas.nombre', 'personas.apellidop')
-                    ->orderBy('personas.nombre', 'asc')
-                    ->get();
-                $aulas = Aula::all();
-
-                $hora_inicio = $programacioncom
-                    ? Carbon::now()->format('H:i')
-                    : null;
-                $hora_fin = $programacioncom
-                    ? Carbon::now()->addMinutes($programacioncom->horaini->floatDiffInMinutes($programacioncom->horafin))->format('H:i')
-                    : null;
-
-                $clasecomPresente = $programacioncom
-                    ? Clasecom::where('programacioncom_id', $programacioncom->id)
-                        ->where('estado_id', estado('PRESENTE'))
-                        ->where('fecha', Carbon::now()->toDateString())
-                        ->first()
-                    : null;
-
-                $matriculacionTabs[] = [
-                    'matriculacion' => $matriculacion,
-                    'programacioncom' => $programacioncom,
-                    'docentes' => $docentes,
-                    'aulas' => $aulas,
-                    'hora_inicio' => $hora_inicio,
-                    'hora_fin' => $hora_fin,
-                    'clasecomPresente' => $clasecomPresente,
-                    'totalPagado' => $totalPagado,
-                    'saldo' => $saldo,
-                    'ultimaProgramacionPagada' => $ultimaProgramacionPagada,
-                    'programaciones' => $programaciones,
-                ];
-            }
-        }
-
-        return view('clase.modalmarcado_tabs', [
-            'persona' => $persona,
-            'inscripcionTabs' => $inscripcionTabs,
-            'matriculacionTabs' => $matriculacionTabs,
-        ]);
+        $tabs = app(\App\Services\ClassAttendanceView::class)->tabs($persona);
+        return view('clase.modalmarcado_tabs', compact('persona','tabs'));
     }
 
     public function estudiantesDeUnProfesor($docente_id){
@@ -921,7 +799,7 @@ class ProgramacionController extends Controller
             ->join('clases','clases.programacion_id','programacions.id')
             ->join('docentes','docentes.id','clases.docente_id')
             ->join('personas','personas.id','estudiantes.persona_id')
-            ->join('temas','temas.id','clases.tema_id')
+            ->leftJoin('temas','temas.id','clases.tema_id')
             ->join('materias','materias.id','clases.materia_id')
             ->where('docentes.id',$docente_id)
             ->where('programacions.fecha','=',Carbon::now()->isoFormat('Y-M-D'))
@@ -956,7 +834,7 @@ class ProgramacionController extends Controller
             ->get()->first();
             $indefinidos=Programacion::join('docentes','docentes.id','programacions.docente_id')
             ->where('docente_id',$doc->id)
-            ->where('programacions.estado_id',estado('INDEFINIDO'))
+            ->sinCompensar()->where('programacions.estado_id',estado('INDEFINIDO'))
             ->where('programacions.fecha','=',Carbon::now()->isoFormat('Y-M-D'))
             ->select('nombrecorto',DB::raw('count(*) as cantidad'))
             ->groupBy('nombrecorto')
@@ -1000,7 +878,7 @@ class ProgramacionController extends Controller
     }
 
     public function programacionesFuturo(Request $request){
-        $programacion=Programacion::join('docentes','docentes.id','=','programacions.docente_id')
+        $programacion=Programacion::with(['adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom'])->join('docentes','docentes.id','=','programacions.docente_id')
                     ->join('aulas','aulas.id','=','programacions.aula_id')
                     ->join('inscripciones','inscripciones.id','=','programacions.inscripcione_id')
                     ->join('materias','materias.id','=','programacions.materia_id')
@@ -1008,7 +886,7 @@ class ProgramacionController extends Controller
                     ->where('inscripcione_id',$request->inscripcion)
                     ->select('programacions.id','fecha','estados.estado','materia','docentes.nombrecorto as docente','programacions.hora_ini','programacions.hora_fin','aulas.aula','programacions.habilitado')->get();
         return DataTables::of($programacion)
-                ->addColumn('btn','programacion.actionsfuturo')
+                ->addColumn('btn',fn($program)=>view('programacion.actionsfuturo',array_merge($program->toArray(),['program'=>$program]))->render())
                 ->rawColumns(['btn'])
                 ->toJson();
     }
@@ -1037,7 +915,7 @@ class ProgramacionController extends Controller
     }
     public function asignarFaltasFechasPasadas(){
         $programacion = Programacion::where('fecha','<',Carbon::now()->format('Y-m-d'))
-                    ->where('estado_id',estado('INDEFINIDO'))->update(['estado_id'=>estado('FALTA')]);
+                    ->sinCompensar()->where('estado_id',estado('INDEFINIDO'))->update(['estado_id'=>estado('FALTA')]);
         return response()->json($programacion);
     }
 
@@ -1049,7 +927,7 @@ class ProgramacionController extends Controller
         ->join('materias','programacions.materia_id','materias.id')
         ->join('estados','programacions.estado_id','estados.id')
 
-        ->where('programacions.fecha',Carbon::now()->format('Y-m-d'))
+        ->sinCompensar()->where('programacions.fecha',Carbon::now()->format('Y-m-d'))
         ->select('inscripciones.id','personas.id as persona_id','personas.nombre as estudiante','estados.estado','personas.apellidop','foto','docentes.nombrecorto as docente','programacions.hora_ini','programacions.hora_fin','materias.materia')  
         ->get();
 
@@ -1065,7 +943,7 @@ class ProgramacionController extends Controller
             ->join('docentes', 'programacions.docente_id', '=', 'docentes.id')
             ->join('personas', 'personas.id', '=', 'docentes.persona_id')
             ->join('estados','estados.id','programacions.estado_id')
-            ->select('programacions.fecha', 'hora_ini','estados.estado','programacions.habilitado', 'hora_fin', 'horas_por_clase', 'personas.nombre', 'materias.materia', 'aulas.aula')
+            ->select('programacions.id','programacions.fecha', 'hora_ini','estados.estado','programacions.habilitado', 'hora_fin', 'horas_por_clase', 'personas.nombre', 'materias.materia', 'aulas.aula')
             ->orderBy('fecha', 'asc')
             ->where('inscripcione_id', '=', $request->inscripcion_id)->get();
         return response()->json($programacion);

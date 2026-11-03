@@ -150,6 +150,7 @@ class InscripcioneController extends Controller
     public function store(Request $request)
     {
         request()->validate(Inscripcione::$rules);
+        app(\App\Services\SedeAccess::class)->selectForCreation($request);
         $datos=$request->all();
         $inscripcion=new Inscripcione();
         $inscripcion->fechaini=$request->fechaini;

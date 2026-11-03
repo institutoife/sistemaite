@@ -121,6 +121,10 @@ class PadreController extends Controller
             'estudiante.inscripciones.estado',
             'estudiante.inscripciones.modalidad',
             'estudiante.inscripciones.programaciones.estado',
+            'estudiante.inscripciones.programaciones.adicional.originalProgramacion',
+            'estudiante.inscripciones.programaciones.adicional.originalProgramacioncom',
+            'estudiante.inscripciones.programaciones.compensacion.programacion',
+            'estudiante.inscripciones.programaciones.compensacion.programacioncom',
             'estudiante.inscripciones.programaciones.materia',
             'estudiante.inscripciones.programaciones.docente.persona:id,nombre,apellidop,apellidom,foto',
             'estudiante.inscripciones.programaciones.aula',
@@ -128,6 +132,10 @@ class PadreController extends Controller
             'computacion.matriculaciones.estado',
             'computacion.matriculaciones.asignatura',
             'computacion.matriculaciones.programacionescom.estado',
+            'computacion.matriculaciones.programacionescom.adicional.originalProgramacion',
+            'computacion.matriculaciones.programacionescom.adicional.originalProgramacioncom',
+            'computacion.matriculaciones.programacionescom.compensacion.programacion',
+            'computacion.matriculaciones.programacionescom.compensacion.programacioncom',
             'computacion.matriculaciones.programacionescom.docente.persona:id,nombre,apellidop,apellidom,foto',
             'computacion.matriculaciones.programacionescom.aula',
             'computacion.matriculaciones.pagos',
@@ -184,17 +192,17 @@ class PadreController extends Controller
 
                     $hoy = $programaciones
                         ->filter(function ($p) use ($today) {
-                            return $p->fecha && $p->fecha->isSameDay($today);
+                            return !$p->compensacion && $p->fecha && $p->fecha->isSameDay($today);
                         })
                         ->values();
 
                     $asistencias = $programaciones->whereIn('estado_id', [$estadoFinalizado, $estadoPresente])->count();
                     $faltas = $programaciones->whereIn('estado_id', [$estadoFalta, $estadoFaltaNotificada])->count();
                     $licencias = $programaciones->where('estado_id', $estadoLicencia)->count();
-                    $clasesProgramadas = $programaciones->count();
+                    $clasesProgramadas = $programaciones->filter(fn($p)=>$p->isContractedClass())->count();
                     $clasesPasadas = $programaciones
                         ->filter(function ($p) use ($today, $estadoIndefinido) {
-                            return $p->fecha && $p->fecha->lte($today) && (int) $p->estado_id !== (int) $estadoIndefinido;
+                            return !$p->compensacion && $p->fecha && $p->fecha->lte($today) && (int) $p->estado_id !== (int) $estadoIndefinido;
                         })
                         ->count();
 
@@ -248,6 +256,7 @@ class PadreController extends Controller
                             return [
                                 'fecha' => $p->fecha,
                                 'estado' => optional($p->estado)->estado,
+                                'relacion_clase' => trim(strip_tags(view('clase.asistencia.relation',['program'=>$p])->render())),
                                 'hora_inicio' => $p->hora_ini,
                                 'hora_fin' => $p->hora_fin,
                                 'materia' => optional($p->materia)->materia,
@@ -307,17 +316,17 @@ class PadreController extends Controller
                         ->values();
                     $hoy = $programaciones
                         ->filter(function ($p) use ($today) {
-                            return $p->fecha && $p->fecha->isSameDay($today);
+                            return !$p->compensacion && $p->fecha && $p->fecha->isSameDay($today);
                         })
                         ->values();
 
                     $asistencias = $programaciones->whereIn('estado_id', [$estadoFinalizado, $estadoPresente])->count();
                     $faltas = $programaciones->whereIn('estado_id', [$estadoFalta, $estadoFaltaNotificada])->count();
                     $licencias = $programaciones->where('estado_id', $estadoLicencia)->count();
-                    $clasesProgramadas = $programaciones->count();
+                    $clasesProgramadas = $programaciones->filter(fn($p)=>$p->isContractedClass())->count();
                     $clasesPasadas = $programaciones
                         ->filter(function ($p) use ($today, $estadoIndefinido) {
-                            return $p->fecha && $p->fecha->lte($today) && (int) $p->estado_id !== (int) $estadoIndefinido;
+                            return !$p->compensacion && $p->fecha && $p->fecha->lte($today) && (int) $p->estado_id !== (int) $estadoIndefinido;
                         })
                         ->count();
 
@@ -369,6 +378,7 @@ class PadreController extends Controller
                             return [
                                 'fecha' => $p->fecha,
                                 'estado' => optional($p->estado)->estado,
+                                'relacion_clase' => trim(strip_tags(view('clase.asistencia.relation',['program'=>$p])->render())),
                                 'hora_inicio' => $p->horaini,
                                 'hora_fin' => $p->horafin,
                                 'docente' => $p->docente->nombrecorto ?? null,

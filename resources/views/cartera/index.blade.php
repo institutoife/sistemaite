@@ -1219,7 +1219,7 @@
                                     $html+="<td>"+moment(json[j].hora_ini).format('hh:mm-ss')+" - "+moment(json[j].hora_fin).format('hh:mm:ss')+"</td>";
                                     $html+="<td>"+json[j].horas_por_clase+"</td>";
                                     $html+="<td>"+json[j].nombrecorto+"</td>";
-                                    $html+="<td>"+json[j].estado+"</td>";
+                                    $html+="<td>"+json[j].estado+"<small class='d-block'>"+$("<span>").text(json[j].relacion_clase || "").html()+"</small></td>";
                                     $html+="<td>"+json[j].materia+"</td>";
                                 }
                                 $("#tabla-ultima-programacion").append($html);
@@ -1265,7 +1265,7 @@
                                     $html+="<td>"+moment(json[j].horaini).format('hh:mm-ss')+" - "+moment(json[j].horafin).format('hh:mm:ss')+"</td>";
                                     $html+="<td>"+json[j].horas_por_clase+"</td>";
                                     $html+="<td>"+json[j].nombrecorto+"</td>";
-                                    $html+="<td>"+json[j].estado+"</td>";
+                                    $html+="<td>"+json[j].estado+"<small class='d-block'>"+$("<span>").text(json[j].relacion_clase || "").html()+"</small></td>";
                                 }
                                 $("#tabla-ultima-programacioncom").append($html);
                             },

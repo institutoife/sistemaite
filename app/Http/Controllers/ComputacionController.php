@@ -79,7 +79,7 @@ class ComputacionController extends Controller
                 ->join('userables','userables.userable_id','matriculacions.id')
                 ->join('users','users.id','userables.user_id')
                 ->where('userables.userable_type',Matriculacion::class)
-                ->where('estados.estado','FALTANOTIFICADA')
+                ->where('estados.estado','FALTANOTIFICADA')->whereNotIn('programacioncoms.id',app(\App\Services\ClassAttendanceService::class)->resolvedAbsenceIds('programacioncoms'))
                 ->where('matriculacions.vigente',1)
                 // ->where('estados.estado','FALTANOTIFICADA')
                 ->select('personas.id','programacioncoms.id as programacioncom_id','nombre','apellidop','apellidom','telefono','users.name','personas.foto')

@@ -38,7 +38,7 @@
         data-programacion-id="{{ $asistenciaProgramacionId }}"
         data-url="{{ $asistenciaUrl }}"
         data-tipo="{{ $asistenciaTipo }}">
-        <i class="fas fa-clipboard-check"></i>
+        <i class="fas fa-clipboard-check" style="color:{{ !empty($asistencia_hoy)?'#26BAA5':'#375F7A' }}"></i>
     </a>
 @else
     <span class="btn-accion-tabla text-muted mr-1" title="{{ $asistenciaMensaje }}">

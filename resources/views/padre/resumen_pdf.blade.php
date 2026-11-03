@@ -74,7 +74,7 @@
                         <td>{{ $fechaDia }}</td>
                         <td>{{ $horaIni }}-{{ $horaFin }}</td>
                         <td>{{ $h['docente'] ?? 'N/D' }}/{{ $h['aula'] ?? 'N/D' }}</td>
-                        <td>{{ $h['estado'] ?? 'N/D' }}</td>
+                        <td>{{ $h['estado'] ?? 'N/D' }}<small class="d-block">{{ $h['relacion_clase']??'' }}</small></td>
                         <td>{{ $h['materia'] ?? 'N/D' }}</td>
                     </tr>
                 @empty
@@ -128,7 +128,7 @@
                         <td>{{ $fechaDiaCom }}</td>
                         <td>{{ $horaIniCom }}-{{ $horaFinCom }}</td>
                         <td>{{ $h['docente'] ?? 'N/D' }}/{{ $h['aula'] ?? 'N/D' }}</td>
-                        <td>{{ $h['estado'] ?? 'N/D' }}</td>
+                        <td>{{ $h['estado'] ?? 'N/D' }}<small class="d-block">{{ $h['relacion_clase']??'' }}</small></td>
                         <td>{{ $item['asignatura'] ?? 'N/D' }}</td>
                     </tr>
                 @empty

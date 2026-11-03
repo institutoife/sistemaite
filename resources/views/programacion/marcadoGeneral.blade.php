@@ -1,5 +1,7 @@
 @extends('adminlte::page')
 @section('css')
+    <link rel="stylesheet" href="{{ asset('vendor/select2/css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/select2-bootstrap4-theme/select2-bootstrap4.min.css') }}">
     <link rel="stylesheet" href="{{asset('dist/css/bootstrap/bootstrap.css')}}">
     <link rel="stylesheet" href="{{asset('custom/css/custom.css')}}">
     <link href="{{asset('dist/css/zoomify.css')}}" rel="stylesheet" type="text/css">
@@ -193,6 +195,7 @@
         </div>
                     
                     
+                        <div class="card"><div class="card-body">@include('clase.asistencia.panel',['tab'=>$attendanceTab])</div></div>
                         @include('programacion.hoy')
                         @include('programacion.futuro')
                         @include('programacion.modales')
@@ -202,6 +205,8 @@
 @endsection
 
 @section('js')
+    <script src="{{ asset('vendor/select2/js/select2.full.min.js') }}"></script>
+    <script src="{{asset('vistas/clase/asistencia.js')}}"></script>
     <script src="https://kit.fontawesome.com/067a2afa7e.js" crossorigin="anonymous"></script>
     <script src="{{asset('dist/js/moment.js')}}"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.17.1/locale/es.js"></script>

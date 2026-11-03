@@ -1,6 +1,9 @@
 
 
-@if ($estado=="PRESENTE")
+@if(isset($program) && ($program->adicional || $program->compensacion))
+    @include('clase.asistencia.relation')
+    <a class="btn btn-sm btn-outline-primary" href="{{ route('clases.marcadocom.general',$program->matriculacion_id) }}">Asistencia e historial</a>
+@elseif ($estado=="PRESENTE")
     <a href="" class="text-secondary ml-2 editar" data-toggle="tooltip" data-placement="top" title="Editar este programa"><i class="fas fa-edit fa-2x"></i></a>    
     <a href="" class="text-secondary ml-2 observacion" data-toggle="tooltip" data-placement="top" title="Agregar Observacion"><i class="fas fa-comment-medical fa-2x"></i></a>
     <a href="" class="text-secondary ml-2 show" data-toggle="tooltip" data-placement="top" title="Ver este programa"><i class="fas fa-eye fa-2x"></i></a>

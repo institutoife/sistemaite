@@ -33,42 +33,11 @@ class ClasecomController extends Controller
     }
 
 
-    public function guardar(Request $request,$programacioncom_id){
-        $clasecom=new Clasecom();
-        $clasecom->fecha=$request->fecha;
-        $clasecom->horainicio=$request->horainicio;
-        $clasecom->horafin=$request->horafin;
-        $clasecom->docente_id=$request->docente_id;
-        $clasecom->aula_id=$request->aula_id;
-        $clasecom->programacioncom_id=$programacioncom_id;
-        
-        $observacion=new Observacion();
-        $observacion->activo=1;
-        $observacion->observable_type= Programacioncom::class;
-
-        if($request->fecha < Carbon::now()->format('Y-m-d')){
-            $programa=Programacioncom::findOrFail($programacioncom_id);
-            $programa->estado_id = estado("FINALIZADO");
-            $clasecom->estado_id= estado("FINALIZADO");
-            $observacion->observacion="Esta programacioncom se marcó fuera de fecha: ".Carbon::now()->isoFormat('LLLL');
-        }else{
-            $programa=Programacioncom::findOrFail($programacioncom_id);
-            $programa->estado_id =estado("PRESENTE");
-            $clasecom->estado_id= estado("PRESENTE");
-            $observacion->observacion="Esta programacion se marcó en fecha adecuada: ".Carbon::now()->isoFormat('LLLL');
-        }
-
-        $clasecom->save();
-        $programa->save();
-        $observacion->observable_id=$programacioncom_id;
-        $observacion->save();
-        
-        $clasecom->usuarios()->attach(Auth::user()->id);
-        //dd($clasecom);
-
-        return redirect()->route('clase.presentes');
-
-
+    public function guardar(Request $request,$programacioncom_id)
+    {
+        $programa=Programacioncom::findOrFail($programacioncom_id);
+        $clase=app(\App\Services\ClassAttendanceService::class)->record($programa,$request->all(),$request->user());
+        return $request->expectsJson() ? response()->json(['message'=>'Asistencia registrada.','id'=>$clase->id]) : redirect()->route('clase.presentes');
     }
     
 
@@ -138,6 +107,7 @@ class ClasecomController extends Controller
      */
     public function actualizar(Request $request, Clasecom $clasecom)
     {
+        app(\App\Services\ClassAttendanceService::class)->protectHistory($clasecom->programacioncom);
         $clasecom->fecha=$request->fecha;
         $clasecom->docente_id=$request->docente_id;
         $clasecom->horainicio=$request->horainicio;
@@ -176,7 +146,7 @@ class ClasecomController extends Controller
         ->get();
 
         // $matriculacion=Matriculacion::findOrFail($matriculacion_id);
-        $dias_que_faltan_para_pagar= $matriculacion->fecha_proximo_pago->diffInDays(now());
+        $dias_que_faltan_para_pagar= $matriculacion->fecha_proximo_pago ? $matriculacion->fecha_proximo_pago->diffInDays(now()) : 0;
         
         $pago=$matriculacion->pagos->sum('monto');
         $indefinido=$matriculacion->programacionescom->where('estado_id',estado("INDEFINIDO"))->count();
@@ -188,7 +158,9 @@ class ClasecomController extends Controller
 
         $persona = $matriculacion->computacion->persona;
 
-        return view('programacioncom.marcadoGeneral',compact('programaciones', 'faltas', 'presentes', 'licencias', 'pago','persona', 'matriculacion', 'dias_que_faltan_para_pagar'));
+        $attendanceTab=app(\App\Services\ClassAttendanceView::class)->tab('computacion',$matriculacion);
+        $presentes=$attendanceTab['stats']['Asistidas']; $faltas=$attendanceTab['stats']['Faltas']; $licencias=$attendanceTab['stats']['Licencias'];
+        return view('programacioncom.marcadoGeneral',compact('attendanceTab','programaciones', 'faltas', 'presentes', 'licencias', 'pago','persona', 'matriculacion', 'dias_que_faltan_para_pagar'));
         //return redirect()->route('clases.marcado.general',$inscripcion_id)->with('programaciones', 'programacionesHoy', 'faltas', 'presentes', 'licencias', 'pago', 'inscripcion','dias_que_faltan_para_pagar');
     }
 
@@ -208,24 +180,18 @@ class ClasecomController extends Controller
 
 
 
-    public function marcadoRapido($programacioncom_id){
-        $programa = Programacioncom::findOrFail($programacioncom_id);
-        $clase=new Clasecom();
-        $clase->fecha           =$programa->fecha;
-        $clase->estado_id       =estado('PRESENTE');
-        $clase->horainicio      =Carbon::now()->isoFormat('HH:mm:ss');
-        $clase->horafin         =Carbon::now()->addHours($programa->horaini->floatDiffInHours($programa->horafin));
-        $clase->docente_id      =$programa->docente_id;
-        $clase->aula_id         =$programa->aula_id;
-        $clase->programacioncom_id =$programa->id;
-        $programa->estado_id=estado('PRESENTE');
-        $programa->save();
-        $clase->save();
-        return redirect()->route('clase.presentes')->with('mensaje', 'MarcadoCorrectamente');
+    public function marcadoRapido($programacion_id)
+    {
+        $programa=Programacioncom::findOrFail($programacion_id);
+        $data=['fecha'=>$programa->fecha->format('Y-m-d'), 'horainicio'=>now()->format('H:i'),
+            'horafin'=>now()->addMinutes($programa->horaini->diffInMinutes($programa->horafin))->format('H:i'),
+            'docente_id'=>$programa->docente_id,'aula_id'=>$programa->aula_id];
+        app(\App\Services\ClassAttendanceService::class)->record($programa,$data,auth()->user());
+        return redirect()->route('clase.presentes');
     }
      public function clasesPresentes(Request $request){
         
-            $clasecoms =  Clasecom::join('programacioncoms', 'clasecoms.programacioncom_id', '=', 'programacioncoms.id')
+            $clasecoms =  Clasecom::with('programacioncom.adicional.originalProgramacion','programacioncom.adicional.originalProgramacioncom')->join('programacioncoms', 'clasecoms.programacioncom_id', '=', 'programacioncoms.id')
                 ->join('matriculacions', 'programacioncoms.matriculacion_id', '=', 'matriculacions.id')
                 ->join('computacions', 'matriculacions.computacion_id', '=', 'computacions.id')
                 ->join('personas', 'computacions.persona_id', '=', 'personas.id')
@@ -236,48 +202,19 @@ class ClasecomController extends Controller
                 ->join('users','userables.user_id','users.id')
                 ->where('userables.userable_type',Clasecom::class)
                 ->where('clasecoms.estado_id',estado('PRESENTE'))
-                ->where('clasecoms.fecha',Carbon::now()->isoFormat('Y-M-D'))
-                ->select('clasecoms.id','personas.id as codigo', 'personas.nombre as name','clasecoms.horainicio', 'clasecoms.horafin', 'docentes.nombrecorto as nombre', 'asignaturas.asignatura', 'aulas.aula','personas.foto','users.name as user')->get();
+                ->whereDate('clasecoms.fecha',now()->toDateString())
+                ->select('clasecoms.programacioncom_id','clasecoms.id','personas.id as codigo', 'personas.nombre as name','clasecoms.horainicio', 'clasecoms.horafin', 'docentes.nombrecorto as nombre', 'asignaturas.asignatura', 'aulas.aula','personas.foto','users.name as user')->get();
             return datatables()->of($clasecoms)
-                ->addColumn('btn', 'clasecom.action_marcar')
+                ->addColumn('btn',fn($attendance)=>view('clasecom.action_marcar',array_merge($attendance->toArray(),['program'=>$attendance->programacioncom]))->render())
                 ->rawColumns(['btn', 'foto'])
                 ->toJson();
         
     }
     public function finalizarClasecom(Request $request)
     {
-        $request->validate([
-            'id' => 'required|integer',
-        ]);
-
-        $clasecom = Clasecom::findOrFail($request->id);
-        $user = Auth::user();
-        abort_unless($user, 401);
-
-        $docenteUsuarioId = optional(optional($user->persona)->docente)->id;
-        $puedeFinalizar = $user->hasRole(['Admin', 'Secretaria'])
-            || ($user->hasRole(['Docente']) && (int) $docenteUsuarioId === (int) $clasecom->docente_id);
-
-        abort_unless($puedeFinalizar, 403);
-
-        if ((int) $clasecom->estado_id !== (int) estado('PRESENTE')) {
-            return response()->json([
-                'message' => 'La clase ya no esta en estado PRESENTE.',
-                'status' => 409,
-            ], 409);
-        }
-
-        $programa = $clasecom->programacioncom;
-        if ($programa && (int) $programa->estado_id === (int) estado('PRESENTE')) {
-            $programa->estado_id = estado('FINALIZADO');
-            $programa->save();
-        }
-
-        $clasecom->estado_id = estado('FINALIZADO');
-        $clasecom->horafin = Carbon::now()->format('H:i:s');
-        $clasecom->save();
-
-        return response()->json(['message' => 'Despidete deseale el bien', 'status' => 200]);
+        $request->validate(['id'=>'required|integer']);
+        app(\App\Services\ClassAttendanceService::class)->finish(Clasecom::findOrFail($request->id),$request->user());
+        return response()->json(['message'=>'Salida registrada.','status'=>200]);
     }
     
 }

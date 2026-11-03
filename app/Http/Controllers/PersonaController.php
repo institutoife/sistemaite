@@ -960,13 +960,14 @@ class PersonaController extends Controller
         $inscripcion=Persona::findOrFail($request->persona_id)->estudiante->inscripciones->last();
         // $inscripcion=Persona::findOrFail(2)->estudiante->inscripciones->last();
         
-        $programaciones=Programacion::join('docentes','docentes.id','=','programacions.docente_id')
+        $programaciones=Programacion::with('adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom')->join('docentes','docentes.id','=','programacions.docente_id')
                     ->join('aulas','aulas.id','=','programacions.aula_id')
                     ->join('inscripciones','inscripciones.id','=','programacions.inscripcione_id')
                     ->join('materias','materias.id','=','programacions.materia_id')
                     ->join('estados','estados.id','=','programacions.estado_id')
                     ->where('inscripcione_id',$inscripcion->id)
                     ->select('programacions.id','fecha','estados.estado','materia','docentes.nombrecorto','programacions.hora_ini','programacions.hora_fin','horas_por_clase','aulas.aula','programacions.habilitado')->get();
+        $programaciones->each(function($program){$program->setAttribute('relacion_clase',trim(strip_tags(view('clase.asistencia.relation',['program'=>$program])->render())));});
         return response()->json($programaciones);
     }
 
@@ -1007,12 +1008,13 @@ class PersonaController extends Controller
 
     public function ultimaProgramacioncom(Request $request){
          $matriculacion=Persona::findOrFail($request->persona_id)->computacion->matriculaciones->last();
-         $programacioncoms = Programacioncom::join('aulas', 'programacioncoms.aula_id', '=', 'aulas.id')
+         $programacioncoms = Programacioncom::with('adicional.originalProgramacion','adicional.originalProgramacioncom','compensacion.programacion','compensacion.programacioncom')->join('aulas', 'programacioncoms.aula_id', '=', 'aulas.id')
             ->join('docentes', 'programacioncoms.docente_id', '=', 'docentes.id')
             ->join('estados','estados.id','programacioncoms.estado_id')
-            ->select('programacioncoms.fecha','nombrecorto', 'habilitado','horaini','estados.estado', 'horafin', 'horas_por_clase', 'aulas.aula')
+            ->select('programacioncoms.id','programacioncoms.fecha','nombrecorto', 'habilitado','horaini','estados.estado', 'horafin', 'horas_por_clase', 'aulas.aula')
             ->orderBy('fecha', 'asc')
             ->where('programacioncoms.matriculacion_id', '=', $matriculacion->id)->get();
+        $programacioncoms->each(function($program){$program->setAttribute('relacion_clase',trim(strip_tags(view('clase.asistencia.relation',['program'=>$program])->render())));});
         return response()->json($programacioncoms);
     }
 
