@@ -32,12 +32,16 @@ class ClassAttendanceService
 
     public function enrollment(Model $programa): Model
     {
-        return $programa instanceof Programacion ? $programa->inscripcione : $programa->matriculacion;
+        $enrollment=$programa instanceof Programacion ? $programa->inscripcione : $programa->matriculacion;
+        abort_unless($enrollment,404);
+        return $enrollment;
     }
 
     public function personId(Model $enrollment): int
     {
-        return (int) ($enrollment instanceof Inscripcione ? $enrollment->estudiante->persona_id : $enrollment->computacion->persona_id);
+        $student=$enrollment instanceof Inscripcione ? $enrollment->estudiante : $enrollment->computacion;
+        abort_unless($student && $student->persona,404);
+        return (int)$student->persona_id;
     }
 
     private function active(Model $enrollment): void
@@ -213,20 +217,24 @@ class ClassAttendanceService
     {
         abort_unless($this->canFinish($attendance,$actor),403);
         $program=$attendance instanceof Clase ? $attendance->programacion : $attendance->programacioncom;
+        abort_unless($program,404);
         return DB::transaction(function() use ($attendance,$program,$actor) {
             DB::table('personas')->where('id',$this->personId($this->enrollment($program)))->lockForUpdate()->first();
             $program=$program->newQuery()->whereKey($program->id)->lockForUpdate()->firstOrFail();
             $attendance=$attendance->newQuery()->whereKey($attendance->id)->lockForUpdate()->firstOrFail();
+            abort_unless($this->canFinish($attendance,$actor),403);
             if ((int)$attendance->estado_id === (int)estado('FINALIZADO')) { return $attendance; }
             $this->check((int)$attendance->estado_id === (int)estado('PRESENTE'),'estado','La clase no está en curso.');
-            $this->check($attendance->fecha->format('Y-m-d') === now()->toDateString() && now()->format('H:i:s') > $attendance->horainicio->format('H:i:s'),
-                'horafin','La salida debe ser posterior a la entrada y corresponder al día de la clase.');
+            $exit=now(PresentAttendanceService::TIMEZONE);
+            $this->check($exit->gt(app(PresentAttendanceService::class)->instant($attendance,'horainicio')),
+                'horafin','La salida debe ser posterior a la entrada.');
             $before=$attendance->getAttributes();
             $attendance->estado_id=estado('FINALIZADO');
-            $attendance->horafin=now()->format('H:i:s');
+            $attendance->horafin=$exit->format('H:i:s');
             $attendance->save();
             $program->estado_id=estado('FINALIZADO'); $program->save();
-            $this->event($program,$actor,'salida',$before,$attendance->getAttributes());
+            $this->event($program,$actor,'salida',$before,array_merge($attendance->getAttributes(),
+                ['salida_registrada_at'=>$exit->toIso8601String(),'salida_registrada_por'=>$actor->id]));
             return $attendance;
         },3);
     }

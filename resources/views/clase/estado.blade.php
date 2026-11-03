@@ -162,10 +162,13 @@
                 e.preventDefault(); 
                 var id_estudiante =$(this).closest('tr').attr('id');
                 var           fila=$(this).closest('tr');
+		        if (!window.confirm('¿Confirmas la salida? Se registrará la fecha y hora actuales.')) return;
 		        $.ajax({
                     url : "{{url('clase/finalizar')}}",
-                    data : { id :id_estudiante },
+                    method: 'POST',
+                    data : { id :id_estudiante, _token: "{{ csrf_token() }}" },
                     success : function(json) {
+                            document.dispatchEvent(new Event('ife:attendance-changed'));
                             
                             fila.remove();
                             const Toast = Swal.mixin({

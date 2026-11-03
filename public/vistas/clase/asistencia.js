@@ -127,16 +127,17 @@
         $form.data('saving', true).find('[type=submit]').prop('disabled', true);
         $form.find('.attendance-errors').addClass('d-none').empty();
         $.ajax({ url: $form.attr('action'), type: 'POST', data: $form.serialize(), headers: { Accept: 'application/json' } })
-            .done(function (json) { refresh($panel, json.message); })
+            .done(function (json) { document.dispatchEvent(new Event('ife:attendance-changed')); refresh($panel, json.message); })
             .fail(function (xhr) { message($form, xhr); })
             .always(function () { $form.data('saving', false).find('[type=submit]').prop('disabled', false); });
     });
     $(document).on('click', '.attendance-exit', function () {
         var $button = $(this), $panel = $button.closest('[data-attendance-panel]');
         if ($button.prop('disabled')) return;
+        if (!window.confirm('¿Confirmas la salida de esta asistencia? Se registrará la fecha y hora actuales.')) return;
         $button.prop('disabled', true);
         $.ajax({ url: $button.data('url'), type: 'POST', data: { id: $button.data('id'), _token: $('meta[name=csrf-token]').attr('content') }, headers: { Accept: 'application/json' } })
-            .done(function (json) { refresh($panel, json.message); })
+            .done(function (json) { document.dispatchEvent(new Event('ife:attendance-changed')); refresh($panel, json.message); })
             .fail(function (xhr) {
                 var $error = $('<div class="attendance-errors alert alert-danger">');
                 $button.after($error); message($button.parent(), xhr);

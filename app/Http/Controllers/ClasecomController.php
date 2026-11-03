@@ -189,27 +189,12 @@ class ClasecomController extends Controller
         app(\App\Services\ClassAttendanceService::class)->record($programa,$data,auth()->user());
         return redirect()->route('clase.presentes');
     }
-     public function clasesPresentes(Request $request){
-        
-            $clasecoms =  Clasecom::with('programacioncom.adicional.originalProgramacion','programacioncom.adicional.originalProgramacioncom')->join('programacioncoms', 'clasecoms.programacioncom_id', '=', 'programacioncoms.id')
-                ->join('matriculacions', 'programacioncoms.matriculacion_id', '=', 'matriculacions.id')
-                ->join('computacions', 'matriculacions.computacion_id', '=', 'computacions.id')
-                ->join('personas', 'computacions.persona_id', '=', 'personas.id')
-                ->join('docentes', 'clasecoms.docente_id', '=', 'docentes.id')
-                ->join('asignaturas', 'matriculacions.asignatura_id', '=', 'asignaturas.id')
-                ->join('aulas', 'clasecoms.aula_id', '=', 'aulas.id')
-                ->join('userables','userables.userable_id','clasecoms.id')
-                ->join('users','userables.user_id','users.id')
-                ->where('userables.userable_type',Clasecom::class)
-                ->where('clasecoms.estado_id',estado('PRESENTE'))
-                ->whereDate('clasecoms.fecha',now()->toDateString())
-                ->select('clasecoms.programacioncom_id','clasecoms.id','personas.id as codigo', 'personas.nombre as name','clasecoms.horainicio', 'clasecoms.horafin', 'docentes.nombrecorto as nombre', 'asignaturas.asignatura', 'aulas.aula','personas.foto','users.name as user')->get();
-            return datatables()->of($clasecoms)
-                ->addColumn('btn',fn($attendance)=>view('clasecom.action_marcar',array_merge($attendance->toArray(),['program'=>$attendance->programacioncom]))->render())
-                ->rawColumns(['btn', 'foto'])
-                ->toJson();
-        
+     public function clasesPresentes(Request $request)
+    {
+        $rows=app(\App\Services\PresentAttendanceService::class)->rows($request->user(), 'computacion');
+        return datatables()->of($rows)->rawColumns(['btn'])->toJson();
     }
+
     public function finalizarClasecom(Request $request)
     {
         $request->validate(['id'=>'required|integer']);

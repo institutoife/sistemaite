@@ -24,6 +24,9 @@
                                 <details class="mt-1"><summary>Auditoría ({{ $program->eventosAsistencia->count() }})</summary>
                                     @foreach($program->eventosAsistencia as $event)
                                         <p class="small mb-1">{{ $event->created_at->format('d/m/Y H:i:s') }} · {{ $event->usuario_nombre }} · {{ $event->accion }}<br>{{ $event->motivo }}
+                                            @if($event->accion==='salida' && !empty($event->despues['salida_registrada_at']))
+                                                <br><strong>Salida real: {{ \Carbon\Carbon::parse($event->despues['salida_registrada_at'])->timezone('America/La_Paz')->format('d/m/Y H:i:s') }}</strong>
+                                            @endif
                                             @if($event->antes)<details><summary>Valores anteriores y nuevos</summary><pre class="small text-wrap">{{ json_encode(['antes'=>$event->antes,'después'=>$event->despues],JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE) }}</pre></details>@endif
                                         </p>
                                     @endforeach

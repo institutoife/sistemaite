@@ -477,10 +477,14 @@ function inicializarMarcadoModal($modal){
             if (!claseId) {
                 return;
             }
+            if (!window.confirm('¿Confirmas la salida de esta asistencia? Se registrará la fecha y hora actuales.')) return;
             $.ajax({
                 url: finalizarUrl,
-                data: { id: claseId },
+                method: 'POST',
+                headers: { Accept: 'application/json' },
+                data: { id: claseId, _token: $('meta[name=csrf-token]').attr('content') },
                 success: function(json){
+                    document.dispatchEvent(new Event('ife:attendance-changed'));
                     const Toast = Swal.mixin({
                         toast: true,
                         position: 'top-end',

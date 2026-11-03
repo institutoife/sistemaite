@@ -24,6 +24,7 @@
         @each('adminlte::partials.navbar.menu-item', $adminlte->menu('navbar-right'), 'item')
 
         @include('user.access.sucursal')
+        @include('clase.asistencia.exit-navbar')
         {{-- User menu link --}}
         @if(Auth::user())
             @if(config('adminlte.usermenu_enabled'))

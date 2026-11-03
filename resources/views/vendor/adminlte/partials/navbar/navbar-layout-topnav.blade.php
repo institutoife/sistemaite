@@ -39,6 +39,7 @@
 
             {{-- User menu link --}}
             @include('user.access.sucursal')
+            @include('clase.asistencia.exit-navbar')
             @if(Auth::user())
                 @if(config('adminlte.usermenu_enabled'))
                     @include('adminlte::partials.navbar.menu-item-dropdown-user-menu')

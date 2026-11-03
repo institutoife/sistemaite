@@ -594,9 +594,12 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::get('clase/actualizar/{clase}',"ClaseController@actualizar")->name('clase.actualizar');
     Route::get('clase/mostrar/',"ClaseController@mostrar")->name('clase.mostrar');
     Route::get('clase/listar',"ClaseController@index")->name('clase.index');
-    Route::match(['get', 'post'], 'clase/finalizar/', 'ClaseController@finalizarClase')->name('clases.finalizar');
+    Route::post('clase/finalizar/', 'ClaseController@finalizarClase')->name('clases.finalizar');
     Route::get('clases/presentes/ahorita', [ClaseController::class,'clasesPresentes'])->name('clases.presente');
-    Route::get('presentes', function () {return view('clase.presentes');})->name('clase.presentes');
+    Route::get('presentes', [\App\Http\Controllers\PresentAttendanceController::class,'index'])->name('clase.presentes');
+    Route::get('presentes/estado', [\App\Http\Controllers\PresentAttendanceController::class,'status'])->name('presentes.estado');
+    Route::post('presentes/{canal}/{id}/avisar', [\App\Http\Controllers\PresentAttendanceController::class,'notify'])->where('canal','apoyo|computacion')->whereNumber('id')->name('presentes.aviso');
+    Route::post('presentes/{canal}/{id}/posponer', [\App\Http\Controllers\PresentAttendanceController::class,'snooze'])->where('canal','apoyo|computacion')->whereNumber('id')->name('presentes.posponer');
     // Route::get('programa/marcar/{inscripcine_id}', 'ClaseController@marcadoGeneral')->name('clases.marcado.general');
     Route::get('programa/marcar/{inscripcione}', 'ClaseController@marcadoGeneral')->name('clases.marcado.general');
     Route::get('clases/de/docente/{docente_id}', 'ClaseController@clasesDeDocete')->name('clases.de.un.docente');
@@ -626,7 +629,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::get('clasecom/mostrar/',[ClasecomController::class,'mostrarcom'])->name('clasecom.mostrar');
     Route::get('clasecom/editar/{clasecom}', [ClasecomController::class,'edit'])->name('clasescom.edit');
     Route::patch('clasecom/actualizar/{clasecom}', [ClasecomController::class,'actualizar'])->name("clasecom.update");
-    Route::match(['get', 'post'], 'clasecom/finalizar/', [ClasecomController::class,'finalizarClasecom'])->name('clasecom.finalizar');
+    Route::post('clasecom/finalizar/', [ClasecomController::class,'finalizarClasecom'])->name('clasecom.finalizar');
 
     /* %%%%%%%%%%%%%%%%%%%%%%%%%%%%%  R O U T E S  G R A D O S  %%%%%%%%%%%%%%%%%%%%%%%%%%*/
     //Route::resource('grados', [GradoController::class]);

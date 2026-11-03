@@ -652,6 +652,7 @@
             });
 
             $('.btn-finalizar').on('click', function() {
+                if (!window.confirm('¿Confirmas la salida? Se registrará la fecha y hora actuales.')) return;
                 const claseId = $(this).data('clase-id');
                 const boton = $(this);
 
@@ -666,6 +667,7 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(json) {
+                        document.dispatchEvent(new Event('ife:attendance-changed'));
                         boton.prop('disabled', true)
                             .removeClass('btn-success')
                             .addClass('btn-secondary')
@@ -685,6 +687,7 @@
             });
 
             $('.btn-finalizar-com').on('click', function() {
+                if (!window.confirm('¿Confirmas la salida? Se registrará la fecha y hora actuales.')) return;
                 const claseId = $(this).data('clase-id');
                 const boton = $(this);
 
@@ -699,6 +702,7 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(json) {
+                        document.dispatchEvent(new Event('ife:attendance-changed'));
                         boton.prop('disabled', true)
                             .removeClass('btn-success')
                             .addClass('btn-secondary')

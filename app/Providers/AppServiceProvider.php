@@ -18,6 +18,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\AccountSecurity::class);
         $this->app->singleton(\App\Services\TrustedDevices::class);
         $this->app->singleton(\App\Services\SedeAccess::class);
+        $this->app->singleton(\App\Services\PresentAttendanceService::class);
     }
 
     /**

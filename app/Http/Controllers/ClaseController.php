@@ -260,28 +260,10 @@ class ClaseController extends Controller
         app(\App\Services\ClassAttendanceService::class)->record($programa,$data,auth()->user());
         return redirect()->route('clase.presentes');
     }
-    public function clasesPresentes(Request $request){
-        //return response()->json(estado('tes.ESTADO_PRESENTE'));
-        if($request->ajax()){
-            $clases =  Clase::with('programacion.adicional.originalProgramacion','programacion.adicional.originalProgramacioncom')->join('programacions', 'clases.programacion_id', '=', 'programacions.id')
-                ->join('inscripciones', 'programacions.inscripcione_id', '=', 'inscripciones.id')
-                ->join('estudiantes', 'inscripciones.estudiante_id', '=', 'estudiantes.id')
-                ->join('personas', 'estudiantes.persona_id', '=', 'personas.id')
-                ->join('docentes', 'clases.docente_id', '=', 'docentes.id')
-                ->join('materias', 'clases.materia_id', '=', 'materias.id')
-                ->join('aulas', 'clases.aula_id', '=', 'aulas.id')
-                ->leftJoin('temas', 'clases.tema_id', '=', 'temas.id')
-                ->join('userables','userables.userable_id','clases.id')
-                ->join('users','userables.user_id','users.id')
-                ->where('userables.userable_type',Clase::class)
-                ->where('clases.estado_id',estado('PRESENTE'))
-                ->whereDate('clases.fecha',now()->toDateString())
-                ->select('clases.programacion_id','clases.id','personas.id as codigo', DB::raw('concat_ws("",personas.nombre) as name'),'clases.horainicio', 'clases.horafin', 'docentes.nombrecorto', 'materias.materia', 'aulas.aula', 'temas.tema', 'personas.foto','users.name as user')->get();
-            return datatables()->of($clases)
-                ->addColumn('btn',fn($attendance)=>view('clase.action_marcar',array_merge($attendance->toArray(),['program'=>$attendance->programacion]))->render())
-                ->rawColumns(['btn', 'foto'])
-                ->toJson();
-        }
+    public function clasesPresentes(Request $request)
+    {
+        $rows=app(\App\Services\PresentAttendanceService::class)->rows($request->user(), 'apoyo');
+        return datatables()->of($rows)->rawColumns(['btn'])->toJson();
     }
 
     public function finalizarClase(Request $request)

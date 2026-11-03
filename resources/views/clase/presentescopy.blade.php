@@ -93,7 +93,9 @@
                 
 		        $.ajax({
                     url : "clase/finalizar/",
-                    data : { id :id_estudiante },
+                    method: 'POST',
+                    beforeSend: function () { return window.confirm('¿Confirmas la salida? Se registrará la fecha y hora actuales.'); },
+                    data : { id :id_estudiante, _token: "{{ csrf_token() }}" },
                     success : function(json) {
                             
                             fila.remove();

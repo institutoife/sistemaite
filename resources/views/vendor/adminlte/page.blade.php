@@ -72,4 +72,5 @@
     @stack('js')
     @yield('js')
     @include('telefono.verificacion-modal')
+    @include('clase.asistencia.exit-alerts')
 @stop
