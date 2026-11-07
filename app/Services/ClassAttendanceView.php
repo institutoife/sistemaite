@@ -9,19 +9,22 @@ class ClassAttendanceView
     public function tabs(Persona $person): array
     {
         $tabs=[];
-        if($person->estudiante) {
-            foreach(Inscripcione::with('modalidad.nivel.materias','pagos')->where('estudiante_id',$person->estudiante->id)
-                ->where('vigente',1)->where('estado_id',estado('CORRIENDO'))->get() as $enrollment) {
-                if(auth()->user()->can('Listar Clases') || auth()->user()->can('Crear Clases')) $tabs[]=$this->tab('apoyo',$enrollment);
+        if(auth()->user()->can('Listar Clases') || auth()->user()->can('Crear Clases')) {
+            // Migrated data can contain several student role rows for one Persona.
+            // Read every authorized enrollment without merging or rewriting those rows.
+            foreach(Inscripcione::with('modalidad.nivel.materias','pagos')->whereHas('estudiante',fn($q)=>$q->where('persona_id',$person->id))
+                ->where('vigente',1)->where('estado_id',estado('CORRIENDO'))->orderBy('id')->get() as $enrollment) {
+                $tabs[]=$this->tab('apoyo',$enrollment);
             }
         }
-        if($person->computacion) {
-            foreach(Matriculacion::with('asignatura','pagos')->where('computacion_id',$person->computacion->id)
-                ->where('vigente',1)->where('estado_id',estado('CORRIENDO'))->get() as $enrollment) {
-                if(auth()->user()->can('Listar Clasescom') || auth()->user()->can('Crear Clasescom')) $tabs[]=$this->tab('computacion',$enrollment);
+        if(auth()->user()->can('Listar Clasescom') || auth()->user()->can('Crear Clasescom')) {
+            foreach(Matriculacion::with('asignatura','pagos')->whereHas('computacion',fn($q)=>$q->where('persona_id',$person->id))
+                ->where('vigente',1)->where('estado_id',estado('CORRIENDO'))->orderBy('id')->get() as $enrollment) {
+                $tabs[]=$this->tab('computacion',$enrollment);
             }
         }
-        return $tabs;
+        // Open today's enrollment first; never hide or combine the other enrollments.
+        return collect($tabs)->sortByDesc(fn($tab)=>$tab['todayPrograms']->isNotEmpty())->values()->all();
     }
 
     public function tab(string $canal, $enrollment): array
@@ -34,10 +37,14 @@ class ClassAttendanceView
         foreach(['usuarios','docente','aula'] as $related) $relations[]=$actualRelation.'.'.$related;
         if($canal==='apoyo') { $relations[]='clases.materia';$relations[]='clases.tema'; }
         $programs=$pc::with($relations)->where($ek,$enrollment->id)->orderBy('fecha')->orderBy($start)->orderBy('id')->get();
+        $today=now('America/La_Paz')->toDateString();
+        $datedToday=$programs->filter(fn($p)=>$p->fecha->format('Y-m-d')===$today);
         $canAdd=auth()->user()->can('Crear '.$permission)
             && auth()->user()->can(($canal==='apoyo'?'Crear ':'Editar ').$programPermission)
             && $enrollment->vigente && (int)$enrollment->estado_id===(int)estado('CORRIENDO');
         return ['canal'=>$canal,'enrollment'=>$enrollment,'programaciones'=>$programs,'start'=>$start,'end'=>$end,
+            'todayPrograms'=>$datedToday->filter(fn($p)=>!$p->compensacion),
+            'compensatedToday'=>$datedToday->filter(fn($p)=>(bool)$p->compensacion),
             'permission'=>$permission,'canAdd'=>$canAdd,
             'canCorrect'=>auth()->user()->can('Editar '.$permission)&&auth()->user()->can('Editar '.$programPermission),
             'materias'=>$canal==='apoyo'?$enrollment->modalidad->nivel->materias:collect(),

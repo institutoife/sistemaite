@@ -2,6 +2,8 @@
 
 Implementación del 1 de noviembre de 2026. Trabajo exclusivo en local, sin commit, push, despliegue, consultas a producción ni modificaciones de sus credenciales o configuración.
 
+Ampliación del 7 de noviembre: [corrección de confianza por cuenta en equipos compartidos](2fa-equipos-compartidos-2026-11-07.md). Se separan las cookies de cada usuario y se conservan, cuando son válidas, las anteriores sin extender sus vencimientos. No requiere una nueva migración.
+
 ## Resultado de la revisión previa
 
 El sistema utiliza Laravel SessionGuard, Spatie y TOTP de seis dígitos mediante `pragmarx/google2fa`. Los secretos TOTP se cifran con Laravel; los códigos de recuperación se guardan como hashes dentro de un campo cifrado. La verificación bloquea la reutilización del mismo paso TOTP y consume los códigos de recuperación una sola vez.
@@ -24,7 +26,7 @@ En local se verificó, sin mostrar valores sensibles:
 2. Si el navegador no presenta un dispositivo válido, se solicita el código TOTP o uno de recuperación.
 3. **Después de verificarlo**, aparece «Confiar en este dispositivo durante 30 días», desmarcado inicialmente. El usuario puede indicar un nombre, por ejemplo «PC recepción Central».
 4. Si acepta, el servidor emite un token aleatorio de 256 bits y guarda únicamente su hash HMAC, junto con un selector aleatorio, usuario, entorno, versión de acceso y familia del navegador/sistema. No usa la IP como prueba de identidad.
-5. El navegador recibe una cookie cifrada por Laravel, HttpOnly, SameSite=Strict y host-only. En HTTPS utiliza Secure; fuera de local/testing también lleva prefijo `__Host-`, sin Domain y con Path=/.
+5. El navegador recibe una cookie propia de la cuenta, cifrada por Laravel, HttpOnly, SameSite=Strict y host-only. En HTTPS utiliza Secure; fuera de local/testing también lleva prefijo `__Host-`, sin Domain y con Path=/. Cambiar a otra cuenta conserva la confianza de cada una por separado.
 6. En futuros ingresos se verifica primero la contraseña. El token válido permite omitir solamente el código 2FA. Se rota al utilizarlo y mantiene la **fecha original de vencimiento**, sin prórroga automática.
 7. Borrar cookies, usar otro navegador, llegar al vencimiento o revocar el dispositivo vuelve a exigir el código. Una actualización normal de versión del mismo navegador no invalida por sí sola la confianza.
 
@@ -32,7 +34,7 @@ La confianza no mantiene una sesión iniciada indefinidamente. La cookie de sesi
 
 La opción de registrar confianza solo se admite con verificación real reciente, durante cinco minutos. Un campo enviado por el cliente, una cookie alterada o un token de otro usuario o entorno no sustituyen esa verificación. Las acciones utilizan POST/DELETE con CSRF y límites de solicitudes.
 
-Un token válido de confianza sigue siendo una credencial: se debe usar en equipos personales. La protección no convierte un navegador comprometido en un equipo seguro.
+Un token válido de confianza sigue siendo una credencial: debe utilizarse en equipos de confianza bajo control de sus usuarios. En una PC compartida, cada persona usa su propia cuenta y cierra sesión al terminar su turno. La protección no convierte un navegador comprometido en un equipo seguro.
 
 ## Mi perfil → Seguridad · Dispositivos y sesiones
 

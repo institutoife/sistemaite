@@ -7,6 +7,7 @@
 @if($user->two_factor_confirmed_at)<a href="{{ route('security.two-factor.challenge') }}" class="btn btn-outline-primary">Verificar 2FA para confiar en este navegador</a>@endif</p>
 <div class="card"><div class="card-header" style="background:#375F7A;color:#fff">Mis dispositivos de confianza</div><div class="card-body">
 <p>Recordar un navegador evita repetir el código durante 30 días. No sustituye la contraseña. Borrar sus cookies o usar otro navegador requiere verificar nuevamente 2FA.</p>
+<p class="small text-muted">La confianza y las revocaciones corresponden únicamente a su cuenta. En una PC compartida, cierre sesión al terminar su turno; el siguiente usuario debe ingresar con su propia cuenta.</p>
 <div class="table-responsive"><table class="table table-striped"><thead><tr><th>Dispositivo</th><th>Registrado</th><th>Última actividad</th><th>Vencimiento</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
 @forelse($devices as $device)<tr><td>{{ $device->name }} @if((int)$current===(int)$device->id)<span class="badge" style="background:#26BAA5;color:#fff">Este navegador</span>@endif</td>
 <td>{{ $device->created_at->format('d/m/Y H:i') }}</td><td>{{ $device->last_used_at->format('d/m/Y H:i') }}</td><td>{{ $device->expires_at->format('d/m/Y H:i') }}</td>

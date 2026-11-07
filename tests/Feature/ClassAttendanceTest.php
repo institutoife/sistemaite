@@ -12,6 +12,178 @@ use Tests\AttendanceTestCase;
 
 class ClassAttendanceTest extends AttendanceTestCase
 {
+    public function test_authorized_teacher_conflict_explains_schedule_and_requested_shifted_interval(): void
+    {
+        $original=$this->program();$other=$this->otherEnrollment();
+        $room=DB::table('aulas')->insertGetId(['aula'=>'Otra aula']);
+        $busy=$this->program($other,['fecha'=>'2026-11-02','hora_ini'=>'12:00','hora_fin'=>'13:00',
+            'estado_id'=>estado('INDEFINIDO'),'aula_id'=>$room]);
+        $response=$this->postJson($this->url(),$this->data($original,['horainicio'=>'11:30','horafin'=>'12:30']))
+            ->assertUnprocessable()->assertJsonValidationErrors('docente_id');
+        $message=$response->json('errors.docente_id.0');
+        $this->assertStringContainsString('programación #'.$busy->id,$message);
+        $this->assertStringContainsString('inscripción #'.$other->id,$message);
+        $this->assertStringContainsString('12:00–13:00',$message);
+        $this->assertStringContainsString('Horario solicitado: 11:30–12:30',$message);
+        $this->assertSame(0,ClaseAdicional::count());
+    }
+
+    public function test_conflict_details_are_hidden_without_list_permission(): void
+    {
+        $original=$this->program();$other=$this->otherEnrollment('computacion');
+        $this->program($other,['fecha'=>'2026-11-02','horaini'=>'11:00','horafin'=>'12:00','estado_id'=>estado('INDEFINIDO'),
+            'aula_id'=>DB::table('aulas')->insertGetId(['aula'=>'Otra aula'])]);
+        $actor=$this->actor('Secretaria');$actor->givePermissionTo(['Crear Clases','Crear Programaciones']);$this->actingAs($actor);
+        $message=$this->postJson($this->url(),$this->data($original))->assertUnprocessable()->json('errors.docente_id.0');
+        $this->assertStringNotContainsString('matrícula #',$message);
+        $this->assertStringNotContainsString('programación #',$message);
+        $this->assertStringContainsString('Horario solicitado: 11:00–12:00',$message);
+    }
+
+    public function test_conflict_in_another_branch_never_exposes_record_codes(): void
+    {
+        $original=$this->program();$other=$this->otherEnrollment();
+        $busy=$this->program($other,['fecha'=>'2026-11-02','hora_ini'=>'11:00','hora_fin'=>'12:00','estado_id'=>estado('INDEFINIDO')]);
+        $this->branchScope();
+        DB::table('sede_registros')->insert(['tabla'=>'programacions','registro_id'=>$busy->id,'sede_id'=>2]);
+        try {
+            app(ClassAttendanceService::class)->create('apoyo',$this->enrollment->id,$this->data($original),$this->operator);
+            $this->fail('Debe conservar la restricción entre sucursales.');
+        } catch(\Illuminate\Validation\ValidationException $e) {
+            $message=$e->errors()['docente_id'][0];
+            $this->assertStringContainsString('Sucursal incompatible',$message);
+            $this->assertStringNotContainsString('programación #',$message);
+            $this->assertStringNotContainsString('inscripción #',$message);
+        } finally { app(\App\Services\SedeAccess::class)->reset(); }
+    }
+
+    public function test_modal_opens_enrollment_with_today_classes_before_old_active_enrollment(): void
+    {
+        $current=$this->enroll();
+        $this->program($current,['fecha'=>'2026-11-02','estado_id'=>estado('INDEFINIDO')]);
+        $response=$this->get(route('marcado.presente.tabs',$this->person))->assertOk();
+        $tabs=$response->viewData('tabs');
+        $this->assertEquals($current->id,$tabs[0]['enrollment']->id);
+        $this->assertCount(2,$tabs);
+    }
+
+    public function test_reported_multiple_enrollment_case_opens_finished_class_without_allowing_duplicate_entry(): void
+    {
+        $late=DB::table('estados')->insertGetId(['estado'=>'LLEGO ATRAZADO']);
+        for($i=0;$i<7;$i++) $this->enroll('apoyo',['estado_id'=>$late]);
+        $this->enroll('apoyo',['estado_id'=>estado('INDEFINIDO')]);
+        for($i=0;$i<3;$i++) $this->enroll();
+        $current=$this->enroll();
+        $program=$this->program($current,['fecha'=>'2026-11-02','hora_ini'=>'10:30','hora_fin'=>'12:00',
+            'estado_id'=>estado('FINALIZADO')]);
+        $before=$program->fresh()->getAttributes();
+        $response=$this->get(route('marcado.presente.tabs',$this->person))->assertOk();
+        $tabs=$response->viewData('tabs');
+        $this->assertCount(5,$tabs);
+        $this->assertEquals($current->id,$tabs[0]['enrollment']->id);
+        $this->assertCount(1,$tabs[0]['todayPrograms']);
+        $dom=new \DOMDocument;@$dom->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+        $xpath=new \DOMXPath($dom);
+        $pane=$xpath->query('//*[@id="attendance-apoyo-'.$current->id.'"]')->item(0);
+        $this->assertStringContainsString('active',$pane->getAttribute('class'));
+        $this->assertStringContainsString('FINALIZADO',$pane->textContent);
+        $this->assertStringContainsString('Asistencia registrada',$pane->textContent);
+        $this->assertStringNotContainsString('Sin clase hoy',$pane->textContent);
+        $this->assertSame(0,$xpath->query('.//button[contains(@class,"attendance-quick-entry")]',$pane)->length);
+        $this->assertSame($before,$program->fresh()->getAttributes());
+    }
+
+    public function test_modal_includes_enrollments_of_all_legacy_student_records_for_same_person(): void
+    {
+        $secondStudent=DB::table('estudiantes')->insertGetId(['persona_id'=>$this->person->id]);
+        $second=$this->enroll('apoyo',['estudiante_id'=>$secondStudent]);
+        $this->program($second,['fecha'=>'2026-11-02','estado_id'=>estado('INDEFINIDO')]);
+        $before=DB::table('estudiantes')->where('persona_id',$this->person->id)->count();
+        $response=$this->get(route('marcado.presente.tabs',$this->person))->assertOk();
+        $this->assertEqualsCanonicalizing([$this->enrollment->id,$second->id],array_map(fn($tab)=>$tab['enrollment']->id,$response->viewData('tabs')));
+        $this->assertSame($before,DB::table('estudiantes')->where('persona_id',$this->person->id)->count());
+        $this->assertEquals($second->id,$response->viewData('tabs')[0]['enrollment']->id);
+    }
+
+    public function test_modal_includes_all_legacy_computing_records_without_merging_or_crossing_people(): void
+    {
+        $first=$this->enroll('computacion');
+        $secondRole=DB::table('computacions')->insertGetId(['persona_id'=>$this->person->id]);
+        $second=$this->enroll('computacion',['computacion_id'=>$secondRole]);
+        $this->program($second,['fecha'=>'2026-11-02','estado_id'=>estado('INDEFINIDO')]);
+        $this->otherEnrollment('computacion');
+        $tabs=$this->get(route('marcado.presente.tabs',$this->person))->assertOk()->viewData('tabs');
+        $computing=collect($tabs)->where('canal','computacion');
+        $this->assertEqualsCanonicalizing([$first->id,$second->id],$computing->pluck('enrollment.id')->all());
+        $this->assertEquals($second->id,$tabs[0]['enrollment']->id);
+        $this->assertSame(2,DB::table('computacions')->where('persona_id',$this->person->id)->count());
+    }
+
+    public function test_today_consumed_by_a_future_recovery_is_explained_instead_of_no_class(): void
+    {
+        $original=$this->program(null,['fecha'=>'2026-11-02','hora_ini'=>'08:00','hora_fin'=>'09:00']);
+        $this->postJson($this->url(),$this->data($original,['fecha'=>'2026-11-03','marcar_entrada'=>0]))->assertOk();
+        $this->get(route('marcado.presente.tabs',$this->person))->assertOk()
+            ->assertSee('La clase programada para hoy ya fue vinculada a una clase adicional.')
+            ->assertDontSee('Sin clase hoy.')->assertSee('03/11/2026');
+    }
+
+    public function test_inactive_enrollment_schedule_does_not_reserve_teacher_or_student(): void
+    {
+        foreach(['apoyo','computacion'] as $channel) {
+            $current=$this->otherEnrollment($channel);
+            $original=$this->program($current);
+            $inactive=$this->otherEnrollment($channel);$inactive->vigente=false;$inactive->save();
+            $otherRoom=DB::table('aulas')->insertGetId(['aula'=>'Otra aula']);
+            $this->program($inactive,array_merge(['fecha'=>'2026-11-02','estado_id'=>estado('INDEFINIDO'),'aula_id'=>$otherRoom],
+                $channel==='apoyo'?['hora_ini'=>'11:00','hora_fin'=>'12:00']:['horaini'=>'11:00','horafin'=>'12:00']));
+            $this->postJson($this->url($current),$this->data($original))->assertOk();
+        }
+    }
+
+    public function test_attendance_in_inactive_enrollment_still_protects_actual_teacher_occupancy(): void
+    {
+        $current=$this->otherEnrollment('apoyo');$original=$this->program($current);
+        $inactive=$this->otherEnrollment('computacion');$inactive->vigente=false;$inactive->save();
+        $otherRoom=DB::table('aulas')->insertGetId(['aula'=>'Otra aula']);
+        $program=$this->program($inactive,['fecha'=>'2026-11-02','estado_id'=>estado('FINALIZADO'),'aula_id'=>$otherRoom]);
+        DB::table('clasecoms')->insert(['programacioncom_id'=>$program->id,'fecha'=>'2026-11-02','horainicio'=>'11:00','horafin'=>'12:00',
+            'docente_id'=>$this->teacher,'aula_id'=>$otherRoom,'estado_id'=>estado('PRESENTE')]);
+        $this->postJson($this->url($current),$this->data($original))->assertUnprocessable()->assertJsonValidationErrors('docente_id');
+    }
+
+    public function test_inactive_schedule_of_same_student_does_not_block_a_current_enrollment(): void
+    {
+        $original=$this->program();$inactive=$this->enroll('apoyo',['vigente'=>0]);
+        $this->program($inactive,['fecha'=>'2026-11-02','hora_ini'=>'11:00','hora_fin'=>'12:00','estado_id'=>estado('INDEFINIDO')]);
+        $this->postJson($this->url(),$this->data($original))->assertOk();
+        $this->assertSame(1,Clase::count());
+    }
+
+    public function test_enrollment_not_running_does_not_reserve_teacher_even_if_vigente_flag_remains(): void
+    {
+        $original=$this->program();$closed=$this->otherEnrollment();$closed->estado_id=estado('FINALIZADO');$closed->save();
+        $this->program($closed,['fecha'=>'2026-11-02','hora_ini'=>'11:00','hora_fin'=>'12:00','estado_id'=>estado('INDEFINIDO'),
+            'aula_id'=>DB::table('aulas')->insertGetId(['aula'=>'Otra aula'])]);
+        $this->postJson($this->url(),$this->data($original))->assertOk();
+        $this->assertEquals(estado('FINALIZADO'),$closed->fresh()->estado_id);
+    }
+
+    public function test_modal_legacy_role_lookup_still_respects_branch_and_create_permissions(): void
+    {
+        $secondRole=DB::table('estudiantes')->insertGetId(['persona_id'=>$this->person->id]);
+        $foreign=$this->enroll('apoyo',['estudiante_id'=>$secondRole]);
+        $this->program($foreign,['fecha'=>'2026-11-02','estado_id'=>estado('INDEFINIDO')]);
+        $this->branchScope();
+        DB::table('sede_registros')->insert(['tabla'=>'inscripciones','registro_id'=>$foreign->id,'sede_id'=>2]);
+        try {
+            $tabs=app(ClassAttendanceView::class)->tabs($this->person);
+            $this->assertSame([$this->enrollment->id],collect($tabs)->pluck('enrollment.id')->all());
+        } finally { app(\App\Services\SedeAccess::class)->reset(); }
+        $viewer=$this->actor('Docente');$viewer->givePermissionTo('Listar Clases');$this->actingAs($viewer);
+        $this->get(route('marcado.presente.tabs',$this->person))->assertOk()->assertDontSee('attendance-quick-entry');
+    }
+
     public function test_recovery_preserves_original_and_reuses_attendance_without_new_charge(): void
     {
         $original=$this->program();$before=$original->getAttributes();$paymentCount=DB::table('pagos')->count();

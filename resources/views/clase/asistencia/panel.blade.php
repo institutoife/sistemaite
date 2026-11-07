@@ -1,6 +1,6 @@
 @php
     $enrollment=$tab['enrollment'];
-    $todayPrograms=$tab['programaciones']->filter(fn($p)=>$p->fecha->isToday() && !$p->compensacion);
+    $todayPrograms=$tab['todayPrograms'];
 @endphp
 <div class="attendance-panel" data-attendance-panel data-today="{{ now('America/La_Paz')->toDateString() }}" data-server-now="{{ now('America/La_Paz')->toIso8601String() }}" data-refresh-url="{{ $refreshUrl??request()->url() }}">
     <div class="mb-2"><strong>{{ $tab['canal']==='apoyo'?'Inscripción':'Matrícula' }} #{{ $enrollment->id }}</strong> · {{ $tab['canal']==='apoyo'?optional($enrollment->modalidad)->modalidad:optional($enrollment->asignatura)->asignatura }}</div>
@@ -50,7 +50,13 @@
                 </div>
             </div>
         @empty
-            <div class="alert alert-info">Sin clase hoy. Puede adelantar, recuperar o agregar una clase dentro de esta inscripción o matrícula.</div>
+            @if($tab['compensatedToday']->isNotEmpty())
+                <div class="alert alert-info">La clase programada para hoy ya fue vinculada a una clase adicional. Consulte la clase efectiva y su historial.
+                    @foreach($tab['compensatedToday'] as $program)<div class="mt-1">Original #{{ $program->id }}: @include('clase.asistencia.relation')</div>@endforeach
+                </div>
+            @else
+                <div class="alert alert-info">Sin clase hoy en esta {{ $tab['canal']==='apoyo'?'inscripción':'matrícula' }} #{{ $enrollment->id }}. Revise también las otras pestañas. Puede adelantar, recuperar o agregar una clase dentro de esta inscripción o matrícula.</div>
+            @endif
         @endforelse
         @if($tab['canAdd']) @include('clase.asistencia.add') @endif
     @endif

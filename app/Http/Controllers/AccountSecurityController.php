@@ -24,7 +24,7 @@ class AccountSecurityController extends Controller
         // Preserve second-factor proof only if this session already completed it.
         if ($request->session()->has('two_factor_verified')) { $request->session()->put('two_factor_verified',(int)$user->auth_version); }
         $request->session()->forget(['two_factor_via_device','trusted_device_current','trusted_device_offer','two_factor_fresh_at']);
-        app(TrustedDevices::class)->forgetCookie($request);
+        app(TrustedDevices::class)->forgetCookie($request,$user);
         return redirect()->route('profile.show')->with('success','Contraseña actualizada. Se revocaron las otras sesiones.');
     }
     public function twoFactorForm(Request $request)
@@ -104,14 +104,14 @@ class AccountSecurityController extends Controller
         abort_unless($trust->ready(),503);
         $record=UserTrustedDevice::where('user_id',$request->user()->id)->findOrFail($device);
         if(!$record->revoked_at){$record->update(['revoked_at'=>now()]);app(AccountSecurity::class)->audit($request->user(),'trusted_device_revoked',[],['device_id'=>$record->id]);}
-        if((int)$request->session()->get('trusted_device_current')===(int)$record->id){$trust->forgetCookie($request);$request->session()->forget('trusted_device_current');}
+        if((int)$request->session()->get('trusted_device_current')===(int)$record->id){$trust->forgetCookie($request,$request->user());$request->session()->forget('trusted_device_current');}
         return redirect()->route('security.devices.index')->with('success','Confianza revocada. Ese dispositivo deberá verificar nuevamente el segundo factor.');
     }
 
     public function revokeAllDevices(Request $request,TrustedDevices $trust)
     {
         abort_unless($trust->ready(),503);$this->currentPassword($request);
-        $trust->revokeAll($request->user());$trust->forgetCookie($request);$request->session()->forget('trusted_device_current');
+        $trust->revokeAll($request->user());$trust->forgetCookie($request,$request->user());$request->session()->forget('trusted_device_current');
         app(AccountSecurity::class)->audit($request->user(),'trusted_devices_revoked');
         return redirect()->route('security.devices.index')->with('success','Se revocaron todos los dispositivos de confianza.');
     }
@@ -123,7 +123,7 @@ class AccountSecurityController extends Controller
         $user=DB::transaction(function()use($request,$security){$user=\App\Models\User::lockForUpdate()->findOrFail($request->user()->id);$security->revoke($user);$security->audit($user,'other_sessions_revoked');return $user;});
         $request->session()->regenerate();$request->session()->regenerateToken();$request->session()->put('auth_version',(int)$user->auth_version);
         if($verified){$request->session()->put('two_factor_verified',(int)$user->auth_version);}
-        $request->session()->forget(['two_factor_via_device','trusted_device_current','trusted_device_offer','two_factor_fresh_at']);$trust->forgetCookie($request);
+        $request->session()->forget(['two_factor_via_device','trusted_device_current','trusted_device_offer','two_factor_fresh_at']);$trust->forgetCookie($request,$user);
         return redirect()->route('security.devices.index')->with('success','Se cerraron las demás sesiones y se revocó la confianza de todos los dispositivos. Este ingreso sigue activo.');
     }
 }

@@ -26,10 +26,16 @@ class TrustedDevices
         return app()->environment('production') ? 'IFE PRODUCCIÓN' : (app()->environment(['local','testing']) ? 'IFE LOCAL' : 'IFE PRUEBAS');
     }
 
-    public function cookieName(): string
+    public function legacyCookieName(): string
     {
         $localHttp = app()->environment(['local','testing']) && parse_url(config('app.url'), PHP_URL_SCHEME) !== 'https';
         return ($localHttp ? '' : '__Host-').'ife_trust_'.substr($this->environmentHash(), 0, 16);
+    }
+
+    public function cookieName(User $user): string
+    {
+        // Separate accounts sharing one browser without placing account IDs/emails in cookie names.
+        return $this->legacyCookieName().'_'.substr($this->digest('cookie-user:'.$user->id),0,24);
     }
 
     private function transportAllowed(Request $request): bool
@@ -44,16 +50,36 @@ class TrustedDevices
         return hash_hmac('sha256', $value, config('app.key').'|'.$this->environmentHash());
     }
 
-    private function queueCookie(Request $request, string $value, $expires): void
+    private function queueCookie(Request $request, string $name, string $value, $expires): void
     {
         $secure = !app()->environment(['local','testing']) || $request->isSecure();
-        Cookie::queue(new HttpCookie($this->cookieName(), $value, $expires, '/', null, $secure, true, false, 'strict'));
+        Cookie::queue(new HttpCookie($name, $value, $expires, '/', null, $secure, true, false, 'strict'));
     }
 
-    public function forgetCookie(Request $request): void
+    private function forgetNamedCookie(Request $request, string $name): void
     {
-        $this->queueCookie($request, '', now()->subYear());
-        $request->cookies->remove($this->cookieName());
+        $this->queueCookie($request, $name, '', now()->subYear());
+        $request->cookies->remove($name);
+    }
+
+    private function tokenParts($value): ?array
+    {
+        return is_string($value) && preg_match('/^([a-f0-9]{32}):([a-f0-9]{64})$/D', $value, $parts) ? $parts : null;
+    }
+
+    private function forgetOwnLegacyCookie(Request $request, User $user): void
+    {
+        $parts=$this->tokenParts($request->cookie($this->legacyCookieName()));
+        if ($parts && $this->ready() && UserTrustedDevice::where('selector',$parts[1])->where('user_id',$user->id)->exists()) {
+            $this->forgetNamedCookie($request,$this->legacyCookieName());
+        }
+    }
+
+    public function forgetCookie(Request $request, User $user): void
+    {
+        $this->forgetNamedCookie($request,$this->cookieName($user));
+        // An old shared cookie must survive another account's login, reset or refusal to trust.
+        $this->forgetOwnLegacyCookie($request,$user);
     }
 
     public function deviceName(Request $request): string
@@ -107,7 +133,7 @@ class TrustedDevices
                 'token_hash'=>$this->digest($validator), 'environment_hash'=>$this->environmentHash(),
                 'user_agent_hash'=>$this->agentHash($request), 'auth_version'=>$user->auth_version,
                 'name'=>$name ?: $this->deviceName($request), 'last_used_at'=>now(), 'expires_at'=>now()->addDays(30)]);
-            $this->queueCookie($request, $device->selector.':'.$validator, $device->expires_at);
+            $this->queueCookie($request, $this->cookieName($user), $device->selector.':'.$validator, $device->expires_at);
             app(AccountSecurity::class)->audit($user, 'trusted_device_added', [], ['device_id'=>$device->id, 'expires_at'=>$device->expires_at]);
             return $device;
         });
@@ -119,18 +145,23 @@ class TrustedDevices
     public function restore(User $subject, Request $request): bool
     {
         if (!$this->ready() || !$subject->two_factor_confirmed_at || $subject->force_password_change || !$this->transportAllowed($request)) { return false; }
-        $value = $request->cookie($this->cookieName());
-        if (!is_string($value) || !preg_match('/^([a-f0-9]{32}):([a-f0-9]{64})$/D', $value, $parts)) { return false; }
+        $value = $request->cookie($this->cookieName($subject));
+        $legacy = $value === null;
+        if ($legacy) { $value=$request->cookie($this->legacyCookieName()); }
+        $parts=$this->tokenParts($value);
+        if (!$parts) { return false; }
         $device = DB::transaction(function () use ($subject, $request, $parts) {
             $user = User::lockForUpdate()->findOrFail($subject->id);
             $device = UserTrustedDevice::where('selector', $parts[1])->where('user_id', $user->id)->lockForUpdate()->first();
             if (!$device || !$this->eligible($user, $device, $request) || app(AccountSecurity::class)->rejection($user) || !hash_equals($device->token_hash, $this->digest($parts[2]))) { return null; }
             $validator = bin2hex(random_bytes(32));
             $device->update(['token_hash'=>$this->digest($validator), 'last_used_at'=>now()]);
-            $this->queueCookie($request, $device->selector.':'.$validator, $device->expires_at);
+            $this->queueCookie($request, $this->cookieName($user), $device->selector.':'.$validator, $device->expires_at);
             return $device;
         });
-        if (!$device) { $this->forgetCookie($request); return false; }
+        if (!$device) { $this->forgetCookie($request,$subject); return false; }
+        // Migrate only a valid token owned by this account; keep its original expiration.
+        if ($legacy) { $this->forgetOwnLegacyCookie($request,$subject); }
         $request->session()->put(['two_factor_verified'=>(int)$subject->auth_version, 'two_factor_via_device'=>$device->id, 'trusted_device_current'=>$device->id]);
         app(AccountSecurity::class)->audit($subject, 'login_trusted_device', [], ['device_id'=>$device->id]);
         return true;
@@ -155,11 +186,11 @@ class TrustedDevices
     {
         $id = $request->session()->get('trusted_device_current');
         if ($id) { UserTrustedDevice::where('id', $id)->where('user_id', $user->id)->whereNull('revoked_at')->update(['revoked_at'=>now()]); }
-        $value=$request->cookie($this->cookieName());
-        if(is_string($value)&&preg_match('/^([a-f0-9]{32}):[a-f0-9]{64}$/D',$value,$parts)){
-            UserTrustedDevice::where('selector',$parts[1])->where('user_id',$user->id)->whereNull('revoked_at')->update(['revoked_at'=>now()]);
+        foreach ([$this->cookieName($user),$this->legacyCookieName()] as $name) {
+            $parts=$this->tokenParts($request->cookie($name));
+            if ($parts) { UserTrustedDevice::where('selector',$parts[1])->where('user_id',$user->id)->whereNull('revoked_at')->update(['revoked_at'=>now()]); }
         }
         $request->session()->forget('trusted_device_current');
-        $this->forgetCookie($request);
+        $this->forgetCookie($request,$user);
     }
 }

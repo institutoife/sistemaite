@@ -136,7 +136,7 @@ class ClassAttendanceService
                     'original_id', 'Solo se recuperan clases pasadas con licencia, falta u otra ausencia.');
             }
             $this->check((bool)$original->habilitado, 'original_id', 'La clase original aún no está habilitada por sus pagos.');
-            $this->conflicts($person,$data,[],[$canal=>[$original->id]]);
+            $this->conflicts($person,$data,$actor,[],[$canal=>[$original->id]]);
             $program = new $programClass;
             $program->forceFill(['fecha'=>$data['fecha'], $start=>$data['horainicio'], $end=>$data['horafin'],
                 'horas_por_clase'=>$duration/60, 'docente_id'=>$data['docente_id'], 'aula_id'=>$data['aula_id'],
@@ -186,7 +186,7 @@ class ClassAttendanceService
                 'horafin','La duración no puede superar la de la clase programada.');
             $this->check((bool)$program->habilitado,'pago','La clase no está habilitada por sus pagos. Registre primero el pago correspondiente.');
             DB::table('docentes')->where('id',$data['docente_id'])->lockForUpdate()->first();
-            $this->conflicts($person,$data,[$canal=>[$program->id]]);
+            $this->conflicts($person,$data,$actor,[$canal=>[$program->id]]);
             $attendance=new $attendanceClass;
             $attendance->forceFill([$key=>$program->id,'fecha'=>$data['fecha'],'horainicio'=>$data['horainicio'],
                 'horafin'=>$data['horafin'],'docente_id'=>$data['docente_id'],'aula_id'=>$data['aula_id'],
@@ -275,7 +275,7 @@ class ClassAttendanceService
             }
             if($attendance) { $this->check($data['fecha']<=now()->toDateString(),'fecha','Una asistencia realizada no puede trasladarse al futuro.'); }
             DB::table('docentes')->where('id',$data['docente_id'])->lockForUpdate()->first();
-            $this->conflicts($person,$data,[$canal=>[$program->id]],$original?[$canal=>[$original->id]]:[]);
+            $this->conflicts($person,$data,$actor,[$canal=>[$program->id]],$original?[$canal=>[$original->id]]:[]);
             $before=['programacion'=>$program->getAttributes(),'asistencia'=>$attendance?$attendance->getAttributes():null,'adicional'=>$program->adicional->getAttributes()];
             $program->forceFill(['fecha'=>$data['fecha'],$start=>$data['horainicio'],$end=>$data['horafin'],
                 'docente_id'=>$data['docente_id'],'aula_id'=>$data['aula_id']]);
@@ -294,7 +294,7 @@ class ClassAttendanceService
         },3);
     }
 
-    private function conflicts(int $person, array $data, array $exclude = [], array $originals = []): void
+    private function conflicts(int $person, array $data, User $actor, array $exclude = [], array $originals = []): void
     {
         // Global availability, including other branches; the error never reveals their records.
         foreach (['apoyo','computacion'] as $canal) {
@@ -306,20 +306,47 @@ class ClassAttendanceService
             $table=(new $pc)->getTable();
             $schedule=DB::table($table)->whereDate('fecha',$data['fecha'])->where('activo',1)
                 ->whereIn('estado_id',[estado('INDEFINIDO'),estado('PRESENTE')])
+                // An inactive enrollment cannot take a new scheduled class. Its real
+                // attendances are still checked below, regardless of enrollment state.
+                ->whereIn($ek,DB::table($canal==='apoyo'?'inscripciones':'matriculacions')->where('vigente',1)->where('estado_id',estado('CORRIENDO'))->select('id'))
                 ->whereNotExists(fn($q)=>$q->selectRaw('1')->from('clases_adicionales')->whereColumn('original_'.$pk,$table.'.id'))
                 ->whereNotIn('id',$ids)->whereRaw('TIME('.$start.') < ?',[$data['horafin'].':00'])->whereRaw('TIME('.$end.') > ?',[$data['horainicio'].':00']);
-            $this->check(!$this->incompatibleTeaching(clone $schedule,$data,$table,$table,$pk,$canal==='apoyo'?'inscripciones':'matriculacions',$ek)->exists(),
-                'docente_id', 'El docente tiene otra clase en un aula o Sucursal incompatible con ese horario.');
+            $this->checkTeacherConflict($this->incompatibleTeaching(clone $schedule,$data,$table,$table,$pk,$canal==='apoyo'?'inscripciones':'matriculacions',$ek),
+                $canal,$data,$actor,false);
             $this->check(!(clone $schedule)->whereIn($ek,$studentQuery)->exists(), 'horainicio', 'El estudiante tiene otra clase en ese horario.');
             $actualTable=(new $ac)->getTable();
             $actual=DB::table($actualTable)->whereDate('fecha',$data['fecha'])->whereNotIn($pk,$ids)
                 ->whereIn('estado_id',[estado('PRESENTE'),estado('FINALIZADO')])
                 ->whereRaw('TIME(horainicio) < ?',[$data['horafin'].':00'])->whereRaw('TIME(horafin) > ?',[$data['horainicio'].':00']);
-            $this->check(!$this->incompatibleTeaching(clone $actual,$data,$actualTable,$table,$pk,$canal==='apoyo'?'inscripciones':'matriculacions',$ek,true)->exists(),
-                'docente_id','El docente tiene una asistencia en un aula o Sucursal incompatible con ese horario.');
+            $this->checkTeacherConflict($this->incompatibleTeaching(clone $actual,$data,$actualTable,$table,$pk,$canal==='apoyo'?'inscripciones':'matriculacions',$ek,true),
+                $canal,$data,$actor,true);
             $this->check(!(clone $actual)->whereIn($pk,DB::table((new $pc)->getTable())->whereIn($ek,$studentQuery)->select('id'))->exists(),
                 'horainicio','El estudiante tiene una asistencia que coincide con ese horario.');
         }
+    }
+
+    private function checkTeacherConflict($query, string $channel, array $data, User $actor, bool $actual): void
+    {
+        $conflict=$query->orderBy('id')->first(['id']);
+        if (!$conflict) return;
+        $message=$actual?'El docente tiene una asistencia en un aula o Sucursal incompatible con ese horario.'
+            :'El docente tiene otra clase en un aula o Sucursal incompatible con ese horario.';
+        [$programClass,,$attendanceClass,,$key,$start,$end,$permission]=$this->definition($channel);
+        // Global availability must not reveal another branch's records or records the actor cannot list.
+        if ($actor->hasAnyRole(['Admin','Secretaria']) && $actor->can('Listar '.$permission)) {
+            $class=$actual?$attendanceClass:$programClass;
+            $visible=$class::find($conflict->id);
+            $program=$actual?($channel==='apoyo'?optional($visible)->programacion:optional($visible)->programacioncom):$visible;
+            $enrollment=$program?($channel==='apoyo'?$program->inscripcione:$program->matriculacion):null;
+            if ($visible && $enrollment) {
+                $message.=' Conflicto: '.($actual?'asistencia':'programación').' #'.$visible->id
+                    .' de '.($channel==='apoyo'?'inscripción':'matrícula').' #'.$enrollment->id
+                    .', '.$visible->{$actual?'horainicio':$start}->format('H:i').'–'.$visible->{$actual?'horafin':$end}->format('H:i')
+                    .', aula #'.$visible->aula_id.'.';
+            }
+        }
+        $message.=' Horario solicitado: '.$data['horainicio'].'–'.$data['horafin'].'. Revise docente, aula y horario antes de confirmar.';
+        $this->check(false,'docente_id',$message);
     }
 
     private function incompatibleTeaching($query,array $data,string $table,string $programTable,string $programKey,string $enrollmentTable,string $enrollmentKey,bool $actual=false)

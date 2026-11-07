@@ -22,7 +22,7 @@ class EnforceUserAccess
         if ($request->routeIs('logout')) { return $next($request); }
         if(!app(\App\Services\TrustedDevices::class)->sessionValid($user,$request)){
             $request->session()->forget(['two_factor_verified','two_factor_via_device','trusted_device_current','trusted_device_offer','two_factor_fresh_at']);
-            app(\App\Services\TrustedDevices::class)->forgetCookie($request);
+            app(\App\Services\TrustedDevices::class)->forgetCookie($request,$user);
         }
         $challenge=$request->routeIs('security.two-factor.challenge','security.two-factor.verify');
         if ($user->two_factor_confirmed_at&&(int)$request->session()->get('two_factor_verified',-1)!==(int)$user->auth_version&&!$challenge) { return $this->redirect($request,'security.two-factor.challenge','Verifique su segundo factor.'); }
