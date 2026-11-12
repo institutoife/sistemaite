@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit bootstrap="vendor/autoload.php" colors="false" cacheResult="false">
-    <testsuites><testsuite name="Asistencia local"><file>tests/Feature/ClassAttendanceTest.php</file><file>tests/Feature/PresentAttendanceTest.php</file><file>tests/Feature/InscriptionCreationTest.php</file></testsuite></testsuites>
+    <testsuites><testsuite name="Asistencia local"><file>tests/Feature/ClassAttendanceTest.php</file><file>tests/Feature/AttendanceEntryTest.php</file><file>tests/Feature/PresentAttendanceTest.php</file><file>tests/Feature/InscriptionCreationTest.php</file><file>tests/Feature/SharedEnrollmentsTest.php</file></testsuite></testsuites>
     <php>
         <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_KEY" value="base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=" force="true"/>

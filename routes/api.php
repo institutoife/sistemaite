@@ -250,9 +250,10 @@ Route::get('niveles', function () {
 });
 
 Route::get('inscripciones', function () {
-    return datatables()->of(Inscripcione::get())
+    return datatables()->eloquent(Inscripcione::with('estado')->withSucursalOrigen())
         ->addColumn('btn', 'inscripcione.action')
-        ->rawColumns(['btn'])
+        ->addColumn('estado_sucursal',fn($inscripcion)=>view('inscripcione.estado-sucursal',compact('inscripcion'))->render())
+        ->rawColumns(['btn','estado_sucursal'])
         ->toJson();
 });
 Route::get('feriados', function () {

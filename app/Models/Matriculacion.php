@@ -8,6 +8,7 @@ use App\Models\BranchModel as Model;
 class Matriculacion extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\HasEnrollmentOrigin;
 
     protected $dates = [
         'fechaini','fechafin','fecha_proximo_pago','created_at', 'updated_at',

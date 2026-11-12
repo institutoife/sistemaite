@@ -9,7 +9,9 @@ use Illuminate\Validation\ValidationException;
 
 class SedeAccess
 {
-    private $enabled=false,$user,$active,$family=false,$people=[],$contacts=[],$teachers=[],$rooms=[];
+    private $enabled=false,$user,$active,$family=false,$people=[],$contacts=[],$teachers=[],$rooms=[],$enrollmentOrigin;
+    public const SHARED_ACADEMIC=['inscripciones','matriculacions','programacions','programacioncoms','clases','clasecoms','sesions','sesioncoms','estudiantes','computacions','docentes','aulas','estudiante_grado'];
+    public const ACADEMIC_TYPES=[\App\Models\Inscripcione::class,\App\Models\Matriculacion::class,\App\Models\Programacion::class,\App\Models\Programacioncom::class,\App\Models\Clase::class,\App\Models\Clasecom::class];
     public const PERSON_ROLES=['estudiantes','computacions','docentes','administrativos','cliservicios','clicopys','clipracticos','proveedors'];
     public const RECORDS=['inscripciones','matriculacions','programacions','programacioncoms','clases','clasecoms','sesions','sesioncoms',
         'pagos','ventas','detalle_ventas','otroingresos','observacions','files','licencias','calificacions','estudiante_grado','ninacos',
@@ -22,9 +24,10 @@ class SedeAccess
         'detalle_ventas'=>['venta_id'=>'ventas'],'estudiante_grado'=>['estudiante_id'=>'estudiantes'],
         'crm_actividad_detalles'=>['observacion_id'=>'observacions'],
     ];
-    public function reset(): void { $this->enabled=false; $this->user=null; $this->active=null; $this->family=false; $this->people=[]; $this->contacts=[]; $this->teachers=[];$this->rooms=[]; }
+    public function reset(): void { $this->enabled=false; $this->user=null; $this->active=null; $this->family=false; $this->people=[]; $this->contacts=[]; $this->teachers=[];$this->rooms=[];$this->enrollmentOrigin=null; }
     public function start(User $user,$request): void
     {
+        $this->enrollmentOrigin=null;
         $this->user=$user; $this->enabled=true; $this->family=app(AccountSecurity::class)->family($user);
         if ($this->family) {
             $this->people=array_filter([(int)$user->persona_id]);
@@ -51,6 +54,12 @@ class SedeAccess
         $request->session()->put('sede_activa',$this->active);
     }
     public function active(): ?int { return $this->active; }
+    public function classroomBranch($aula): ?int
+    {
+        if(!$this->enabled)return null;
+        $branch=DB::table('sede_registros')->where('tabla','aulas')->where('registro_id',$aula)->value('sede_id');
+        return $branch===null?null:(int)$branch;
+    }
     public function selectForCreation(Request $request): void
     {
         if (!$this->enabled) { return; }
@@ -60,9 +69,11 @@ class SedeAccess
         if (!$sede) {
             throw ValidationException::withMessages(['sede_id'=>'Seleccione la Sucursal de la inscripción. «Todas · Admin» permite consultar; para registrar debe elegir una Sucursal.']);
         }
-        abort_unless(in_array($sede,$this->allowedIds($this->user),true),403,'Sucursal no autorizada.');
-        $request->session()->put('sede_activa',$sede);
-        $this->start($this->user,$request);
+        if (!CrmSede::whereKey($sede)->where('activa',true)->exists()) {
+            throw ValidationException::withMessages(['sede_id'=>'Seleccione una Sucursal existente y activa.']);
+        }
+        // Origin is attribution, not an access context or an employee reassignment.
+        $this->enrollmentOrigin=$sede;
     }
     public function canReadPhoto(array $file,ProfilePhotoService $photos): bool
     {
@@ -119,7 +130,11 @@ class SedeAccess
     }
     private function staffFilter($q,string $table,string $alias): void
     {
+        if (in_array($table,self::SHARED_ACADEMIC,true)) { return; }
         if($table==='users'&&!$this->user->hasRole('Admin')){
+            foreach($q->joins??[] as $join) {
+                if(is_string($join->table)&&preg_match('/^(userables|pagos)(?:\s|$)/i',$join->table)) { return; }
+            }
             $q->where(function($x)use($alias){
                 $x->where($alias.'.id',$this->user->id)->orWhereExists(fn($p)=>$p->selectRaw('1')->from('sede_user as su')->whereColumn('su.user_id',$alias.'.id')->where('su.sede_id',$this->active??0));
                 if(config('user_access.legacy_records_visible'))$x->orWhereNotExists(fn($p)=>$p->selectRaw('1')->from('sede_user as su')->whereColumn('su.user_id',$alias.'.id'));
@@ -128,6 +143,13 @@ class SedeAccess
             $q->where(function ($x) use ($alias) {
                 $x->whereExists(function ($p) use ($alias) { $p->selectRaw('1')->from('persona_sede as ps')->whereColumn('ps.persona_id',$alias.'.id')->where('ps.sede_id',$this->active??0); });
                 if (config('user_access.legacy_records_visible')) { $x->orWhereNotExists(fn($p)=>$p->selectRaw('1')->from('persona_sede as ps')->whereColumn('ps.persona_id',$alias.'.id')); }
+                foreach(['estudiantes','computacions','docentes'] as $role) {
+                    $x->orWhereExists(fn($p)=>$p->selectRaw('1')->from($role.' as academic_person')->whereColumn('academic_person.persona_id',$alias.'.id'));
+                }
+                $x->orWhereExists(function($p)use($alias){
+                    $p->selectRaw('1')->from('persona_persona as academic_parent')->whereColumn('academic_parent.persona_id_apoderado',$alias.'.id')
+                        ->where(function($child){foreach(['estudiantes','computacions'] as $role){$child->orWhereExists(fn($r)=>$r->selectRaw('1')->from($role.' as academic_child')->whereColumn('academic_child.persona_id','academic_parent.persona_id'));}});
+                });
             });
         } elseif (in_array($table,self::PERSON_ROLES,true)||$table==='telefonos'||$table==='crm_seguimientos') {
             $q->whereIn($alias.'.persona_id',function ($p) { $p->select('id')->from('personas'); $this->staffFilter($p,'personas','personas'); });
@@ -138,6 +160,9 @@ class SedeAccess
             $q->where(function ($x) use ($table,$alias,$key) {
                 $x->whereExists(fn($p)=>$p->selectRaw('1')->from('sede_registros as sr')->where('sr.tabla',$table)->whereColumn('sr.registro_id',$alias.'.'.$key)->where('sr.sede_id',$this->active??0));
                 if (config('user_access.legacy_records_visible')) { $x->orWhereNotExists(fn($p)=>$p->selectRaw('1')->from('sede_registros as sr')->where('sr.tabla',$table)->whereColumn('sr.registro_id',$alias.'.'.$key)); }
+                if($table==='pagos') { $x->orWhereIn($alias.'.pagable_type',[\App\Models\Inscripcione::class,\App\Models\Matriculacion::class]); }
+                $morph=['observacions'=>'observable','files'=>'fileable','licencias'=>'licenciable','calificacions'=>'calificable'][$table]??null;
+                if($morph) { $x->orWhereIn($alias.'.'.$morph.'_type',self::ACADEMIC_TYPES); }
             });
         }
         if($q instanceof \App\Support\SedeQueryBuilder)$q->rememberSedeGuard();
@@ -170,7 +195,13 @@ class SedeAccess
             $query=DB::table($table)->where($record->getKeyName(),$record->getKey()); $this->constrain($query);
             abort_unless($query->exists(),403,'Este registro no está autorizado en la Sucursal activa.');
         }
-        $destination=$this->active;$linkedHistory=false;
+        $destination=(!$record->exists&&in_array($table,['inscripciones','matriculacions'],true))?($this->enrollmentOrigin??$this->active):$this->active;
+        if(!$record->exists&&in_array($table,['clases','clasecoms'],true))$destination=$this->classroomBranch($record->aula_id)??$destination;
+        $linkedHistory=false;
+        if(!$record->exists&&$destination===null&&$this->sharedAcademicRecord($record)&&!in_array($table,['inscripciones','matriculacions'],true)) {
+            // All-branches staff may manage academic history without changing its origin.
+            $destination=$this->academicParentBranch($record);$linkedHistory=true;
+        }
         if(!$record->exists&&$destination===null&&$this->user->hasRole('Admin')){
             // An admin may append history across branches; inherit its existing parent's attribution.
             if($table==='observacions'&&$record->observable_type&&$record->observable_id){
@@ -222,5 +253,31 @@ class SedeAccess
         } elseif (in_array($table,self::RECORDS,true)) {
             DB::table('sede_registros')->insert(['tabla'=>$table,'registro_id'=>$record->getKey(),'sede_id'=>$sede,'created_at'=>now()]);
         }
+    }
+
+    private function sharedAcademicRecord(Model $record): bool
+    {
+        if(in_array($record->getTable(),self::SHARED_ACADEMIC,true))return true;
+        if($record->getTable()==='pagos')return in_array($record->pagable_type,[\App\Models\Inscripcione::class,\App\Models\Matriculacion::class],true);
+        foreach(['observable','fileable','licenciable','calificable'] as $morph){if(in_array($record->getAttribute($morph.'_type'),self::ACADEMIC_TYPES,true))return true;}
+        return false;
+    }
+
+    private function academicParentBranch(Model $record): ?int
+    {
+        if($record->getTable()==='pagos') {
+            $table=$record->pagable_type===\App\Models\Inscripcione::class?'inscripciones':'matriculacions';$id=$record->pagable_id;
+        } else {
+            $parents=self::PARENTS[$record->getTable()]??[];$key=array_key_first($parents);
+            $table=$key?$parents[$key]:null;$id=$key?$record->$key:null;
+            foreach(['observable','fileable','licenciable','calificable'] as $morph){if(in_array($record->getAttribute($morph.'_type'),self::ACADEMIC_TYPES,true)){$table=(new ($record->getAttribute($morph.'_type')))->getTable();$id=$record->getAttribute($morph.'_id');break;}}
+        }
+        for($depth=0;$table&&$id&&$depth<4;$depth++){
+            $branch=DB::table('sede_registros')->where('tabla',$table)->where('registro_id',$id)->value('sede_id');
+            if($branch!==null)return (int)$branch;
+            $parents=self::PARENTS[$table]??[];$key=array_key_first($parents);
+            $id=$key?DB::table($table)->where('id',$id)->value($key):null;$table=$key?$parents[$key]:null;
+        }
+        return null;
     }
 }

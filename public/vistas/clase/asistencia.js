@@ -43,6 +43,8 @@
         $form.find('.attendance-duration').val($option.attr('data-minutes'));
         calculateEnd($form);
         topics($form);
+        var $panel = $form.closest('[data-attendance-panel]');
+        teacherLabels($panel, $panel.data('teacher-presence') || {});
     }
     function filterOriginal($form) {
         var type = $form.find('[name=tipo]').val(), search = ($form.find('.attendance-search').val() || '').toLocaleLowerCase();
@@ -86,17 +88,47 @@
             }
         });
     }
+    var presenceRequest;
+    function teacherLabels($panel, presence) {
+        $panel.find('.attendance-form').each(function () {
+            var $form = $(this), branch = $form.find('[name=aula_id] :selected').attr('data-sede') || $panel.attr('data-active-branch') || '';
+            $form.find('.attendance-teacher option[data-name]').each(function () {
+                var $option = $(this), locations = (presence[$option.val()] || []).filter(function (location) {
+                    return !branch || location.sede_id === null || Number(location.sede_id) === Number(branch);
+                });
+                var labels = locations.map(function (location) { return location.aula + (!branch && location.sucursal ? ' · ' + location.sucursal : '') + ', ' + location.presentes; });
+                $option.text($option.attr('data-name') + ' (' + (labels.join(' / ') || 'S/E, 0') + ')');
+            });
+        });
+    }
+    function updateTeachers() {
+        var $panels = $('[data-attendance-panel]'), $visible = $panels.filter(':visible');
+        if (!$visible.length || presenceRequest || document.hidden || !$visible.find('.attendance-teacher').length) return;
+        presenceRequest = $.getJSON($visible.first().attr('data-teachers-url')).done(function (json) {
+            $panels.each(function () { $(this).data('teacher-presence', json.teachers); teacherLabels($(this), json.teachers); });
+        }).always(function () { presenceRequest = null; });
+    }
     function mount(root) {
+        $(root).find('.attendance-entry-form').each(function () {
+            var $form = $(this);
+            if (!$form.data('clock-ready')) { currentStart($form); $form.data('clock-ready', true); }
+        });
         $(root).find('.attendance-add-form').each(function () {
             var $form = $(this);
             if (!$form.data('clock-ready')) { currentStart($form); $form.data('clock-ready', true); }
             filterOriginal($form);
         });
         $(root).find('.attendance-form').each(function () { topics($(this)); });
+        $(root).find('[data-attendance-panel]').each(function () { teacherLabels($(this), $(this).data('teacher-presence') || {}); });
     }
-    function refresh($panel, successMessage) {
+    function refresh($panel, successMessage, notice) {
         var $modal = $panel.closest('.modal'), url = $panel.attr('data-refresh-url');
-        if (!$modal.length) { sessionStorage.setItem('ife-attendance-message', successMessage || 'Cambios guardados.'); window.location.reload(); return; }
+        if (!$modal.length) {
+            try { sessionStorage.setItem('ife-attendance-message', successMessage || 'Cambios guardados.'); } catch (_) {}
+            if (window.IFEArrivalNotice) window.IFEArrivalNotice.save(notice);
+            window.location.reload(); return;
+        }
+        if (window.IFEArrivalNotice) window.IFEArrivalNotice.show(notice);
         var active = $modal.find('.tab-pane.active').attr('id'), scroll = $modal.find('.modal-body').scrollTop();
         $.get(url).done(function (html) {
             $modal.find('.modal-content').html(html);
@@ -127,7 +159,7 @@
         $form.data('saving', true).find('[type=submit]').prop('disabled', true);
         $form.find('.attendance-errors').addClass('d-none').empty();
         $.ajax({ url: $form.attr('action'), type: 'POST', data: $form.serialize(), headers: { Accept: 'application/json' } })
-            .done(function (json) { document.dispatchEvent(new Event('ife:attendance-changed')); refresh($panel, json.message); })
+            .done(function (json) { document.dispatchEvent(new Event('ife:attendance-changed')); refresh($panel, json.message, json.arrival_notice); })
             .fail(function (xhr) { message($form, xhr); })
             .always(function () { $form.data('saving', false).find('[type=submit]').prop('disabled', false); });
     });
@@ -162,11 +194,17 @@
         originalDefaults($(this).closest('form'));
     });
     $(document).on('change', '.attendance-form [name=materia_id]', function () { topics($(this).closest('form')); });
-    $(document).on('input change', '.attendance-add-form [name=horainicio]', function () {
+    $(document).on('input change', '.attendance-add-form [name=horainicio], .attendance-entry-form [name=horainicio]', function () {
         var $form = $(this).closest('form');
         $form.data('time-edited', true);
         calculateEnd($form);
-        filterOriginal($form);
+        if ($form.hasClass('attendance-add-form')) filterOriginal($form);
+    });
+    $(document).on('input change', '.attendance-entry-form [name=horafin]', function () {
+        var $form = $(this).closest('form'), start = $form.find('[name=horainicio]').val(), end = this.value;
+        $form.data('time-edited', true);
+        var minutes = function (time) { return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)); };
+        this.setCustomValidity(end <= start ? 'La finalización debe ser posterior al inicio.' : (minutes(end) - minutes(start) > Number($form.attr('data-duration')) ? 'La duración no puede superar la de la clase programada.' : ''));
     });
     $(document).on('input change', '.attendance-add-form [name=horafin]', function () {
         var $form = $(this).closest('form'), start = $form.find('[name=horainicio]').val().split(':'), end = this.value.split(':');
@@ -187,8 +225,9 @@
     }, true);
     $(document).on('click', '.attendance-scheduled', function () {
         var $form = $(this).closest('form');
+        $form.data('time-edited', true);
         $form.find('[name=horainicio]').val($(this).attr('data-start'));
-        $form.find('[name=horafin]').val($(this).attr('data-end'));
+        $form.find('[name=horafin]').val($(this).attr('data-end'))[0].setCustomValidity('');
     });
     $(document).on('click', '.attendance-quick-entry', function () {
         var $form = $(this).closest('.card-body').find('.attendance-form').first();
@@ -210,6 +249,18 @@
         else if (window.bootstrap) window.bootstrap.Modal.getOrCreateInstance($modal[0]).hide();
     });
     window.IFEAttendance = { mount: mount };
+    $(document).on('change', '.attendance-form [name=aula_id]', function () {
+        var $panel = $(this).closest('[data-attendance-panel]');
+        teacherLabels($panel, $panel.data('teacher-presence') || {});
+    });
+    document.addEventListener('ife:attendance-changed', updateTeachers);
+    window.setInterval(updateTeachers, 30000);
+    window.setInterval(function () {
+        $('.attendance-entry-form:visible').each(function () {
+            var $form = $(this);
+            if (!$form.data('time-edited') && !$form.data('saving')) currentStart($form);
+        });
+    }, 15000);
     $(function () {
         mount(document);
         var saved = sessionStorage.getItem('ife-attendance-message');

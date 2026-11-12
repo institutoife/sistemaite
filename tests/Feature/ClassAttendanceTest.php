@@ -33,7 +33,8 @@ class ClassAttendanceTest extends AttendanceTestCase
         $id=$this->postJson($route,$data)->assertOk()->json('id');
         $this->postJson($route,$data)->assertOk()->assertJsonPath('id',$id);
         $this->assertSame(1,Clase::count());$this->assertSame(1,Clasecom::count());
-        $this->assertEquals($this->room,$b->fresh()->aula_id);
+        $this->assertEquals($otherRoom,$b->fresh()->aula_id);
+        $this->assertEquals($this->room,($second==='apoyo'?Clase::class:Clasecom::class)::findOrFail($id)->aula_id);
         $this->assertSame(2,ClaseAsistenciaEvento::where('accion','entrada')->count());
     }
 
@@ -132,7 +133,7 @@ class ClassAttendanceTest extends AttendanceTestCase
         } catch(\Illuminate\Validation\ValidationException $e) {
             $message=$e->errors()['docente_id'][0];
             $this->assertStringContainsString('otra Sucursal',$message);
-            $this->assertStringNotContainsString('asistencia #',$message);
+            $this->assertStringContainsString('asistencia #',$message);
             $this->assertSame(0,ClaseAdicional::count());
         } finally { app(\App\Services\SedeAccess::class)->reset(); }
     }
@@ -256,6 +257,7 @@ class ClassAttendanceTest extends AttendanceTestCase
         $attendance=$this->recorded($busy);
         $this->branchScope();
         DB::table('sede_registros')->insert(['tabla'=>'clases','registro_id'=>$attendance->id,'sede_id'=>2]);
+        DB::table('sede_registros')->insert(['tabla'=>'aulas','registro_id'=>$this->room,'sede_id'=>1]);
         try {
             app(ClassAttendanceService::class)->create('apoyo',$this->enrollment->id,$this->data($original),$this->operator);
             $this->fail('Debe conservar la restricción entre sucursales.');
@@ -263,10 +265,10 @@ class ClassAttendanceTest extends AttendanceTestCase
             $message=$e->errors()['docente_id'][0];
             $this->assertStringContainsString('otra Sucursal',$message);
             $this->assertStringContainsString('Aula solicitada: #'.$this->room.'.',$message);
-            $this->assertStringContainsString('Sucursal activa: #1.',$message);
+            $this->assertStringContainsString('Sucursal del aula: #1.',$message);
             $this->assertStringNotContainsString('programación #',$message);
-            $this->assertStringNotContainsString('inscripción #',$message);
-            $this->assertStringNotContainsString('asistencia #',$message);
+            $this->assertStringContainsString('inscripción #',$message);
+            $this->assertStringContainsString('asistencia #',$message);
         } finally { app(\App\Services\SedeAccess::class)->reset(); }
     }
 
@@ -391,7 +393,7 @@ class ClassAttendanceTest extends AttendanceTestCase
         DB::table('sede_registros')->insert(['tabla'=>'inscripciones','registro_id'=>$foreign->id,'sede_id'=>2]);
         try {
             $tabs=app(ClassAttendanceView::class)->tabs($this->person);
-            $this->assertSame([$this->enrollment->id],collect($tabs)->pluck('enrollment.id')->all());
+            $this->assertEqualsCanonicalizing([$this->enrollment->id,$foreign->id],collect($tabs)->pluck('enrollment.id')->all());
         } finally { app(\App\Services\SedeAccess::class)->reset(); }
         $viewer=$this->actor('Docente');$viewer->givePermissionTo('Listar Clases');$this->actingAs($viewer);
         $this->get(route('marcado.presente.tabs',$this->person))->assertOk()->assertDontSee('attendance-quick-entry');
@@ -487,6 +489,8 @@ class ClassAttendanceTest extends AttendanceTestCase
             $this->assertTrue((bool)$original->fresh()->habilitado);$this->assertTrue((bool)$program->fresh()->habilitado);
             $this->postJson($this->url($enrollment),$this->data($program,array_merge($time,['tipo'=>'extra'])))->assertUnprocessable()->assertJsonValidationErrors('original_id');
             $this->get(route('asistencia.historial',[$channel,$enrollment->id]))->assertOk()->assertSee('Extra')->assertSee('Original #'.$original->id);
+            Carbon::setTestNow('2026-11-02 '.$time['horafin']);
+            app(ClassAttendanceService::class)->finish(($channel==='apoyo'?Clase::class:Clasecom::class)::sole(),$this->operator);
         }
         $this->assertSame(2,ClaseAdicional::count());$this->assertSame(1,Clase::count());$this->assertSame(1,Clasecom::count());
     }
@@ -495,6 +499,7 @@ class ClassAttendanceTest extends AttendanceTestCase
     {
         $today=$this->program(null,['fecha'=>'2026-11-02','estado_id'=>estado('INDEFINIDO')]);
         $this->postJson(route('clases.guardar',$today),$this->data(null,['horainicio'=>'09:00','horafin'=>'10:00']))->assertOk();
+        app(ClassAttendanceService::class)->finish(Clase::sole(),$this->operator);
         $original=$this->program(null,['fecha'=>'2026-11-02','hora_ini'=>'15:00','hora_fin'=>'16:00','estado_id'=>estado('INDEFINIDO')]);
         $this->postJson($this->url(),$this->data($original,['tipo'=>'extra']))->assertOk();
         $stats=app(ClassAttendanceView::class)->tab('apoyo',$this->enrollment)['stats'];
@@ -616,10 +621,12 @@ class ClassAttendanceTest extends AttendanceTestCase
     {
         $today=$this->program(null,['fecha'=>'2026-11-02','estado_id'=>estado('INDEFINIDO')]);
         $this->postJson(route('clases.guardar',$today),$this->data(null,['horainicio'=>'09:00','horafin'=>'10:00']))->assertOk();
+        app(ClassAttendanceService::class)->finish(Clase::sole(),$this->operator);
         $future=$this->program(null,['fecha'=>'2026-11-05','estado_id'=>estado('INDEFINIDO')]);
         $this->postJson($this->url(),$this->data($future,['tipo'=>'adelanto']))->assertOk();
         $response=$this->get(route('marcado.presente.tabs',$this->person))->assertOk();
-        $this->assertSame(2,substr_count($response->getContent(),'class="btn btn-sm btn-danger attendance-exit"'));
+        $this->assertSame(1,substr_count($response->getContent(),'class="btn btn-sm btn-danger attendance-exit"'));
+        $response->assertSee('Asistencia registrada');
         $this->assertSame(2,Clase::count());
         $this->assertSame(2,app(ClassAttendanceView::class)->tab('apoyo',$this->enrollment)['stats']['Asistidas']);
     }
@@ -669,14 +676,15 @@ class ClassAttendanceTest extends AttendanceTestCase
         app(\App\Services\SedeAccess::class)->start($this->operator,$request);
     }
 
-    public function test_branch_restriction_cannot_be_bypassed_by_changing_enrollment_id(): void
+    public function test_other_branch_enrollment_can_be_managed_without_changing_original_attribution(): void
     {
         $original=$this->program();$this->branchScope();
         DB::table('sede_registros')->insert(['tabla'=>'inscripciones','registro_id'=>$this->enrollment->id,'sede_id'=>2]);
         try {
             app(ClassAttendanceService::class)->create('apoyo',$this->enrollment->id,$this->data($original),$this->operator);
-            $this->fail('No puede usar una inscripción de otra sucursal.');
-        } catch(\Illuminate\Database\Eloquent\ModelNotFoundException $expected) { $this->assertSame(0,ClaseAdicional::count()); }
+            $this->assertSame(1,ClaseAdicional::count());
+            $this->assertDatabaseHas('sede_registros',['tabla'=>'inscripciones','registro_id'=>$this->enrollment->id,'sede_id'=>2]);
+        }
         finally { app(\App\Services\SedeAccess::class)->reset(); }
     }
 
@@ -689,7 +697,8 @@ class ClassAttendanceTest extends AttendanceTestCase
         $this->branchScope();
         DB::table('sede_registros')->insert(['tabla'=>'programacions','registro_id'=>$foreignProgram->id,'sede_id'=>2]);
         DB::table('sede_registros')->insert(['tabla'=>'clases','registro_id'=>$attendance->id,'sede_id'=>2]);
-        $this->assertFalse(Programacion::whereKey($foreignProgram->id)->exists());
+        DB::table('sede_registros')->insert(['tabla'=>'aulas','registro_id'=>$this->room,'sede_id'=>1]);
+        $this->assertTrue(Programacion::whereKey($foreignProgram->id)->exists());
         try {
             app(ClassAttendanceService::class)->create('apoyo',$this->enrollment->id,$this->data($original),$this->operator);
             $this->fail('Debe detectar también la ocupación del docente en otra sucursal.');
@@ -714,7 +723,7 @@ class ClassAttendanceTest extends AttendanceTestCase
     public function test_normal_attendance_with_legacy_seconds_remains_supported_and_audited(): void
     {
         $program=$this->program(null,['fecha'=>'2026-11-02','estado_id'=>estado('INDEFINIDO')]);
-        $this->get(route('marcado.presente.tabs',$this->person))->assertOk()->assertSee('Entrada rápida');
+        $this->get(route('marcado.presente.tabs',$this->person))->assertOk()->assertSee('Confirmar entrada')->assertDontSee('Revisar horario y marcar entrada');
         $this->postJson(route('clases.guardar',$program),$this->data(null,['horainicio'=>'09:00:30','horafin'=>'10:00:30']))->assertOk();
         $this->assertSame(1,Clase::count());$this->assertSame(1,ClaseAsistenciaEvento::where('accion','entrada')->count());
         $this->postJson(route('clases.finalizar'),['id'=>Clase::sole()->id])->assertOk();
@@ -909,16 +918,16 @@ class ClassAttendanceTest extends AttendanceTestCase
         $this->assertEquals($topic,ClaseAsistenciaEvento::where('accion','correccion')->sole()->antes['adicional']['tema_id']);
     }
 
-    public function test_topic_lookup_cannot_use_an_enrollment_from_another_branch(): void
+    public function test_topic_lookup_can_use_an_enrollment_from_another_branch_with_permissions(): void
     {
         $this->branchScope();
         DB::table('sede_registros')->insert(['tabla'=>'inscripciones','registro_id'=>$this->enrollment->id,'sede_id'=>2]);
         $request=\Illuminate\Http\Request::create('/asistencia/temas/'.$this->enrollment->id,'GET',['materia_id'=>$this->subject,'q'=>'Tema']);
         $request->setUserResolver(fn()=>$this->operator);
         try{
-            app(\App\Http\Controllers\ClaseAdicionalController::class)->topics($request,$this->enrollment->id);
-            $this->fail('No puede consultar temas a través de una inscripción de otra Sucursal.');
-        }catch(\Illuminate\Database\Eloquent\ModelNotFoundException $expected){$this->assertTrue(true);}
+            $response=app(\App\Http\Controllers\ClaseAdicionalController::class)->topics($request,$this->enrollment->id);
+            $this->assertSame(200,$response->getStatusCode());
+        }
         finally{app(\App\Services\SedeAccess::class)->reset();}
     }
 
@@ -958,7 +967,7 @@ class ClassAttendanceTest extends AttendanceTestCase
         $this->assertEquals($topic,ClaseAdicional::sole()->tema_id);
     }
 
-    public function test_actual_teacher_attendance_in_another_branch_is_not_treated_as_a_shared_slot(): void
+    public function test_enrollment_origin_does_not_override_the_actual_classroom_location(): void
     {
         $original=$this->program();$foreign=$this->program($this->otherEnrollment('computacion'),[
             'fecha'=>'2026-11-02','horaini'=>'11:00','horafin'=>'12:00','estado_id'=>estado('FINALIZADO')]);
@@ -966,12 +975,13 @@ class ClassAttendanceTest extends AttendanceTestCase
             'docente_id'=>$this->teacher,'aula_id'=>$this->room,'estado_id'=>estado('FINALIZADO')]);
         $this->branchScope();
         DB::table('sede_registros')->insert(['tabla'=>'matriculacions','registro_id'=>$foreign->matriculacion_id,'sede_id'=>2]);
+        DB::table('sede_registros')->insert(['tabla'=>'aulas','registro_id'=>$this->room,'sede_id'=>1]);
         try{
             app(ClassAttendanceService::class)->create('apoyo',$this->enrollment->id,$this->data($original),$this->operator);
-            $this->fail('No puede compartir una asistencia de otra Sucursal.');
-        }catch(\Illuminate\Validation\ValidationException $expected){$this->assertArrayHasKey('docente_id',$expected->errors());}
+            $this->assertSame(1,ClaseAdicional::count());
+        }
         finally{app(\App\Services\SedeAccess::class)->reset();}
-        $this->assertSame(0,ClaseAdicional::count());
+        $this->assertDatabaseHas('sede_registros',['tabla'=>'matriculacions','registro_id'=>$foreign->matriculacion_id,'sede_id'=>2]);
     }
 
     public function test_both_full_marking_pages_render_the_same_empty_type_and_local_topic_search_assets(): void

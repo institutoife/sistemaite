@@ -7,6 +7,13 @@ use App\Models\{Inscripcione, Tema};
 
 class ClaseAdicionalController extends Controller
 {
+    public function teachers(Request $request, \App\Services\TeacherPresence $presence)
+    {
+        abort_if(app(\App\Services\AccountSecurity::class)->family($request->user()),403);
+        abort_unless($request->user()->canAny(['Crear Clases','Editar Clases','Crear Clasescom','Editar Clasescom']),403);
+        return response()->json(['teachers'=>$presence->snapshot()])->header('Cache-Control','no-store');
+    }
+
     public function topics(Request $request, int $inscripcion)
     {
         abort_unless($request->user()->can('Crear Clases') || $request->user()->can('Editar Clases') || $request->user()->can('Listar Clases'),403);

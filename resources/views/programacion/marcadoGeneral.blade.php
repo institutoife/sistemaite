@@ -206,7 +206,7 @@
 
 @section('js')
     <script src="{{ asset('vendor/select2/js/select2.full.min.js') }}"></script>
-    <script src="{{asset('vistas/clase/asistencia.js')}}"></script>
+    <script src="{{ asset('vistas/clase/asistencia.js') }}?v={{ is_file(public_path('vistas/clase/asistencia.js')) ? filemtime(public_path('vistas/clase/asistencia.js')) : 1 }}"></script>
     <script src="https://kit.fontawesome.com/067a2afa7e.js" crossorigin="anonymous"></script>
     <script src="{{asset('dist/js/moment.js')}}"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.17.1/locale/es.js"></script>

@@ -8,4 +8,4 @@
 @section('content')
 <div class="card"><div class="card-body">@include('clase.asistencia.panel',['reportOnly'=>true,'historyOpen'=>true])</div></div>
 @stop
-@section('js')<script src="{{ asset('vendor/select2/js/select2.full.min.js') }}"></script><script src="{{ asset('vistas/clase/asistencia.js') }}"></script>@stop
+@section('js')<script src="{{ asset('vendor/select2/js/select2.full.min.js') }}"></script><script src="{{ asset('vistas/clase/asistencia.js') }}?v={{ is_file(public_path('vistas/clase/asistencia.js')) ? filemtime(public_path('vistas/clase/asistencia.js')) : 1 }}"></script>@stop

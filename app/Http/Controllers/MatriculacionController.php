@@ -34,7 +34,7 @@ class MatriculacionController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('can:Listar Matriculaciones')->only("misCarreras","show");
+        $this->middleware('can:Listar Matriculaciones')->only("misCarreras","show","tusMatriculacionesVigentes","Saldo");
         $this->middleware('can:Crear Matriculaciones')->only("create","store","guardarconfiguracion");
         $this->middleware('can:Editar Matriculaciones')->only("configurarView","darbaja","daralta","edit","update","actualizarConfiguracion","actualizar_fecha_proximo_pago");
         $this->middleware('can:Eliminar Matriculaciones')->only("destroy");
@@ -111,6 +111,7 @@ class MatriculacionController extends Controller
      */
     public function store(MatriculacionStoreRequest $request)
     {
+        app(\App\Services\SedeAccess::class)->selectForCreation($request);
         //dd($request->all());
         $matriculacion = new Matriculacion();
         $matriculacion->computacion_id=$request->computacion_id;
@@ -397,11 +398,12 @@ class MatriculacionController extends Controller
                 ->join('estados', 'estados.id', 'matriculacions.estado_id')
                 ->where('computacion_id', '=', $computacion->id)
                 ->select('matriculacions.id', 'vigente', 'asignaturas.costo', 'asignatura', 'fecha_proximo_pago', 'estado', 'calificacion')
+                ->withSucursalOrigen()
                 ->get();
         }
         return datatables()->of($matriculacionesVigentes)
             ->addColumn('btn', 'inscripcione.actiontusmatriculacion')
-            ->rawColumns(['btn'])
+            ->rawColumns(['btn','sucursal_origen'])
             ->toJson();
     }
 
@@ -430,7 +432,7 @@ class MatriculacionController extends Controller
         $acuenta=$matriculacion->pagos->sum('monto');
         $costo=$matriculacion->costo;
         $saldo=$costo-$acuenta;
-        $fechaHumamizado=$matriculacion->fecha_proximo_pago->diffForHumans();
+        $fechaHumamizado=optional($matriculacion->fecha_proximo_pago)->diffForHumans()??'Sin fecha programada';
         $data=['acuenta'=>$acuenta,'costo'=>$costo,'saldo'=>$saldo,'fechaHumamizado'=>$fechaHumamizado];
         return response()->json($data);
     }

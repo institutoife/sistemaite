@@ -615,6 +615,7 @@ Route::get('/home',[EstudianteController::class,'home'])->name('home');
     Route::patch('asistencia/adicional/{canal}/{programacion}', [\App\Http\Controllers\ClaseAdicionalController::class,'correct'])->name('asistencia.adicional.correct');
     Route::get('asistencia/historial/{canal}/{inscripcion}', [\App\Http\Controllers\ClaseAdicionalController::class,'report'])->name('asistencia.historial');
     Route::get('asistencia/temas/{inscripcion}', [\App\Http\Controllers\ClaseAdicionalController::class,'topics'])->name('asistencia.temas');
+    Route::get('asistencia/docentes/presentes', [\App\Http\Controllers\ClaseAdicionalController::class,'teachers'])->name('asistencia.docentes');
     Route::get('clasecom/marcar/normal/modal/{programacioncom_id}', 'ProgramacioncomController@marcadoNormalModal')->name('marcado.presente.normal.modal.com');
     Route::post('programa/estado/general/', 'ClaseController@marcadoGeneral')->name('programa.estado.general');
 

@@ -346,7 +346,8 @@
         } ( jQuery ) );
 
         $(document).ready(function() {
-            function buildEstadoBadge(estado) {
+            function escapeEnrollmentText(value) { return $('<span>').text(value == null ? '' : String(value)).html(); }
+            function buildEstadoBadge(estado, sucursal) {
                 let clase = 'badge-secondary';
                 let icono = "<i class='fas fa-info-circle mr-1'></i>";
                 switch (estado) {
@@ -371,7 +372,7 @@
                         icono = "<i class='fas fa-user-lock mr-1'></i>";
                         break;
                 }
-                return `<span class="badge ${clase} insc-chip">${icono}${estado || 'SIN ESTADO'}</span>`;
+                return `<div class="d-inline-flex flex-wrap align-items-center"><span class="badge ${clase} insc-chip mr-1">${icono}${escapeEnrollmentText(estado || 'SIN ESTADO')}</span><span class="badge badge-light insc-chip" style="color:#375F7A">Sucursal: ${escapeEnrollmentText(sucursal || 'Sin registrar')}</span></div>`;
             }
 
             function renderInscripcionesCards(rows) {
@@ -385,11 +386,11 @@
                 const cards = rows.map(item => {
                     const detalleUrl = `/inscripciones/${item.id}`;
                     const imprimirUrl = `/imprimir/programa/${item.id}`;
-                    const estadoBadge = buildEstadoBadge(item.estado);
+                    const estadoBadge = buildEstadoBadge(item.estado, item.sucursal_origen);
                     const fechaPago = item.fecha_proximo_pago ? moment(item.fecha_proximo_pago).format('DD-MM-YYYY') : '-';
                     return `
                         <div class="insc-card">
-                            <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between">
                                 <div class="insc-card-title">${item.modalidad || 'Inscripción'} #${item.id}</div>
                                 ${estadoBadge}
                             </div>
@@ -428,11 +429,11 @@
                 const cards = rows.map(item => {
                     const detalleUrl = `/matriculacion/${item.id}`;
                     const imprimirUrl = `/imprimir/programacom/${item.id}`;
-                    const estadoBadge = buildEstadoBadge(item.estado);
+                    const estadoBadge = buildEstadoBadge(item.estado, item.sucursal_origen);
                     const fechaPago = item.fecha_proximo_pago ? moment(item.fecha_proximo_pago).format('DD-MM-YYYY') : '-';
                     return `
                         <div class="insc-card">
-                            <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between">
                                 <div class="insc-card-title">${item.asignatura || 'Matriculación'} #${item.id}</div>
                                 ${estadoBadge}
                             </div>
@@ -516,7 +517,7 @@
                                 break;
                         }
 
-                        $('td', row).eq(1).html(data['objetivo']+"</br><div class='alert alert-" +$clase+" d-flex align-items-center'>"+$icono+ "&nbsp;"+data['estado'] +"</div>");
+                        $('td', row).eq(1).html(data['objetivo']+"<br>"+buildEstadoBadge(data.estado, data.sucursal_origen));
                             $.ajax({
                                 url:"{{url('saldo/inscripcion')}}",
                                 data:{inscripcion_id:data['id']},
@@ -604,7 +605,7 @@
                                 break;
                         }
 
-                        $('td', row).eq(1).html(data['asignatura']+"</br><div class='alert alert-" +$clase+" d-flex align-items-center'>"+ $icono+ "&nbsp;"+data['estado'] +"</div>");
+                        $('td', row).eq(1).html(escapeEnrollmentText(data.asignatura)+"<br>"+buildEstadoBadge(data.estado, data.sucursal_origen));
                             $.ajax({
                                 url:"{{url('saldo/matriculacion')}}",
                                 data:{matriculacion_id:data['id']},

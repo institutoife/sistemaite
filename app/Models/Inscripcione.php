@@ -40,6 +40,7 @@ use App\Models\BranchModel as Model;
  */
 class Inscripcione extends Model
 {
+    use \App\Models\Concerns\HasEnrollmentOrigin;
     
     static $rules = [
 		'fechaini' => 'required',

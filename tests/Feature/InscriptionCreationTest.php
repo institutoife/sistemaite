@@ -115,7 +115,7 @@ class InscriptionCreationTest extends CrmTestCase
     public function test_admin_can_choose_branch_save_and_open_class_configuration(): void
     {
         $response=$this->post(route('inscripciones.store'),$this->data(['sede_id'=>$this->branch->id]))
-            ->assertOk()->assertViewIs('inscripcione.configurar')->assertSessionHas('sede_activa',$this->branch->id);
+            ->assertOk()->assertViewIs('inscripcione.configurar')->assertSessionHas('sede_activa',0);
         $enrollment=$response->viewData('inscripcion');
         $this->assertDatabaseHas('inscripciones',['id'=>$enrollment->id,'estudiante_id'=>$this->person->estudiante->id,'costo'=>100]);
         $this->assertDatabaseHas('sede_registros',['tabla'=>'inscripciones','registro_id'=>$enrollment->id,'sede_id'=>$this->branch->id]);
@@ -131,16 +131,17 @@ class InscriptionCreationTest extends CrmTestCase
         $this->assertDatabaseHas('sede_registros',['tabla'=>'inscripciones','sede_id'=>$this->branch->id]);
     }
 
-    public function test_staff_cannot_forge_branch_and_form_only_lists_authorized_branches(): void
+    public function test_staff_can_record_any_active_origin_without_changing_working_branch(): void
     {
         $staff=$this->staff();
         $staff->givePermissionTo('Crear Inscripciones');
         $response=$this->get($this->formUrl())->assertOk();
         $xpath=$this->dom($response->getContent());
-        $this->assertSame(1,$xpath->query('//select[@id="inscripcion-sede"]/option[@value!=""]')->length);
+        $this->assertSame(\App\Models\CrmSede::where('activa',true)->count(),$xpath->query('//select[@id="inscripcion-sede"]/option[@value!=""]')->length);
         $other=CrmSede::where('id','!=',$this->branch->id)->firstOrFail();
-        $this->post(route('inscripciones.store'),$this->data(['sede_id'=>$other->id]))->assertForbidden();
-        $this->assertSame(0,DB::table('inscripciones')->count());
+        $this->post(route('inscripciones.store'),$this->data(['sede_id'=>$other->id]))->assertOk();
+        $this->assertSame(1,DB::table('inscripciones')->count());
+        $this->assertDatabaseHas('sede_registros',['tabla'=>'inscripciones','sede_id'=>$other->id]);
         $this->assertSame($this->branch->id,session('sede_activa'));
     }
 
@@ -149,6 +150,21 @@ class InscriptionCreationTest extends CrmTestCase
         $this->postJson(route('inscripciones.store'),$this->data(['sede_id'=>0]))
             ->assertUnprocessable()->assertJsonValidationErrors('sede_id');
         $this->assertSame(0,DB::table('inscripciones')->count());
+    }
+
+    public function test_staff_can_open_and_save_foreign_enrollment_edit_without_reassigning_origin(): void
+    {
+        Schema::table('inscripciones',fn(Blueprint $t)=>$t->unsignedBigInteger('estado_id')->nullable());
+        $other=CrmSede::where('id','!=',$this->branch->id)->firstOrFail();
+        $enrollment=$this->post(route('inscripciones.store'),$this->data(['sede_id'=>$other->id]))->assertOk()->viewData('inscripcion');
+        $staff=$this->staff();$staff->givePermissionTo(Permission::firstOrCreate(['name'=>'Editar Inscripciones','guard_name'=>'web']));
+        $this->get(route('inscripciones.edit',$enrollment))->assertOk()->assertViewIs('inscripcione.edit');
+        $response=$this->put(route('inscripciones.update',$enrollment),$this->data([
+            'costo'=>175,'estado_id'=>1,'vigente'=>1,'condonado'=>0,'objetivo'=>'Objetivo revisado desde otra Sucursal',
+        ]))->assertOk()->assertViewIs('inscripcione.configurar');
+        $this->assertEquals(175,$response->viewData('inscripcion')->costo);
+        $this->assertDatabaseHas('sede_registros',['tabla'=>'inscripciones','registro_id'=>$enrollment->id,'sede_id'=>$other->id]);
+        $this->assertSame($this->branch->id,session('sede_activa'));
     }
 
     public function test_validation_preserves_new_choices_instead_of_reusing_previous_enrollment(): void

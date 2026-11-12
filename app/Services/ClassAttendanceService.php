@@ -186,7 +186,7 @@ class ClassAttendanceService
                 'horafin','La duración no puede superar la de la clase programada.');
             $this->check((bool)$program->habilitado,'pago','La clase no está habilitada por sus pagos. Registre primero el pago correspondiente.');
             DB::table('docentes')->where('id',$data['docente_id'])->lockForUpdate()->first();
-            $this->conflicts($person,$data,$actor,[$canal=>[$program->id]]);
+            $this->conflicts($person,$data,$actor,[$canal=>[$program->id]],[],true);
             $attendance=new $attendanceClass;
             $attendance->forceFill([$key=>$program->id,'fecha'=>$data['fecha'],'horainicio'=>$data['horainicio'],
                 'horafin'=>$data['horafin'],'docente_id'=>$data['docente_id'],'aula_id'=>$data['aula_id'],
@@ -196,13 +196,26 @@ class ClassAttendanceService
             $attendance->usuarios()->syncWithoutDetaching([$actor->id]);
             $before=['programacion'=>$program->getAttributes()];
             $program->estado_id=$attendance->estado_id;
-            $program->docente_id=$attendance->docente_id;
-            $program->aula_id=$attendance->aula_id;
-            if($canal==='apoyo') $program->materia_id=$attendance->materia_id;
+            // Preserve the enrolled schedule and references. Effective values belong
+            // to the individual attendance; only the workflow state is synchronized.
             $program->save();
             $this->event($program,$actor,'entrada',$before,$attendance->getAttributes(),$data['motivo']??null);
             return $attendance;
         },3);
+    }
+
+    public function arrivalNotice(Model $program, Model $attendance): ?array
+    {
+        [, , , , , $start, $end]=$this->definition($this->canal($program));
+        $scheduled=Carbon::parse($program->fecha->format('Y-m-d').' '.$program->$start->format('H:i'), 'America/La_Paz');
+        $actual=Carbon::parse($attendance->fecha->format('Y-m-d').' '.$attendance->horainicio->format('H:i'), 'America/La_Paz');
+        $difference=$scheduled->diffInMinutes($actual, false);
+        if (abs($difference)<=10) return null;
+        return ['type'=>$difference<0?'early':'late', 'title'=>$difference<0?'Llegada anticipada':'Llegada tardía',
+            'scheduled'=>$program->$start->format('H:i').'–'.$program->$end->format('H:i'),
+            'actual'=>$actual->format('H:i'), 'minutes'=>abs($difference),
+            'message'=>'Horario inscrito: '.$program->$start->format('H:i').'–'.$program->$end->format('H:i')
+                .'. Entrada real: '.$actual->format('H:i').'. Diferencia: '.abs($difference).' minutos '.($difference<0?'antes.':'después.')];
     }
 
     public function canFinish(Model $attendance, User $actor): bool
@@ -294,7 +307,7 @@ class ClassAttendanceService
         },3);
     }
 
-    private function conflicts(int $person, array $data, User $actor, array $exclude = [], array $originals = []): void
+    private function conflicts(int $person, array $data, User $actor, array $exclude = [], array $originals = [], bool $entering = false): void
     {
         // The student's conflicts take precedence across both academic circuits.
         // Only recorded attendance establishes the teacher's actual location.
@@ -307,6 +320,15 @@ class ClassAttendanceService
             $ids=array_merge($exclude[$canal]??[],$originals[$canal]??[]);
             $table=(new $pc)->getTable();
             $actualTable=(new $ac)->getTable();
+            // A projected end is not an exit. Overdue attendances must be closed
+            // before the same student starts another class, even on another day.
+            if ($entering && $data['fecha']===now('America/La_Paz')->toDateString()) {
+                $pending=DB::table($actualTable)->where('estado_id',estado('PRESENTE'))
+                    ->whereDate('fecha','<=',$data['fecha'])->whereNotIn($pk,$ids)
+                    ->whereIn($pk,DB::table($table)->whereIn($ek,$studentQuery)->select('id'));
+                $this->check(!$pending->lockForUpdate()->first(['id']), 'horainicio',
+                    'El estudiante ya tiene una asistencia activa sin salida registrada. Marque su salida antes de iniciar otra clase.');
+            }
             $schedule=DB::table($table)->whereDate('fecha',$data['fecha'])->where('activo',1)
                 ->whereIn('estado_id',[estado('INDEFINIDO'),estado('PRESENTE')])
                 // An inactive enrollment cannot take a new scheduled class. Its real
@@ -323,7 +345,7 @@ class ClassAttendanceService
                 ->whereRaw('TIME(horainicio) < ?',[$data['horafin'].':00'])->whereRaw('TIME(horafin) > ?',[$data['horainicio'].':00']);
             $this->check(!(clone $actual)->whereIn($pk,DB::table($table)->whereIn($ek,$studentQuery)->select('id'))->lockForUpdate()->first(['id']),
                 'horainicio','El estudiante ya tiene una asistencia que se superpone con el horario solicitado.');
-            $teaching[]=[$canal,$this->incompatibleTeaching($actual,$data,$actualTable,$table,$pk,$canal==='apoyo'?'inscripciones':'matriculacions',$ek)];
+            $teaching[]=[$canal,$this->incompatibleTeaching($actual,$data,$actualTable)];
         }
         foreach($teaching as [$canal,$query]) { $this->checkTeacherConflict($query,$canal,$data,$actor); }
     }
@@ -348,29 +370,27 @@ class ClassAttendanceService
             }
         }
         $message.=' Horario solicitado: '.$data['horainicio'].'–'.$data['horafin'].'. Aula solicitada: #'.(int)$data['aula_id'].'.';
-        if (($branch=app(SedeAccess::class)->active())!==null) { $message.=' Sucursal activa: #'.$branch.'.'; }
+        if (($branch=app(SedeAccess::class)->classroomBranch($data['aula_id']))!==null) { $message.=' Sucursal del aula: #'.$branch.'.'; }
         $message.=' Revise docente, aula y horario antes de confirmar.';
         $this->check(false,'docente_id',$message);
     }
 
-    private function incompatibleTeaching($query,array $data,string $table,string $programTable,string $programKey,string $enrollmentTable,string $enrollmentKey)
+    private function incompatibleTeaching($query,array $data,string $table)
     {
         // A shared teaching slot can contain N students, including different subjects.
         // Each enrollment keeps its own attendance and billing; no extra Sesion is created.
-        $branch=app(SedeAccess::class)->active();
-        return $query->where('docente_id',$data['docente_id'])->where(function($conflict)use($data,$table,$programTable,$programKey,$enrollmentTable,$enrollmentKey,$branch){
+        // A remote operator's logged-in branch is not the teacher's location.
+        $branch=app(SedeAccess::class)->classroomBranch($data['aula_id']);
+        return $query->where('docente_id',$data['docente_id'])->where(function($conflict)use($data,$table,$branch){
             $conflict->where('aula_id','!=',$data['aula_id'])->orWhereNull('aula_id');
             if ($branch===null) { return; }
-            // The attendance's attribution records where it actually happened. Older
-            // parent attributions are fallback only; they must not override that location.
+            // Attendance and classroom describe physical location. Enrollment and
+            // programming origins are informational and must not block a remote operation.
             // Table/column names come exclusively from definition(), never from input.
             $conflict->orWhereRaw('COALESCE('
                 .'(SELECT location.sede_id FROM sede_registros AS location WHERE location.tabla = ? AND location.registro_id = '.$table.'.id LIMIT 1),'
-                .'(SELECT location.sede_id FROM sede_registros AS location WHERE location.tabla = ? AND location.registro_id = '.$table.'.'.$programKey.' LIMIT 1),'
-                .'(SELECT location.sede_id FROM sede_registros AS location WHERE location.tabla = ? AND location.registro_id = '.$table.'.aula_id LIMIT 1),'
-                .'(SELECT location.sede_id FROM sede_registros AS location JOIN '.$programTable.' AS location_program ON location.registro_id = location_program.'.$enrollmentKey
-                .' WHERE location.tabla = ? AND location_program.id = '.$table.'.'.$programKey.' LIMIT 1)'
-                .') <> ?',[$table,$programTable,'aulas',$enrollmentTable,$branch]);
+                .'(SELECT location.sede_id FROM sede_registros AS location WHERE location.tabla = ? AND location.registro_id = '.$table.'.aula_id LIMIT 1)'
+                .') <> ?',[$table,'aulas',$branch]);
         });
     }
 

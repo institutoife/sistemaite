@@ -127,13 +127,13 @@ class UserAccessTest extends CrmTestCase
         $user=$this->userAccount('Padre');$this->loginAs($user);$this->get(route('profile.show'))->assertOk();
         User::withoutEvents(fn()=>$user->forceFill(['access_schedule_enabled'=>true])->save());$this->getJson(route('profile.show'))->assertUnauthorized();
     }
-    public function test_branch_filter_includes_authorized_legacy_records_and_groups_search_or_conditions(): void
+    public function test_enrollments_from_all_branches_and_legacy_records_are_shared_with_staff(): void
     {
         $user=$this->userAccount('Docente',$this->a->id);$this->tagged(501,$this->a->id);$this->tagged(502,$this->b->id);$this->tagged(503,null);$this->scope($user,$this->a->id);
-        $this->assertEqualsCanonicalizing([501,503],Inscripcione::pluck('id')->all());
-        $this->assertSame([],Inscripcione::where('id',502)->orWhere('id',999)->pluck('id')->all());
-        $this->assertEqualsCanonicalizing([501,503],SedeDB::table('inscripciones as e')->pluck('e.id')->all());
-        $this->assertSame([],SedeDB::table('inscripciones as e')->where('e.id',502)->orWhere('e.id',999)->pluck('e.id')->all());
+        $this->assertEqualsCanonicalizing([501,502,503],Inscripcione::pluck('id')->all());
+        $this->assertSame([502],Inscripcione::where('id',502)->orWhere('id',999)->pluck('id')->all());
+        $this->assertEqualsCanonicalizing([501,502,503],SedeDB::table('inscripciones as e')->pluck('e.id')->all());
+        $this->assertSame([502],SedeDB::table('inscripciones as e')->where('e.id',502)->orWhere('e.id',999)->pluck('e.id')->all());
     }
     public function test_sucursal_switch_rejects_forged_ids_and_withdrawal_immediately_revokes_access(): void
     {
@@ -192,23 +192,25 @@ class UserAccessTest extends CrmTestCase
         $record=Inscripcione::create(['estudiante_id'=>$student]);
         $this->assertDatabaseHas('sede_registros',['tabla'=>'inscripciones','registro_id'=>$record->id,'sede_id'=>$this->a->id]);
         $user->sedes()->attach($this->b->id);$this->scope($user,$this->b->id);
-        try{$record->forceFill(['updated_at'=>now()->addMinute()])->save();$this->fail('Updated another branch record');}catch(\Symfony\Component\HttpKernel\Exception\HttpException $e){$this->assertSame(403,$e->getStatusCode());}
+        $record->forceFill(['updated_at'=>now()->addMinute()])->save();
+        $this->assertEquals($record->updated_at,Inscripcione::findOrFail($record->id)->updated_at);
         $this->assertDatabaseHas('sede_registros',['tabla'=>'inscripciones','registro_id'=>$record->id,'sede_id'=>$this->a->id]);
     }
-    public function test_forged_parent_ids_and_creating_without_a_sucursal_are_rejected_before_insertion(): void
+    public function test_foreign_students_can_enroll_but_new_enrollments_still_require_origin(): void
     {
         $person=$this->persona();$student=DB::table('estudiantes')->where('persona_id',$person->id)->value('id');DB::table('persona_sede')->insert(['persona_id'=>$person->id,'sede_id'=>$this->b->id]);
         $user=$this->userAccount('Docente',$this->a->id);$this->scope($user,$this->a->id);$before=DB::table('inscripciones')->count();
-        try{Inscripcione::create(['estudiante_id'=>$student]);$this->fail('Accepted foreign student');}catch(\Symfony\Component\HttpKernel\Exception\HttpException $e){$this->assertSame(403,$e->getStatusCode());}
-        $this->assertSame($before,DB::table('inscripciones')->count());$this->assertSame(0,DB::table('sede_registros')->count());
+        $record=Inscripcione::create(['estudiante_id'=>$student]);
+        $this->assertSame($before+1,DB::table('inscripciones')->count());
+        $this->assertDatabaseHas('sede_registros',['tabla'=>'inscripciones','registro_id'=>$record->id,'sede_id'=>$this->a->id]);
         $this->scope($this->operator,0);try{Inscripcione::create(['estudiante_id'=>$student]);$this->fail('Accepted no working branch');}catch(ValidationException $e){$this->assertArrayHasKey('sede_id',$e->errors());}
     }
-    public function test_branch_protection_also_applies_to_joined_reports_and_bulk_updates(): void
+    public function test_shared_enrollment_joins_and_updates_work_across_branches(): void
     {
         $this->tagged(501,$this->a->id);$this->tagged(502,$this->b->id);$user=$this->userAccount('Docente',$this->a->id);$this->scope($user,$this->a->id);
-        $rows=SedeDB::table('inscripciones as a')->join('inscripciones as b','b.id','=','a.id')->pluck('b.id')->all();$this->assertSame([501],$rows);
-        $count=SedeDB::table('inscripciones')->where('id',502)->orWhere('id',501)->update(['updated_at'=>'2026-11-01 12:00:00']);$this->assertSame(1,$count);
-        $this->assertNotSame('2026-11-01 12:00:00',DB::table('inscripciones')->where('id',502)->value('updated_at'));
+        $rows=SedeDB::table('inscripciones as a')->join('inscripciones as b','b.id','=','a.id')->pluck('b.id')->all();$this->assertSame([501,502],$rows);
+        $count=SedeDB::table('inscripciones')->where('id',502)->orWhere('id',501)->update(['updated_at'=>'2026-11-01 12:00:00']);$this->assertSame(2,$count);
+        $this->assertSame('2026-11-01 12:00:00',DB::table('inscripciones')->where('id',502)->value('updated_at'));
     }
     public function test_schedule_save_and_exceptions_validate_dates_and_keep_an_unrestricted_admin(): void
     {
@@ -223,20 +225,20 @@ class UserAccessTest extends CrmTestCase
         $this->get(route('crm.tablero'))->assertOk();
         $this->post(route('crm.actividad',$lead),['tipo'=>'llamada','observacion'=>'Seguimiento de prueba local','version'=>$lead->crm_version])->assertRedirect();
     }
-    public function test_reused_queries_exists_relations_and_catalog_root_joins_cannot_bypass_branch_access(): void
+    public function test_shared_enrollments_are_consistent_in_reused_queries_relations_and_reports(): void
     {
         $person=$this->persona();$student=DB::table('estudiantes')->where('persona_id',$person->id)->value('id');
         $this->tagged(501,$this->a->id);$this->tagged(502,$this->b->id);DB::table('inscripciones')->update(['estudiante_id'=>$student,'modalidad_id'=>1]);DB::table('modalidads')->insert(['id'=>1,'modalidad'=>'Prueba']);
         $user=$this->userAccount('Docente',$this->a->id);$this->scope($user,$this->a->id);
         $query=SedeDB::table('inscripciones')->where('id',501);$this->assertSame([501],$query->pluck('id')->all());
-        $query->orWhere('id',502);$this->assertSame([501],$query->pluck('id')->all());
-        $this->assertSame([501],\App\Models\Modalidad::join('inscripciones as e','e.modalidad_id','=','modalidads.id')->pluck('e.id')->all());
+        $query->orWhere('id',502);$this->assertSame([501,502],$query->pluck('id')->all());
+        $this->assertSame([501,502],\App\Models\Modalidad::join('inscripciones as e','e.modalidad_id','=','modalidads.id')->pluck('e.id')->all());
         $this->assertSame([$student],\App\Models\Estudiante::whereHas('inscripciones',fn($q)=>$q->where('id',501))->pluck('id')->all());
-        $this->assertSame([],\App\Models\Estudiante::whereHas('inscripciones',fn($q)=>$q->where('id',502))->pluck('id')->all());
+        $this->assertSame([$student],\App\Models\Estudiante::whereHas('inscripciones',fn($q)=>$q->where('id',502))->pluck('id')->all());
         $this->assertSame([$person->id],SedeDB::table('personas')->whereExists(fn($q)=>$q->selectRaw('1')->from('inscripciones')->where('id',501))->pluck('id')->all());
-        $this->assertSame([],SedeDB::table('personas')->whereExists(fn($q)=>$q->selectRaw('1')->from('inscripciones')->where('id',502))->pluck('id')->all());
+        $this->assertSame([$person->id],SedeDB::table('personas')->whereExists(fn($q)=>$q->selectRaw('1')->from('inscripciones')->where('id',502))->pluck('id')->all());
     }
-    public function test_financial_subqueries_include_only_payments_in_the_active_branch(): void
+    public function test_academic_balances_include_payments_received_in_every_branch(): void
     {
         \Illuminate\Support\Facades\Schema::create('pagos',function($t){$t->id();$t->decimal('monto');$t->string('pagable_type');$t->unsignedBigInteger('pagable_id');$t->timestamps();});
         $this->tagged(501,null);
@@ -244,8 +246,8 @@ class UserAccessTest extends CrmTestCase
         foreach([1=>$this->a->id,2=>$this->b->id] as $id=>$sede)DB::table('sede_registros')->insert(['tabla'=>'pagos','registro_id'=>$id,'sede_id'=>$sede,'created_at'=>now()]);
         $this->scope($this->userAccount('Docente',$this->a->id),$this->a->id);
         $rows=Inscripcione::select(['id','acuenta'=>SedeAccess::aggregate('pagos','SUM(monto)','pagable_id','inscripciones.id')->where('pagable_type',Inscripcione::class)])->get();
-        $this->assertSame(25,(int)$rows->sole()->acuenta);
-        $this->assertSame([501],Inscripcione::where(SedeAccess::aggregate('pagos','SUM(monto)','pagable_id','inscripciones.id'),'<',50)->pluck('id')->all());
+        $this->assertSame(115,(int)$rows->sole()->acuenta);
+        $this->assertSame([],Inscripcione::where(SedeAccess::aggregate('pagos','SUM(monto)','pagable_id','inscripciones.id'),'<',50)->pluck('id')->all());
     }
     public function test_schedule_exceptions_are_normalized_and_denials_work_without_a_weekly_schedule(): void
     {
@@ -282,8 +284,8 @@ class UserAccessTest extends CrmTestCase
         $one=$this->persona(['foto'=>'estudiantes/one.jpg']);$two=$this->persona(['foto'=>'estudiantes/two.jpg']);
         foreach([[$one->id,$this->a->id],[$two->id,$this->b->id]] as [$id,$sede])DB::table('persona_sede')->insert(['persona_id'=>$id,'sede_id'=>$sede]);
         $user=$this->userAccount('Docente',$this->a->id);$other=$this->userAccount('Docente',$this->b->id);$this->loginAs($user);
-        $photos=app(\App\Services\ProfilePhotoService::class);$this->get($photos->url($one->foto))->assertOk();$this->get($photos->url($two->foto))->assertForbidden();
-        $this->get('/storage/'.$one->foto)->assertOk();$this->get('/storage/'.$two->foto)->assertForbidden();
+        $photos=app(\App\Services\ProfilePhotoService::class);$this->get($photos->url($one->foto))->assertOk();$this->get($photos->url($two->foto))->assertOk();
+        $this->get('/storage/'.$one->foto)->assertOk();$this->get('/storage/'.$two->foto)->assertOk();
         $this->scope($user,$this->a->id);$this->assertFalse(User::where('id',$other->id)->exists());$this->assertTrue(User::where('id',$user->id)->exists());
         $this->app['auth']->guard('web')->logout();$this->app['auth']->forgetGuards();$this->getJson('/storage/'.$one->foto)->assertUnauthorized();
     }

@@ -45,7 +45,7 @@
 										<th>Fechafin</th>
 										<th>Totalhoras</th>
 										<th>Horasxclase</th>
-										<th>Vigente</th>
+										<th>Estado / Sucursal</th>
 										<th>Condonado</th>
 										<th>Objetivo</th>
 										<th>Lunes</th>
@@ -88,7 +88,7 @@
 						{data:'fechafin'},
 						{data:'totalhoras'},
 						{data:'horasxclase'},
-						{data:'vigente'},
+							{data:'vigente', render:function(data,type,row){return type==='display'?row.estado_sucursal:data;}},
 						{data:'condonado'},
 						{data:'objetivo'},
 						{data:'lunes'},

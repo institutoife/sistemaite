@@ -759,5 +759,5 @@
     <script src="{{asset('assets/js/enviarmensaje/mostrarcontactos.js')}}"></script>
     <script src="{{asset('vistas/persona/estudiantes.js')}}"></script>
     <script src="{{ asset('vendor/select2/js/select2.full.min.js') }}"></script>
-    <script src="{{asset('vistas/clase/asistencia.js')}}"></script>
+    <script src="{{ asset('vistas/clase/asistencia.js') }}?v={{ is_file(public_path('vistas/clase/asistencia.js')) ? filemtime(public_path('vistas/clase/asistencia.js')) : 1 }}"></script>
 @stop

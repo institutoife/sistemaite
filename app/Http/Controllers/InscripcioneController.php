@@ -49,7 +49,7 @@ class InscripcioneController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:Listar Inscripciones')->only('index','show','UltimaInscripcion','tusInscripcionesVigentes','tusinscripciones','inscripcionesVigentes','Saldo');
+        $this->middleware('can:Listar Inscripciones')->only('index','show','UltimaInscripcion','tusInscripcionesVigentes','tusinscripciones','inscripcionesVigentes','Saldo','listar','vigentesAjax','inscripcionMostrarAjax');
         $this->middleware('can:Crear Inscripciones')->only('crear','store','configurarView');
         $this->middleware('can:Editar Inscripciones')->only('daralta','fecharProximoPago','edit','darbaja','guardarconfiguracion','edit','configurarView','update','actualizarConfiguracion','actualizar_fecha_proximo_pago','reservar');
         $this->middleware('can:Eliminar Inscripciones')->only('destroy');
@@ -384,10 +384,11 @@ class InscripcioneController extends Controller
             ->where('estudiante_id','=',$estudiante_id)
             // ->where('vigente', 1)
             ->select('inscripciones.id','inscripciones.vigente', 'objetivo', 'inscripciones.costo','fecha_proximo_pago','modalidads.modalidad','estado')
+            ->withSucursalOrigen()
             ->get();
         return datatables()->of($inscripcionesVigentes)
                             ->addColumn('btn', 'inscripcione.actiontusinscripciones')
-                            ->rawColumns(['btn','objetivo'])
+                            ->rawColumns(['btn','objetivo','sucursal_origen'])
                             ->toJson();
         
     }
@@ -561,7 +562,7 @@ class InscripcioneController extends Controller
         $acuenta=$inscripcion->pagos->sum('monto');
         $costo=$inscripcion->costo;
         $saldo=$costo-$acuenta;
-        $fechaHumamizado=$inscripcion->fecha_proximo_pago->diffForHumans();
+        $fechaHumamizado=optional($inscripcion->fecha_proximo_pago)->diffForHumans()??'Sin fecha programada';
         $data=['acuenta'=>$acuenta,'costo'=>$costo,'saldo'=>$saldo,'fechaHumamizado'=>$fechaHumamizado];
         return response()->json($data);
     }

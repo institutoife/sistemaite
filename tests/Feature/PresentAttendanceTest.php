@@ -191,7 +191,7 @@ class PresentAttendanceTest extends AttendanceTestCase
         $this->assertLessThanOrEqual($small+2,$large,'No debe consultar relaciones individualmente por estudiante.');
     }
 
-    public function test_scoped_records_and_parent_enrollments_cannot_leak_or_accept_actions(): void
+    public function test_authorized_staff_can_list_and_manage_present_students_across_branches(): void
     {
         $own=$this->present();$foreign=$this->present('computacion');
         Schema::table('users',fn(Blueprint $t)=>$t->unsignedBigInteger('sede_id')->nullable());
@@ -208,11 +208,10 @@ class PresentAttendanceTest extends AttendanceTestCase
         app(SedeAccess::class)->start($actor,$request);
         try {
             $rows=app(PresentAttendanceService::class)->rows($actor);
-            $this->assertCount(1,$rows);$this->assertSame('IFE Central',$rows->first()['sucursal']);
-            try { app(PresentAttendanceService::class)->act('computacion',$foreign->id,$actor);$this->fail('No debe aceptar otra sucursal.'); }
-            catch(\Symfony\Component\HttpKernel\Exception\HttpException $e) { $this->assertSame(404,$e->getStatusCode()); }
+            $this->assertCount(2,$rows);$this->assertSame('IFE Central',$rows->first()['sucursal']);
+            app(PresentAttendanceService::class)->act('computacion',$foreign->id,$actor);
         } finally { app(SedeAccess::class)->reset(); }
-        $this->assertSame(0,AsistenciaSalidaAviso::count());
+        $this->assertSame(1,AsistenciaSalidaAviso::count());
     }
 
     public function test_migration_is_additive_and_does_not_rewrite_existing_attendance(): void

@@ -79,7 +79,9 @@ class ClaseController extends Controller
     {
         $programa=Programacion::findOrFail($programacion_id);
         $clase=app(\App\Services\ClassAttendanceService::class)->record($programa,$request->all(),$request->user());
-        return $request->expectsJson() ? response()->json(['message'=>'Asistencia registrada.','id'=>$clase->id]) : redirect()->route('clase.presentes');
+        $notice=app(\App\Services\ClassAttendanceService::class)->arrivalNotice($programa,$clase);
+        return $request->expectsJson() ? response()->json(['message'=>'Asistencia registrada.','id'=>$clase->id,'arrival_notice'=>$notice])
+            : redirect()->route('clase.presentes')->with('attendance_arrival_notice',$notice);
     }
     
     /**
@@ -253,12 +255,13 @@ class ClaseController extends Controller
     public function marcadoRapido($programacion_id)
     {
         $programa=Programacion::findOrFail($programacion_id);
-        $data=['fecha'=>$programa->fecha->format('Y-m-d'), 'horainicio'=>now()->format('H:i'),
-            'horafin'=>now()->addMinutes($programa->hora_ini->diffInMinutes($programa->hora_fin))->format('H:i'),
+        $data=['fecha'=>$programa->fecha->format('Y-m-d'), 'horainicio'=>now('America/La_Paz')->format('H:i'),
+            'horafin'=>now('America/La_Paz')->addMinutes($programa->hora_ini->diffInMinutes($programa->hora_fin))->format('H:i'),
             'docente_id'=>$programa->docente_id,'aula_id'=>$programa->aula_id];
         $data['materia_id']=$programa->materia_id;
-        app(\App\Services\ClassAttendanceService::class)->record($programa,$data,auth()->user());
-        return redirect()->route('clase.presentes');
+        $service=app(\App\Services\ClassAttendanceService::class);
+        $attendance=$service->record($programa,$data,auth()->user());
+        return redirect()->route('clase.presentes')->with('attendance_arrival_notice',$service->arrivalNotice($programa,$attendance));
     }
     public function clasesPresentes(Request $request)
     {

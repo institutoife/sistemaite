@@ -10,6 +10,7 @@
 
 @section('adminlte_css')
     @include('photos.assets')
+    <link rel="stylesheet" href="{{ asset('vistas/clase/asistencia.css') }}?v={{ is_file(public_path('vistas/clase/asistencia.css')) ? filemtime(public_path('vistas/clase/asistencia.css')) : 1 }}">
     @stack('css')
     @yield('css')
 @stop
@@ -69,6 +70,7 @@
 @stop
 
 @section('adminlte_js')
+    @include('clase.asistencia.arrival-notice')
     @stack('js')
     @yield('js')
     @include('telefono.verificacion-modal')

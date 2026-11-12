@@ -3,9 +3,22 @@ namespace App\Services;
 
 use App\Models\{Aula, Docente, Inscripcione, Matriculacion, Persona, Programacion, Programacioncom};
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\{DB, Schema};
 
 class ClassAttendanceView
 {
+    private $teacherPresence;
+    private $teachers;
+    private $rooms;
+
+    public function objective(?string $value): string
+    {
+        // Decode legacy editor entities, then strip markup and collapse spacing.
+        $text=html_entity_decode(html_entity_decode($value??'',ENT_QUOTES|ENT_HTML5,'UTF-8'),ENT_QUOTES|ENT_HTML5,'UTF-8');
+        $text=preg_replace('/<(?:br\s*\/?|\/p|\/div|\/li)>/i',' ',$text);
+        return trim(preg_replace('/[\s\x{00A0}\x{200B}]+/u',' ',strip_tags($text)));
+    }
+
     public function tabs(Persona $person): array
     {
         $tabs=[];
@@ -42,14 +55,26 @@ class ClassAttendanceView
         $canAdd=auth()->user()->can('Crear '.$permission)
             && auth()->user()->can(($canal==='apoyo'?'Crear ':'Editar ').$programPermission)
             && $enrollment->vigente && (int)$enrollment->estado_id===(int)estado('CORRIENDO');
+        if ($this->teacherPresence===null) {
+            $actor=auth()->user();
+            $this->teacherPresence=!app(AccountSecurity::class)->family($actor)
+                && $actor->canAny(['Crear Clases','Editar Clases','Crear Clasescom','Editar Clasescom'])
+                ? app(TeacherPresence::class)->snapshot() : [];
+        }
+        if ($this->teachers===null) $this->teachers=Docente::with('persona')->where('estado_id',estado('HABILITADO'))->orderBy('nombrecorto')->get();
+        if ($this->rooms===null) {
+            $this->rooms=Aula::orderBy('aula')->get();
+            $branches=Schema::hasTable('sede_registros')?DB::table('sede_registros')->where('tabla','aulas')->pluck('sede_id','registro_id'):collect();
+            foreach($this->rooms as $room) $room->setAttribute('attendance_sede_id',$branches->get($room->id));
+        }
         return ['canal'=>$canal,'enrollment'=>$enrollment,'programaciones'=>$programs,'start'=>$start,'end'=>$end,
             'todayPrograms'=>$datedToday->filter(fn($p)=>!$p->compensacion),
             'compensatedToday'=>$datedToday->filter(fn($p)=>(bool)$p->compensacion),
             'permission'=>$permission,'canAdd'=>$canAdd,
             'canCorrect'=>auth()->user()->can('Editar '.$permission)&&auth()->user()->can('Editar '.$programPermission),
             'materias'=>$canal==='apoyo'?$enrollment->modalidad->nivel->materias:collect(),
-            'docentes'=>Docente::with('persona')->where('estado_id',estado('HABILITADO'))->orderBy('nombrecorto')->get(),
-            'aulas'=>Aula::orderBy('aula')->get(),
+            'docentes'=>$this->teachers, 'teacherPresence'=>$this->teacherPresence,
+            'aulas'=>$this->rooms,
             'stats'=>$this->statistics($programs),
             'totalPagado'=>$enrollment->pagos->sum('monto'),
             'horasDisponibles'=>max(0,(float)$enrollment->totalhoras-$programs->filter(fn($p)=>$p->isContractedClass())->sum('horas_por_clase'))];

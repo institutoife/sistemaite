@@ -1,6 +1,8 @@
 @php
     $defaults = $defaults ?? [];
     $prefix = $prefix ?? 'asistencia';
+    $selectedRoom=$tab['aulas']->firstWhere('id',$defaults['aula_id']??null);
+    $presenceBranch=optional($selectedRoom)->attendance_sede_id ?? app(\App\Services\SedeAccess::class)->active();
 @endphp
 <div class="row">
     @foreach(['fecha'=>'Fecha efectiva','horainicio'=>'Hora de inicio','horafin'=>'Hora de finalización'] as $field=>$label)
@@ -12,12 +14,14 @@
     @endforeach
     <div class="form-group col-md-4">
         <label for="{{ $prefix }}-docente">Docente</label>
-        <select required class="form-control" id="{{ $prefix }}-docente" name="docente_id">
+        <select required class="form-control attendance-teacher" id="{{ $prefix }}-docente" name="docente_id">
             <option value="">Seleccione docente</option>
             @foreach($tab['docentes'] as $teacher)
-                <option value="{{ $teacher->id }}" @if(($defaults['docente_id']??null)==$teacher->id) selected @endif>{{ $teacher->nombrecorto ?: trim(optional($teacher->persona)->nombre.' '.optional($teacher->persona)->apellidop) }}</option>
+                @php($teacherName=$teacher->nombrecorto ?: trim(optional($teacher->persona)->nombre.' '.optional($teacher->persona)->apellidop))
+                <option value="{{ $teacher->id }}" data-name="{{ $teacherName }}" @if(($defaults['docente_id']??null)==$teacher->id) selected @endif>{{ \App\Services\TeacherPresence::label($teacherName,$tab['teacherPresence'][$teacher->id]??[],$presenceBranch===null?null:(int)$presenceBranch) }}</option>
             @endforeach
         </select>
+
     </div>
     <div class="form-group col-md-4">
         <label for="{{ $prefix }}-materia">Materia / curso</label>
@@ -37,7 +41,7 @@
         <select required class="form-control" id="{{ $prefix }}-aula" name="aula_id">
             <option value="">Seleccione aula</option>
             @foreach($tab['aulas'] as $room)
-                <option value="{{ $room->id }}" @if(($defaults['aula_id']??null)==$room->id) selected @endif>{{ $room->aula }}</option>
+                <option value="{{ $room->id }}" data-sede="{{ $room->attendance_sede_id }}" @if(($defaults['aula_id']??null)==$room->id) selected @endif>{{ $room->aula }}</option>
             @endforeach
         </select>
     </div>
