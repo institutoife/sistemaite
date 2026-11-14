@@ -10,6 +10,9 @@ use Illuminate\Validation\ValidationException;
 
 class ClassAttendanceService
 {
+    private const PENDING_STATES = ['INDEFINIDO','HABILITADO'];
+    private $pendingStateIds;
+
     public function definition(string $canal): array
     {
         abort_unless(in_array($canal, ['apoyo','computacion'], true), 404);
@@ -55,9 +58,21 @@ class ClassAttendanceService
         if (!$condition) { throw ValidationException::withMessages([$field=>$message]); }
     }
 
+    public function pendingStateIds(): array
+    {
+        return $this->pendingStateIds ?? ($this->pendingStateIds=\App\Models\Estado::whereIn('estado',self::PENDING_STATES)
+            ->pluck('id')->map(fn($id)=>(int)$id)->all());
+    }
+
+    public function isPending(Model $program): bool
+    {
+        // Legacy schedules use HABILITADO; payment eligibility is a separate flag.
+        return in_array((int)$program->estado_id,$this->pendingStateIds(),true);
+    }
+
     public function absenceIds(): array
     {
-        return \App\Models\Estado::whereIn('estado',['FALTA','FALTANOTIFICADA','LICENCIA','CONGELADO','INDEFINIDO'])->pluck('id')->map(fn($id)=>(int)$id)->all();
+        return \App\Models\Estado::whereIn('estado',array_merge(['FALTA','FALTANOTIFICADA','LICENCIA','CONGELADO'],self::PENDING_STATES))->pluck('id')->map(fn($id)=>(int)$id)->all();
     }
 
     private function validateData(array $data, bool $additional = false): array
@@ -125,7 +140,7 @@ class ClassAttendanceService
             $this->check($duration === $this->minutes($original->$start->format('H:i'),$original->$end->format('H:i')),
                 'horafin', 'Conserve la duración de la clase original.');
             if (in_array($data['tipo'],['adelanto','extra'],true)) {
-                $this->check((int)$original->estado_id === (int)estado('INDEFINIDO') && $original->activo
+                $this->check($this->isPending($original) && $original->activo
                     && Carbon::parse($original->fecha->format('Y-m-d').' '.$original->$start->format('H:i'))
                         ->gt(Carbon::parse($data['fecha'].' '.$data['horainicio'])),
                     'original_id', 'El adelanto o clase extra debe consumir una clase pendiente futura.');
@@ -174,7 +189,7 @@ class ClassAttendanceService
             $program=$programClass::whereKey($program->id)->lockForUpdate()->firstOrFail();
             $this->active($enrollment);
             $this->check(!$program->compensacion, 'programacion', 'Esta clase ya fue consumida por una clase adicional. Marque la clase efectiva.');
-            $this->check($program->activo && in_array((int)$program->estado_id,array_map('intval',[estado('INDEFINIDO'),estado('PRESENTE'),estado('FINALIZADO')]),true),
+            $this->check($program->activo && in_array((int)$program->estado_id,array_merge($this->pendingStateIds(),array_map('intval',[estado('PRESENTE'),estado('FINALIZADO')])),true),
                 'programacion','El estado actual no permite marcar entrada. Utilice una recuperación si corresponde.');
             $this->check($data['fecha'] === $program->fecha->format('Y-m-d') && $data['fecha'] <= now()->toDateString(),
                 'fecha','Marque asistencia en la fecha programada; para cambiarla utilice una clase adicional.');
@@ -330,7 +345,7 @@ class ClassAttendanceService
                     'El estudiante ya tiene una asistencia activa sin salida registrada. Marque su salida antes de iniciar otra clase.');
             }
             $schedule=DB::table($table)->whereDate('fecha',$data['fecha'])->where('activo',1)
-                ->whereIn('estado_id',[estado('INDEFINIDO'),estado('PRESENTE')])
+                ->whereIn('estado_id',array_merge($this->pendingStateIds(),[estado('PRESENTE')]))
                 // An inactive enrollment cannot take a new scheduled class. Its real
                 // attendances are still checked below, regardless of enrollment state.
                 ->whereIn($ek,DB::table($canal==='apoyo'?'inscripciones':'matriculacions')->where('vigente',1)->where('estado_id',estado('CORRIENDO'))->select('id'))

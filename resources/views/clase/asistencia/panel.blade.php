@@ -1,6 +1,7 @@
 @php
     $enrollment=$tab['enrollment'];
     $todayPrograms=$tab['todayPrograms'];
+    $attendanceService=app(\App\Services\ClassAttendanceService::class);
 @endphp
 <div class="attendance-panel" data-attendance-panel data-today="{{ now('America/La_Paz')->toDateString() }}" data-server-now="{{ now('America/La_Paz')->toIso8601String() }}" data-refresh-url="{{ $refreshUrl??request()->url() }}" data-teachers-url="{{ route('asistencia.docentes') }}" data-teacher-presence="{{ json_encode($tab['teacherPresence'],JSON_UNESCAPED_UNICODE) }}" data-active-branch="{{ app(\App\Services\SedeAccess::class)->active() }}">
     @include('clase.asistencia.summary')
@@ -15,7 +16,7 @@
             <div class="card attendance-entry-card mb-3">
                 <div class="card-header attendance-entry-header">
                     <h6 class="mb-1 font-weight-bold">Registro de entrada</h6>
-                    <div class="d-flex flex-wrap align-items-center attendance-entry-meta"><strong>Programación #{{ $program->id }}</strong><span>Horario inscrito: {{ $program->{$tab['start']}->format('H:i') }}–{{ $program->{$tab['end']}->format('H:i') }}</span><span class="attendance-program-status">{{ (int)$program->estado_id===(int)estado('INDEFINIDO')?'PROGRAMADA':optional($program->estado)->estado }}</span></div>
+                    <div class="d-flex flex-wrap align-items-center attendance-entry-meta"><strong>Programación #{{ $program->id }}</strong><span>Horario inscrito: {{ $program->{$tab['start']}->format('H:i') }}–{{ $program->{$tab['end']}->format('H:i') }}</span><span class="attendance-program-status">{{ $attendanceService->isPending($program)?'PROGRAMADA':optional($program->estado)->estado }}</span></div>
                     @include('clase.asistencia.relation')
                 </div>
                 <div class="card-body">
@@ -29,7 +30,9 @@
                         <span class="badge badge-success">Asistencia registrada</span>
                     @elseif(!$program->habilitado)
                         <span class="text-warning">Registre primero el pago para habilitar esta clase.</span>
-                    @elseif((int)$program->estado_id===(int)estado('INDEFINIDO') && $program->activo)
+                    @elseif(!$program->activo)
+                        <span class="small text-muted">Esta programación está inactiva. Revise su configuración antes de marcar asistencia.</span>
+                    @elseif($attendanceService->isPending($program))
                         @can('Crear '.$tab['permission'])
                                 <form class="attendance-form attendance-entry-form" data-duration="{{ $duration }}" method="POST" action="{{ route($tab['canal']==='apoyo'?'clases.guardar':'clasescom.guardar',$program->id) }}">
                                     @csrf

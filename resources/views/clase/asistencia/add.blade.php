@@ -1,4 +1,4 @@
-@php $prefix='add-'.$tab['canal'].'-'.$tab['enrollment']->id; $absenceIds=app(\App\Services\ClassAttendanceService::class)->absenceIds(); @endphp
+@php $prefix='add-'.$tab['canal'].'-'.$tab['enrollment']->id; $attendanceService=$attendanceService??app(\App\Services\ClassAttendanceService::class); $absenceIds=$attendanceService->absenceIds(); @endphp
 <details class="border rounded p-3 mb-3 attendance-add">
     <summary class="font-weight-bold" style="color:#375F7A;cursor:pointer"><i class="fas fa-plus-circle mr-1"></i> Agregar clase / Adelantar clase</summary>
     <form class="attendance-form attendance-add-form mt-3" action="{{ route('asistencia.adicional.store',[$tab['canal'],$tab['enrollment']->id]) }}" method="POST">
@@ -15,10 +15,10 @@
                 <select class="form-control attendance-original" name="original_id" id="{{ $prefix }}-original" required>
                     <option value="">Seleccione la clase a compensar</option>
                     @foreach($tab['programaciones'] as $program)
-                        @if($program->isContractedClass() && !$program->compensacion && !app(\App\Services\ClassAttendanceService::class)->hasAttendance($program))
+                        @if($program->isContractedClass() && !$program->compensacion && !$attendanceService->hasAttendance($program))
                             @php
                                 $absent=\Carbon\Carbon::parse($program->fecha->format('Y-m-d').' '.$program->{$tab['end']}->format('H:i'))->lte(now()) && in_array((int)$program->estado_id,$absenceIds,true);
-                                $advance=(int)$program->estado_id===(int)estado('INDEFINIDO') && $program->activo;
+                                $advance=$attendanceService->isPending($program) && $program->activo;
                             @endphp
                             @if($absent || $advance)
                                 <option value="{{ $program->id }}" data-recovery="{{ $absent?1:0 }}" data-advance="{{ $advance?1:0 }}"
