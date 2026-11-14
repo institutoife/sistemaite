@@ -70,6 +70,24 @@ class ClassAttendanceService
         return in_array((int)$program->estado_id,$this->pendingStateIds(),true);
     }
 
+    /** Called while the programming row is locked by its edit transaction. */
+    public function editableScheduleState(Model $program, array $input): int
+    {
+        $state=$input['estado_id']??null;
+        if ($state===null && isset($input['estado']) && is_string($input['estado'])) {
+            $state=\App\Models\Estado::where('estado',trim($input['estado']))->value('id');
+        }
+        $data=Validator::make(['estado_id'=>$state],['estado_id'=>'required|integer|exists:estados,id'])->validate();
+        $state=(int)$data['estado_id'];
+        [,,$attendanceClass,,$key]=$this->definition($this->canal($program));
+        $present=$attendanceClass::where($key,$program->id)->where('estado_id',estado('PRESENTE'))->exists();
+        $this->check($state!==(int)estado('PRESENTE') || $present,'estado_id',
+            'Para marcar PRESENTE, registre la entrada desde asistencia. Cambiar el estado de la programación no registra una entrada.');
+        $this->check(!$present || $state===(int)estado('PRESENTE'),'estado_id',
+            'La clase tiene una asistencia en curso. Registre su salida desde asistencia antes de cambiar el estado.');
+        return $state;
+    }
+
     public function absenceIds(): array
     {
         return \App\Models\Estado::whereIn('estado',array_merge(['FALTA','FALTANOTIFICADA','LICENCIA','CONGELADO'],self::PENDING_STATES))->pluck('id')->map(fn($id)=>(int)$id)->all();

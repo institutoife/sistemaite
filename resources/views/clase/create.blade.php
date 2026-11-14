@@ -17,6 +17,7 @@
 @stop
 @section('content')
     <section class="content container-fluid">
+        @include('user.access.errors')
        
             <div class="card">
                 <div class="card-body">
@@ -61,7 +62,7 @@
                     <h4 class="alert-heading">{!! "Horario: ".$programa->hora_ini->toTimeString().' '.($programa->hora_fin)->toTimeString() !!}</h4>
                     {!! $inscripcion->objetivo !!}
                 </div>
-                <form method="POST" action="{{ route('clases.guardar',$programa->id) }}"  role="form" enctype="multipart/form-data">
+                <form class="attendance-entry-form" data-duration="{{ $programa->hora_ini->diffInMinutes($programa->hora_fin) }}" method="POST" action="{{ route('clases.guardar',$programa->id) }}" role="form" enctype="multipart/form-data">
                     @csrf
                     <div class="row">
                         @include('clase.form')    
@@ -107,6 +108,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/1.0.1/Chart.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{{ asset('vistas/clase/asistencia.js') }}?v={{ is_file(public_path('vistas/clase/asistencia.js'))?filemtime(public_path('vistas/clase/asistencia.js')):1 }}"></script>
 
   
     

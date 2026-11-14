@@ -686,7 +686,9 @@
                         
                     },
                     error : function(xhr, status) {
-                        alert('Disculpe, existió un problema');
+                        var json=xhr.responseJSON||{}, errors=[];
+                        $.each(json.errors||{},function(_,items){errors=errors.concat(items);});
+                        alert(errors.join(' ')||json.message||'No se pudo guardar la programación.');
                     },
                 });
             });

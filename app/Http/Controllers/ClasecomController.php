@@ -38,8 +38,11 @@ class ClasecomController extends Controller
         $programa=Programacioncom::findOrFail($programacioncom_id);
         $clase=app(\App\Services\ClassAttendanceService::class)->record($programa,$request->all(),$request->user());
         $notice=app(\App\Services\ClassAttendanceService::class)->arrivalNotice($programa,$clase);
+        $confirmation=(int)$clase->estado_id===(int)estado('PRESENTE')
+            ? 'Entrada registrada. Asistencia #'.$clase->id.'.'
+            : 'Asistencia #'.$clase->id.' registrada para el '.$clase->fecha->format('d/m/Y').' (finalizada). Consulte su historial.';
         return $request->expectsJson() ? response()->json(['message'=>'Asistencia registrada.','id'=>$clase->id,'arrival_notice'=>$notice])
-            : redirect()->route('clase.presentes')->with('attendance_arrival_notice',$notice);
+            : redirect()->route('clase.presentes')->with('success',$confirmation)->with('attendance_arrival_notice',$notice);
     }
     
 

@@ -11,6 +11,7 @@
 @stop
 @section('content')
     <section class="content container-fluid">
+        @include('user.access.errors')
         <div class="alert alert-primary" role="alert">    
             <ul class="list-group">
                 <li class="list-group-item active" aria-current="true">observaciones de esta clase programada</li>
@@ -32,7 +33,7 @@
                 
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ route('clasescom.guardar',$programacioncom->id) }}"  role="form" enctype="multipart/form-data">
+                <form class="attendance-entry-form" data-duration="{{ $programacioncom->horaini->diffInMinutes($programacioncom->horafin) }}" method="POST" action="{{ route('clasescom.guardar',$programacioncom->id) }}" role="form" enctype="multipart/form-data">
                     @csrf
                     <div class="row">
                         @include('clasecom.form')    
@@ -43,3 +44,7 @@
         </div>
     </section>
 @endsection
+
+@section('js')
+<script src="{{ asset('vistas/clase/asistencia.js') }}?v={{ is_file(public_path('vistas/clase/asistencia.js'))?filemtime(public_path('vistas/clase/asistencia.js')):1 }}"></script>
+@stop

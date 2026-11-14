@@ -31,7 +31,7 @@ class ProgramacioncomController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('can:Listar Programacioncom')->only('marcadoNormal',"imprimirProgramacom","mostrarProgramacom");
+        $this->middleware('can:Listar Programacioncom')->only('marcadoNormal',"imprimirProgramacom","mostrarProgramacom","programacionescomHoy","programacionescomFuturo");
         $this->middleware('can:Editar Programacioncom')->only("editar","agregarClase","actualizar","generarProgramacom","EliminarTodosLosProgramascom","regenerarProgramacom");
         $this->middleware('can:Eliminar Programacioncom')->only("destroy");
     }
@@ -56,10 +56,12 @@ class ProgramacioncomController extends Controller
 
     public function actualizar(Request $request)
     {
+        return DB::transaction(function() use($request) {
             //$request->estado_id=1;
             // return response()->json($request->all());
-            $programacioncom=Programacioncom::findOrFail($request->programacioncom_id);
+            $programacioncom=Programacioncom::whereKey($request->programacioncom_id)->lockForUpdate()->firstOrFail();
         app(\App\Services\ClassAttendanceService::class)->protectHistory($programacioncom);
+        $state=app(\App\Services\ClassAttendanceService::class)->editableScheduleState($programacioncom,$request->all());
             $arrayObservable= [
             'observacion' => 'Se editó los valores anteriores son' .
             'Hora Inicio: ' . $programacioncom->horaini . ' ' .
@@ -77,11 +79,11 @@ class ProgramacioncomController extends Controller
             $programacioncom->observaciones()->create($arrayObservable);
         
         
-        $horainicio=Carbon::create($request->horaini);
-        $horafin=Carbon::create($request->horafin);
+        $horainicio=Carbon::create($request->input('hora_ini',$request->horaini));
+        $horafin=Carbon::create($request->input('hora_fin',$request->horafin));
         $programacioncom->fecha            =$request->fecha;
         $programacioncom->activo           =$request->activo;
-        $programacioncom->estado_id       =$request->estado_id;
+        $programacioncom->estado_id       =$state;
         $programacioncom->horafin         =$request->hora_fin;
         $programacioncom->horaini         =$request->hora_ini;
         $programacioncom->horas_por_clase  = $horainicio->floatDiffInHours($horafin);
@@ -95,6 +97,7 @@ class ProgramacioncomController extends Controller
         $data=["programacioncom"=>$programacioncom,"docente"=>$docente];
         
         return response()->json($data);
+        });
 
     }
 
@@ -341,8 +344,8 @@ class ProgramacioncomController extends Controller
                         ->select('docentes.id','personas.nombre','personas.apellidop')
                         ->get(); 
         $aulas=Aula::all();
-        $hora_inicio=Carbon::now()->isoFormat('HH:mm:ss');
-        $hora_fin = Carbon::now()->addMinutes(($programacioncom->horaini->floatDiffInMinutes($programacioncom->horafin)))->isoFormat('HH:mm:ss');
+        $hora_inicio=now('America/La_Paz')->format('H:i');
+        $hora_fin = now('America/La_Paz')->addMinutes($programacioncom->horaini->floatDiffInMinutes($programacioncom->horafin))->format('H:i');
         return view('clasecom.create',compact('docentes','programacioncom','matriculacion','aulas','hora_inicio','hora_fin'));
     }
 
@@ -428,8 +431,8 @@ class ProgramacioncomController extends Controller
                     ->join('aulas','aulas.id','=','programacioncoms.aula_id')
                     ->join('estados','estados.id','=','programacioncoms.estado_id')
                     ->where('matriculacion_id',$request->matriculacion)
-                    ->where('fecha','=', Carbon::now()->isoFormat('Y-M-D'))
-                    ->select('programacioncoms.id','fecha','horaini','horafin','estados.estado','docentes.nombrecorto','aulas.aula');
+                    ->whereDate('programacioncoms.fecha',now('America/La_Paz')->toDateString())
+                    ->select('programacioncoms.id','programacioncoms.matriculacion_id','fecha','horaini','horafin','estados.estado','docentes.nombrecorto','aulas.aula');
         
         return DataTables::of($programacion)
                 ->addColumn('btn',fn($program)=>view('programacioncom.actions',array_merge($program->toArray(),['program'=>$program]))->render())
@@ -443,7 +446,7 @@ class ProgramacioncomController extends Controller
 
                     ->where('matriculacion_id',$request->matriculacion)
                     // ->where('fecha','>', Carbon::now()->isoFormat('Y-M-D'))
-                    ->select('programacioncoms.id','fecha','estados.estado','docentes.nombrecorto as docente','horaini','horafin','aulas.aula','programacioncoms.habilitado');
+                    ->select('programacioncoms.id','programacioncoms.matriculacion_id','fecha','estados.estado','docentes.nombrecorto as docente','horaini','horafin','aulas.aula','programacioncoms.habilitado');
         return DataTables::of($programacion)
                 ->addColumn('btn',fn($program)=>view('programacioncom.actionsfuturo',array_merge($program->toArray(),['program'=>$program]))->render())
                 ->rawColumns(['btn'])

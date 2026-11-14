@@ -28,6 +28,8 @@
                         @endif
                     @elseif($attendances->isNotEmpty() || (int)$program->estado_id===(int)estado('FINALIZADO'))
                         <span class="badge badge-success">Asistencia registrada</span>
+                    @elseif((int)$program->estado_id===(int)estado('PRESENTE'))
+                        <div class="alert alert-warning mb-0" role="alert">La programación indica PRESENTE, pero no tiene una entrada registrada. Revise su estado y registre la entrada desde asistencia; editar el estado por sí solo no marca asistencia.</div>
                     @elseif(!$program->habilitado)
                         <span class="text-warning">Registre primero el pago para habilitar esta clase.</span>
                     @elseif(!$program->activo)

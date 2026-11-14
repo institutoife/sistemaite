@@ -2,6 +2,7 @@
 @section('title','Estudiantes presentes')
 @section('content_header')<h1>Estudiantes presentes</h1>@stop
 @section('content')
+@include('user.access.errors')
 <div class="ife-presentes" id="ife-presentes-list">
     @if(!$noticesReady)<div class="alert alert-warning">Falta aplicar la migración de avisos de salida para habilitar el listado y las alertas.</div>@endif
     <div class="card">
