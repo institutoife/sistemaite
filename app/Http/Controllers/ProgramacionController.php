@@ -687,7 +687,7 @@ class ProgramacionController extends Controller
         foreach ($docenteshabilitados as $docente) {
             $finalizados=Programacion::join('docentes','docentes.id','programacions.docente_id')
             ->where('docente_id',$docente->id)
-            ->where('programacions.estado_id',estado('FINALIZADO'))
+            ->whereIn('programacions.estado_id',app(\App\Services\ClassAttendanceService::class)->completedStateIds())
             ->where('programacions.fecha','=',Carbon::now()->isoFormat('Y-M-D'))
             ->select('nombrecorto',DB::raw('count(*) as cantidad'))
             ->groupBy('nombrecorto')
@@ -827,7 +827,7 @@ class ProgramacionController extends Controller
         foreach ($docenteshabilitados as $doc) {
             $finalizados=Programacion::join('docentes','docentes.id','programacions.docente_id')
             ->where('docente_id',$doc->id)
-            ->where('programacions.estado_id',estado('FINALIZADO'))
+            ->whereIn('programacions.estado_id',app(\App\Services\ClassAttendanceService::class)->completedStateIds())
             ->where('programacions.fecha','=',Carbon::now()->isoFormat('Y-M-D'))
             ->select('nombrecorto',DB::raw('count(*) as cantidad'))
             ->groupBy('nombrecorto')

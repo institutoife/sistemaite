@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClaseAdicional extends Model
 {
+    public const COMPLETED_STATES = ['recuperacion'=>'RECUPERADA', 'adelanto'=>'ADELANTADA', 'extra'=>'EXTRA'];
+
     protected $table = 'clases_adicionales';
     protected $guarded = ['id'];
 

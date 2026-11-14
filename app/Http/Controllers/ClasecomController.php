@@ -170,7 +170,7 @@ class ClasecomController extends Controller
     }
 
     public function CantidadDePresentesCom($matriculacion){
-        return $matriculacion->programacionescom->where('estado_id',estado("FINALIZADO"))->count();
+        return $matriculacion->programacionescom->whereIn('estado_id',app(\App\Services\ClassAttendanceService::class)->completedStateIds())->count();
     }
     public function CantidadDeFaltasCom($matriculacion){
         return $matriculacion->programacionescom->where('estado_id',estado("FALTA"))->count();

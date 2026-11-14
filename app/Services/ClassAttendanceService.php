@@ -70,6 +70,26 @@ class ClassAttendanceService
         return in_array((int)$program->estado_id,$this->pendingStateIds(),true);
     }
 
+    public function completedStateIds(): array
+    {
+        return \App\Models\Estado::whereIn('estado',array_merge(['FINALIZADO'],array_values(ClaseAdicional::COMPLETED_STATES)))
+            ->pluck('id')->map(fn($id)=>(int)$id)->all();
+    }
+
+    private function attendedStateIds(): array
+    {
+        return array_merge($this->completedStateIds(),[(int)estado('PRESENTE')]);
+    }
+
+    private function completedProgramState(Model $program, ?string $type = null): int
+    {
+        $type=$type ?? optional($program->adicional)->tipo;
+        $name=ClaseAdicional::COMPLETED_STATES[$type] ?? 'FINALIZADO';
+        $state=\App\Models\Estado::where('estado',$name)->value('id');
+        $this->check($state!==null,'estado','Falta el estado '.$name.'. Actualice el catálogo de estados antes de finalizar la clase.');
+        return (int)$state;
+    }
+
     /** Called while the programming row is locked by its edit transaction. */
     public function editableScheduleState(Model $program, array $input): int
     {
@@ -188,7 +208,7 @@ class ClassAttendanceService
     public function hasAttendance(Model $program): bool
     {
         $relation = $program instanceof Programacion ? 'clases' : 'clasescom';
-        return in_array((int)$program->estado_id, array_map('intval',[estado('PRESENTE'),estado('FINALIZADO')]),true)
+        return in_array((int)$program->estado_id, $this->attendedStateIds(),true)
             || ($program->relationLoaded($relation) ? $program->$relation->isNotEmpty() : $program->$relation()->exists());
     }
 
@@ -207,7 +227,7 @@ class ClassAttendanceService
             $program=$programClass::whereKey($program->id)->lockForUpdate()->firstOrFail();
             $this->active($enrollment);
             $this->check(!$program->compensacion, 'programacion', 'Esta clase ya fue consumida por una clase adicional. Marque la clase efectiva.');
-            $this->check($program->activo && in_array((int)$program->estado_id,array_merge($this->pendingStateIds(),array_map('intval',[estado('PRESENTE'),estado('FINALIZADO')])),true),
+            $this->check($program->activo && in_array((int)$program->estado_id,array_merge($this->pendingStateIds(),$this->attendedStateIds()),true),
                 'programacion','El estado actual no permite marcar entrada. Utilice una recuperación si corresponde.');
             $this->check($data['fecha'] === $program->fecha->format('Y-m-d') && $data['fecha'] <= now()->toDateString(),
                 'fecha','Marque asistencia en la fecha programada; para cambiarla utilice una clase adicional.');
@@ -228,11 +248,13 @@ class ClassAttendanceService
             $attendance->save();
             $attendance->usuarios()->syncWithoutDetaching([$actor->id]);
             $before=['programacion'=>$program->getAttributes()];
-            $program->estado_id=$attendance->estado_id;
-            // Preserve the enrolled schedule and references. Effective values belong
-            // to the individual attendance; only the workflow state is synchronized.
+            $program->estado_id=(int)$attendance->estado_id===(int)estado('FINALIZADO')
+                ? $this->completedProgramState($program) : $attendance->estado_id;
+            // Preserve the enrolled schedule and references. The attendance keeps
+            // its real lifecycle; completed additional programs keep their type.
             $program->save();
-            $this->event($program,$actor,'entrada',$before,$attendance->getAttributes(),$data['motivo']??null);
+            $this->event($program,$actor,'entrada',$before,array_merge($attendance->getAttributes(),
+                ['programacion_estado_id'=>$program->estado_id]),$data['motivo']??null);
             return $attendance;
         },3);
     }
@@ -274,13 +296,13 @@ class ClassAttendanceService
             $exit=now(PresentAttendanceService::TIMEZONE);
             $this->check($exit->gt(app(PresentAttendanceService::class)->instant($attendance,'horainicio')),
                 'horafin','La salida debe ser posterior a la entrada.');
-            $before=$attendance->getAttributes();
+            $before=array_merge($attendance->getAttributes(),['programacion_estado_id'=>$program->estado_id]);
             $attendance->estado_id=estado('FINALIZADO');
             $attendance->horafin=$exit->format('H:i:s');
             $attendance->save();
-            $program->estado_id=estado('FINALIZADO'); $program->save();
+            $program->estado_id=$this->completedProgramState($program); $program->save();
             $this->event($program,$actor,'salida',$before,array_merge($attendance->getAttributes(),
-                ['salida_registrada_at'=>$exit->toIso8601String(),'salida_registrada_por'=>$actor->id]));
+                ['salida_registrada_at'=>$exit->toIso8601String(),'salida_registrada_por'=>$actor->id,'programacion_estado_id'=>$program->estado_id]));
             return $attendance;
         },3);
     }
@@ -326,6 +348,10 @@ class ClassAttendanceService
             $program->forceFill(['fecha'=>$data['fecha'],$start=>$data['horainicio'],$end=>$data['horafin'],
                 'docente_id'=>$data['docente_id'],'aula_id'=>$data['aula_id']]);
             if(!$attendance && $program->isDirty('fecha')) { $program->estado_id=estado('INDEFINIDO'); }
+            if($attendance) {
+                $program->estado_id=(int)$attendance->estado_id===(int)estado('FINALIZADO')
+                    ? $this->completedProgramState($program,$type) : $attendance->estado_id;
+            }
             if($canal==='apoyo')$program->materia_id=$data['materia_id'];
             $program->save();
             if($type!==$program->adicional->tipo) { $program->adicional->tipo=$type;$program->adicional->save(); }
@@ -461,6 +487,6 @@ class ClassAttendanceService
         $key=['programacions'=>'programacion_id','programacioncoms'=>'programacioncom_id'][$table]??null;
         abort_unless($key,422);
         return DB::table('clases_adicionales')->select('original_'.$key)->whereNotNull('original_'.$key)
-            ->whereIn($key,DB::table($table)->select('id')->whereIn('estado_id',[estado('PRESENTE'),estado('FINALIZADO')]));
+            ->whereIn($key,DB::table($table)->select('id')->whereIn('estado_id',$this->attendedStateIds()));
     }
 }

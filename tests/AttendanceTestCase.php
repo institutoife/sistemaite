@@ -25,7 +25,7 @@ abstract class AttendanceTestCase extends GoogleContactsTestCase
         }
         $this->actingAs($this->operator);
         Schema::create('estados',function(Blueprint $t){$t->id();$t->string('estado');});
-        foreach(['HABILITADO','CORRIENDO','INDEFINIDO','PRESENTE','FINALIZADO','FALTA','LICENCIA','CONGELADO','FALTANOTIFICADA'] as $state) DB::table('estados')->insert(['estado'=>$state]);
+        foreach(['HABILITADO','CORRIENDO','INDEFINIDO','PRESENTE','FINALIZADO','FALTA','LICENCIA','CONGELADO','FALTANOTIFICADA','RECUPERADA','ADELANTADA','EXTRA'] as $state) DB::table('estados')->insert(['estado'=>$state]);
         Schema::create('nivels',function(Blueprint $t){$t->id();$t->string('nivel');});
         Schema::create('materias',function(Blueprint $t){$t->id();$t->string('materia');});
         Schema::create('materiables',function(Blueprint $t){$t->unsignedBigInteger('materia_id');$t->unsignedBigInteger('materiable_id');$t->string('materiable_type');});

@@ -2,6 +2,7 @@
     $enrollment=$tab['enrollment'];
     $todayPrograms=$tab['todayPrograms'];
     $attendanceService=app(\App\Services\ClassAttendanceService::class);
+    $completedStates=$attendanceService->completedStateIds();
 @endphp
 <div class="attendance-panel" data-attendance-panel data-today="{{ now('America/La_Paz')->toDateString() }}" data-server-now="{{ now('America/La_Paz')->toIso8601String() }}" data-refresh-url="{{ $refreshUrl??request()->url() }}" data-teachers-url="{{ route('asistencia.docentes') }}" data-teacher-presence="{{ json_encode($tab['teacherPresence'],JSON_UNESCAPED_UNICODE) }}" data-active-branch="{{ app(\App\Services\SedeAccess::class)->active() }}">
     @include('clase.asistencia.summary')
@@ -26,7 +27,7 @@
                         @else
                             <span class="badge badge-info">Clase en curso</span>
                         @endif
-                    @elseif($attendances->isNotEmpty() || (int)$program->estado_id===(int)estado('FINALIZADO'))
+                    @elseif($attendances->isNotEmpty() || in_array((int)$program->estado_id,$completedStates,true))
                         <span class="badge badge-success">Asistencia registrada</span>
                     @elseif((int)$program->estado_id===(int)estado('PRESENTE'))
                         <div class="alert alert-warning mb-0" role="alert">La programación indica PRESENTE, pero no tiene una entrada registrada. Revise su estado y registre la entrada desde asistencia; editar el estado por sí solo no marca asistencia.</div>

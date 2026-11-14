@@ -82,7 +82,8 @@ class ClassAttendanceView
 
     public function statistics(Collection $programs): array
     {
-        $attended=fn($p)=>in_array((int)$p->estado_id,array_map('intval',[estado('PRESENTE'),estado('FINALIZADO')]),true);
+        $attendedStates=array_merge(app(ClassAttendanceService::class)->completedStateIds(),[(int)estado('PRESENTE')]);
+        $attended=fn($p)=>in_array((int)$p->estado_id,$attendedStates,true);
         $absenceIds=app(ClassAttendanceService::class)->absenceIds();
         $faultIds=\App\Models\Estado::whereIn('estado',['FALTA','FALTANOTIFICADA'])->pluck('id')->map(fn($id)=>(int)$id)->all();
         $absent=fn($p)=>in_array((int)$p->estado_id,$absenceIds,true)
